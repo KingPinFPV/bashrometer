@@ -36,3 +36,41 @@ cd bashrometer
 
 # Install all dependencies
 npm run install:all
+
+
+הגדרת משתני סביבה
+
+API Configuration - צור api/.env:
+
+envPORT=3000
+DATABASE_URL=postgresql://user:password@host:5432/bashrometer
+JWT_SECRET=your-secret-key
+NODE_ENV=development
+
+Frontend Configuration - צור frontend/.env.local:
+
+envNEXT_PUBLIC_API_URL=http://localhost:3000
+הרצה בסביבת פיתוח
+bash# הרצת שני השירותים במקביל
+npm run dev
+
+# או הרצה נפרדת:
+# Terminal 1 - API
+npm run dev:api
+
+# Terminal 2 - Frontend
+npm run dev:frontend
+הרצת בדיקות
+bashnpm test
+🌐 כתובות
+
+Frontend: http://localhost:3001
+API: http://localhost:3000
+API Docs: http://localhost:3000/api-docs (בקרוב)
+
+👤 משתמש לדוגמה (Admin)
+Email: admin@example.com
+Password: [צור משתמש admin ראשון]
+📝 רישיון
+כל הזכויות שמורות © 2025
+EOF
