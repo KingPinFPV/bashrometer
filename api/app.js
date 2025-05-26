@@ -8,6 +8,8 @@ const authRoutes = require('./routes/auth');
 const productsRoutes = require('./routes/products');
 const retailersRoutes = require('./routes/retailers');
 const pricesRoutes = require('./routes/prices');
+const autocompleteRoutes = require('./routes/autocomplete');
+const requestsRoutes = require('./routes/requests');
 
 const app = express();
 
@@ -62,6 +64,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/products', productsRoutes);
 app.use('/api/retailers', retailersRoutes);
 app.use('/api/prices', pricesRoutes);
+app.use('/api/autocomplete', autocompleteRoutes);
+app.use('/api/requests', requestsRoutes);
 
 // Simple root route for health check or basic info
 app.get('/', (req, res) => {

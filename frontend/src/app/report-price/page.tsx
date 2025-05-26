@@ -5,28 +5,21 @@ import { useState, useEffect, FormEvent } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import ProductAutocomplete from '@/components/ProductAutocomplete';
+import RetailerAutocomplete from '@/components/RetailerAutocomplete';
 
-interface Product {
-  id: number;
-  name: string;
-  brand?: string | null;
-}
-
-interface Retailer {
-  id: number;
-  name: string;
-}
 
 export default function ReportPricePage() {
   const { user, token, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [retailers, setRetailers] = useState<Retailer[]>([]);
+  // Note: Products and retailers are now loaded via Autocomplete components
 
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [selectedRetailerId, setSelectedRetailerId] = useState<string>('');
+  const [productSearchValue, setProductSearchValue] = useState<string>('');
+  const [retailerSearchValue, setRetailerSearchValue] = useState<string>('');
   const [regularPrice, setRegularPrice] = useState<string>('');
   const [salePrice, setSalePrice] = useState<string>('');
   const [isOnSale, setIsOnSale] = useState<boolean>(false);
@@ -37,6 +30,7 @@ export default function ReportPricePage() {
   const [message, setMessage] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [initialDataLoading, setInitialDataLoading] = useState<boolean>(true);
+  const [requestMessage, setRequestMessage] = useState<string>('');
 
 
   useEffect(() => {
@@ -53,38 +47,78 @@ export default function ReportPricePage() {
   }, [user, authLoading, router, selectedProductId, searchParams]);
 
   useEffect(() => {
-    if (user) { 
-      const fetchData = async () => {
-        setInitialDataLoading(true);
-        setMessage('');
-        try {
-          const productsPromise = fetch('https://automatic-space-pancake-gr4rjjxpxg5fwj6w-3000.app.github.dev/api/products?limit=1000')
-            .then(res => {
-              if (!res.ok) throw new Error(`Failed to fetch products: ${res.statusText}`);
-              return res.json();
-            });
-          const retailersPromise = fetch('https://automatic-space-pancake-gr4rjjxpxg5fwj6w-3000.app.github.dev/api/retailers?limit=1000')
-            .then(res => {
-              if (!res.ok) throw new Error(`Failed to fetch retailers: ${res.statusText}`);
-              return res.json();
-            });
+    // No need to pre-load all products/retailers - they're loaded via Autocomplete
+    setInitialDataLoading(false);
+  }, [user]);
 
-          const [productsData, retailersData] = await Promise.all([productsPromise, retailersPromise]);
-
-          setProducts(productsData.data || []);
-          setRetailers(retailersData.data || []);
-        } catch (error: any) {
-          console.error("Failed to fetch products/retailers:", error);
-          setMessage(`שגיאה בטעינת נתונים לטופס: ${error.message}`);
-        } finally {
-          setInitialDataLoading(false);
-        }
-      };
-      fetchData();
-    } else {
-        setInitialDataLoading(false); // If no user, no need to load products/retailers for the form
+  // Handle new product request
+  const handleNewProductRequest = async (productName: string) => {
+    if (!token) {
+      setRequestMessage("אינך מחובר. אנא התחבר כדי לבקש מוצר חדש.");
+      return;
     }
-  }, [user]); // Rerun if user changes
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/requests/products`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: productName,
+          description: `מוצר שנבקש על ידי משתמש בדף דיווח מחיר`
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setRequestMessage(`בקשה למוצר "${productName}" נשלחה בהצלחה! היא תיבדק על ידי מנהל המערכת.`);
+        setTimeout(() => setRequestMessage(''), 5000);
+      } else {
+        setRequestMessage(data.error || 'שגיאה בשליחת בקשת המוצר');
+      }
+    } catch (error) {
+      console.error('Error requesting new product:', error);
+      setRequestMessage('שגיאת רשת בשליחת בקשת המוצר');
+    }
+  };
+
+  // Handle new retailer request
+  const handleNewRetailerRequest = async (retailerName: string) => {
+    if (!token) {
+      setRequestMessage("אינך מחובר. אנא התחבר כדי לבקש קמעונאי חדש.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/requests/retailers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: retailerName,
+          type: 'אחר', // Default type
+          description: `קמעונאי שנבקש על ידי משתמש בדף דיווח מחיר`
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setRequestMessage(`בקשה לקמעונאי "${retailerName}" נשלחה בהצלחה! היא תיבדק על ידי מנהל המערכת.`);
+        setTimeout(() => setRequestMessage(''), 5000);
+      } else {
+        setRequestMessage(data.error || 'שגיאה בשליחת בקשת הקמעונאי');
+      }
+    } catch (error) {
+      console.error('Error requesting new retailer:', error);
+      setRequestMessage('שגיאת רשת בשליחת בקשת הקמעונאי');
+    }
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -93,8 +127,18 @@ export default function ReportPricePage() {
       setIsSubmitting(false); // Ensure button is re-enabled
       return;
     }
-    if (!selectedProductId || !selectedRetailerId || !regularPrice) {
-      setMessage("אנא מלא את כל שדות החובה (מוצר, קמעונאי, מחיר רגיל).");
+    if (!selectedProductId) {
+      setMessage("אנא בחר מוצר תקין מהרשימה. אם המוצר לא קיים, ניתן להוסיף אותו דרך דף הניהול.");
+      setIsSubmitting(false);
+      return;
+    }
+    if (!selectedRetailerId) {
+      setMessage("אנא בחר קמעונאי תקין מהרשימה. אם הקמעונאי לא קיים, ניתן להוסיף אותו דרך דף הניהול.");
+      setIsSubmitting(false);
+      return;
+    }
+    if (!regularPrice) {
+      setMessage("אנא הזן מחיר רגיל.");
       setIsSubmitting(false);
       return;
     }
@@ -122,7 +166,7 @@ export default function ReportPricePage() {
       // status will default to 'approved' on the backend if not sent
     };
 
-    const apiUrl = 'https://automatic-space-pancake-gr4rjjxpxg5fwj6w-3000.app.github.dev/api/prices';
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/prices`;
     
     try {
       const response = await fetch(apiUrl, {
@@ -162,9 +206,9 @@ export default function ReportPricePage() {
       } else {
         setMessage(responseData.error || 'אירעה שגיאה בשליחת הדיווח.');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to submit price report:", error);
-      setMessage(`שגיאת רשת בשליחת הדיווח: ${error.message}`);
+      setMessage(`שגיאת רשת בשליחת הדיווח: ${error instanceof Error ? error.message : 'שגיאה לא ידועה'}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -193,40 +237,56 @@ export default function ReportPricePage() {
           <label htmlFor="product" className="block text-sm font-medium text-slate-700">
             בחר מוצר <span className="text-red-500">*</span>
           </label>
-          <select
+          <ProductAutocomplete
+            placeholder="התחל להקליד שם המוצר..."
+            value={productSearchValue}
+            selectedProductId={selectedProductId}
+            onChange={(value, product) => {
+              setProductSearchValue(value);
+              if (product) {
+                setSelectedProductId(product.id.toString());
+              } else if (!value.trim()) {
+                setSelectedProductId('');
+              }
+            }}
+            onProductSelect={(product) => {
+              setSelectedProductId(product.id.toString());
+            }}
+            onNewProductRequest={handleNewProductRequest}
+            allowNewRequests={true}
+            className="mt-1"
+            required={true}
+            name="product_id"
             id="product"
-            name="product_id" // Good practice for forms
-            value={selectedProductId}
-            onChange={(e) => setSelectedProductId(e.target.value)}
-            required
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md"
-          >
-            <option value="" disabled>
-              {searchParams.get('productName') && selectedProductId ? decodeURIComponent(searchParams.get('productName')!) : '-- בחר מוצר --'}
-            </option>
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>{p.name} {p.brand ? `(${p.brand})` : ''}</option>
-            ))}
-          </select>
+          />
         </div>
 
         <div>
           <label htmlFor="retailer" className="block text-sm font-medium text-slate-700">
             בחר קמעונאי <span className="text-red-500">*</span>
           </label>
-          <select
-            id="retailer"
+          <RetailerAutocomplete
+            placeholder="התחל להקליד שם הקמעונאי..."
+            value={retailerSearchValue}
+            selectedRetailerId={selectedRetailerId}
+            onChange={(value, retailer) => {
+              setRetailerSearchValue(value);
+              if (retailer) {
+                setSelectedRetailerId(retailer.id.toString());
+              } else if (!value.trim()) {
+                setSelectedRetailerId('');
+              }
+            }}
+            onRetailerSelect={(retailer) => {
+              setSelectedRetailerId(retailer.id.toString());
+            }}
+            onNewRetailerRequest={handleNewRetailerRequest}
+            allowNewRequests={true}
+            className="mt-1"
+            required={true}
             name="retailer_id"
-            value={selectedRetailerId}
-            onChange={(e) => setSelectedRetailerId(e.target.value)}
-            required
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md"
-          >
-            <option value="" disabled>-- בחר קמעונאי --</option>
-            {retailers.map((r) => (
-              <option key={r.id} value={r.id}>{r.name}</option>
-            ))}
-          </select>
+            id="retailer"
+          />
         </div>
 
         <div>
@@ -335,6 +395,12 @@ export default function ReportPricePage() {
             className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
           />
         </div>
+
+        {requestMessage && (
+          <p className={`text-sm p-3 rounded-md ${requestMessage.includes('בהצלחה') ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>
+            {requestMessage}
+          </p>
+        )}
 
         {message && (
           <p className={`text-sm p-3 rounded-md ${message.includes('בהצלחה') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>

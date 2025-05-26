@@ -1,0 +1,46 @@
+# Dependencies
+node_modules
+npm-debug.log*
+
+# Testing
+tests/
+*.test.js
+jest.config.js
+jest.setup.js
+coverage/
+
+# Development
+.env
+.env.local
+.env.development
+.env.test
+
+# Logs
+logs/
+*.log
+
+# Runtime
+.npm
+.cache
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile.dev
+docker-compose*.yml
+
+# Documentation
+README.md
+*.md

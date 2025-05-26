@@ -1,0 +1,59 @@
+# Bashrometer API - Production Dockerfile
+# Multi-stage build for optimal security and performance
+
+FROM node:18-alpine AS base
+RUN apk add --no-cache dumb-init
+WORKDIR /app
+COPY package*.json ./
+
+# Development dependencies stage
+FROM base AS deps
+RUN npm ci --include=dev && npm cache clean --force
+
+# Build stage (if needed for any build processes)
+FROM deps AS build
+COPY . .
+RUN npm run test
+RUN rm -rf tests/ *.test.js jest.config.js jest.setup.js node_modules/
+
+# Production dependencies stage
+FROM base AS production-deps
+RUN npm ci --omit=dev && npm cache clean --force
+
+# Production stage
+FROM node:18-alpine AS production
+
+# Security: Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S bashrometer -u 1001 -G nodejs
+
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init curl
+
+WORKDIR /app
+
+# Copy production dependencies
+COPY --from=production-deps --chown=bashrometer:nodejs /app/node_modules ./node_modules
+COPY --from=production-deps --chown=bashrometer:nodejs /app/package*.json ./
+
+# Copy application source
+COPY --chown=bashrometer:nodejs *.js ./
+COPY --chown=bashrometer:nodejs controllers/ ./controllers/
+COPY --chown=bashrometer:nodejs routes/ ./routes/
+COPY --chown=bashrometer:nodejs middleware/ ./middleware/
+COPY --chown=bashrometer:nodejs utils/ ./utils/
+COPY --chown=bashrometer:nodejs schema.sql ./
+
+# Switch to non-root user
+USER bashrometer
+
+# Expose port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3000/api/auth/health || exit 1
+
+# Use dumb-init for proper signal handling
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["npm", "start"]

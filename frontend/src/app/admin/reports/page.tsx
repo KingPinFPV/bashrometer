@@ -79,7 +79,7 @@ export default function AdminPriceReportsPage() {
     setError(null);
     
     const offset = (pageToFetch - 1) * ITEMS_PER_PAGE;
-    let apiUrl = `https://automatic-space-pancake-gr4rjjxpxg5fwj6w-3000.app.github.dev/api/prices?limit=${ITEMS_PER_PAGE}&offset=${offset}&sort_by=pr.created_at&order=DESC`;
+    let apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/prices?limit=${ITEMS_PER_PAGE}&offset=${offset}&sort_by=pr.created_at&order=DESC`;
     
     if (currentFilterStatus !== 'all') {
       apiUrl += `&status=${currentFilterStatus}`;
@@ -149,7 +149,7 @@ export default function AdminPriceReportsPage() {
     }
     setActionMessage(null);
     setIsUpdatingStatus(prev => ({ ...prev, [reportId]: true }));
-    const apiUrl = `https://automatic-space-pancake-gr4rjjxpxg5fwj6w-3000.app.github.dev/api/prices/${reportId}/status`;
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/prices/${reportId}/status`;
     try {
       const response = await fetch(apiUrl, {
         method: 'PUT', 

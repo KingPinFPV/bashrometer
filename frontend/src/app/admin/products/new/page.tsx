@@ -5,6 +5,7 @@ import React, { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import Autocomplete from '@/components/Autocomplete';
 
 // ממשק לנתוני הטופס של מוצר חדש
 interface ProductFormData {
@@ -80,7 +81,7 @@ export default function CreateProductPage() {
 
     setIsLoading(true);
     setMessage('');
-    const apiUrl = 'https://automatic-space-pancake-gr4rjjxpxg5fwj6w-3000.app.github.dev/api/products';
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/products`;
 
     try {
       const response = await fetch(apiUrl, {
@@ -150,8 +151,15 @@ export default function CreateProductPage() {
             {/* מותג */}
             <div>
               <label htmlFor="brand" className="block text-sm font-medium text-slate-700">מותג</label>
-              <input type="text" name="brand" id="brand" value={formData.brand || ''} onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm" />
+              <Autocomplete
+                placeholder="חפש מותג..."
+                value={formData.brand || ''}
+                onChange={(value) => setFormData(prev => ({ ...prev, brand: value }))}
+                endpoint="brands"
+                name="brand"
+                id="brand"
+                className="mt-1"
+              />
             </div>
 
             {/* קטגוריה */}
@@ -207,8 +215,16 @@ export default function CreateProductPage() {
               </div>
               <div>
                 <label htmlFor="cut_type" className="block text-sm font-medium text-slate-700">סוג נתח</label>
-                <input type="text" name="cut_type" id="cut_type" value={formData.cut_type || ''} onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm" />
+                <Autocomplete
+                  placeholder="חפש נתח..."
+                  value={formData.cut_type || ''}
+                  onChange={(value) => setFormData(prev => ({ ...prev, cut_type: value }))}
+                  endpoint="meat-cuts"
+                  category={formData.animal_type || undefined}
+                  name="cut_type"
+                  id="cut_type"
+                  className="mt-1"
+                />
               </div>
               <div>
                 <label htmlFor="default_weight_per_unit_grams" className="block text-sm font-medium text-slate-700">משקל ברירת מחדל ליחידה (בגרמים)</label>

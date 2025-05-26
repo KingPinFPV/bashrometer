@@ -1,7 +1,7 @@
 {
   "name": "bashrometer",
   "version": "2.0.0",
-  "description": "Meat price comparison platform",  
+  "description": "Meat price comparison platform",
   "private": true,
   "scripts": {
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:frontend\"",

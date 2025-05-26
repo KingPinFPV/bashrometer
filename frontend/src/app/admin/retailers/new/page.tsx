@@ -73,7 +73,7 @@ export default function CreateRetailerPage() {
 
     setIsLoading(true);
     setMessage('');
-    const apiUrl = 'https://automatic-space-pancake-gr4rjjxpxg5fwj6w-3000.app.github.dev/api/retailers';
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/retailers`;
 
     try {
       const response = await fetch(apiUrl, {

@@ -76,7 +76,7 @@ export default function ProductDetailPage() {
     }
     setIsLoading(true);
     setError(null);
-    const apiUrl = `https://automatic-space-pancake-gr4rjjxpxg5fwj6w-3000.app.github.dev/api/products/${productId}`;
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/products/${productId}`;
     console.log(`ProductDetailPage: Fetching from API URL: ${apiUrl}`);
 
     try {
@@ -126,7 +126,7 @@ export default function ProductDetailPage() {
     setLikeActionLoading(prev => ({ ...prev, [priceId]: true })); // Set loading for this specific like button
 
     const method = currentlyLiked ? 'DELETE' : 'POST';
-    const likeApiUrl = `https://automatic-space-pancake-gr4rjjxpxg5fwj6w-3000.app.github.dev/api/prices/${priceId}/like`;
+    const likeApiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/prices/${priceId}/like`;
     console.log(`handleLikeToggle: PriceID: ${priceId}, Method: ${method}, URL: ${likeApiUrl}`);
 
     try {

@@ -20,7 +20,7 @@ export default function LoginPage() {
     setIsLoading(true);
     setMessage('');
 
-    const apiUrl = 'https://automatic-space-pancake-gr4rjjxpxg5fwj6w-3000.app.github.dev/api/auth/login'; 
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`; 
     // !!! חשוב: ודא שזהו ה-URL הנכון והפעיל של ה-API שלך !!!
 
     try {

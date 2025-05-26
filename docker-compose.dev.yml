@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: bashrometer-db-dev
+    environment:
+      POSTGRES_DB: bashrometer_dev
+      POSTGRES_USER: bashrometer
+      POSTGRES_PASSWORD: dev_password_change_in_production
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+      - ./api/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bashrometer -d bashrometer_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bashrometer-network
+
+  # API Service
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: bashrometer-api-dev
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DATABASE_URL: postgresql://bashrometer:dev_password_change_in_production@db:5432/bashrometer_dev
+      JWT_SECRET: dev_jwt_secret_change_in_production
+      ALLOWED_ORIGINS: http://localhost:3001,http://frontend:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./api:/app
+      - /app/node_modules
+    networks:
+      - bashrometer-network
+    restart: unless-stopped
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bashrometer-frontend-dev
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:3000
+    ports:
+      - "3001:3001"
+    depends_on:
+      - api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - bashrometer-network
+    restart: unless-stopped
+
+  # Redis for caching (optional for development)
+  redis:
+    image: redis:7-alpine
+    container_name: bashrometer-redis-dev
+    ports:
+      - "6379:6379"
+    networks:
+      - bashrometer-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data_dev:
+
+networks:
+  bashrometer-network:
+    driver: bridge

@@ -69,7 +69,7 @@ export default function AdminProductsPage() {
     setError(null);
     
     const offset = (pageToFetch - 1) * ITEMS_PER_PAGE;
-    let apiUrl = `https://automatic-space-pancake-gr4rjjxpxg5fwj6w-3000.app.github.dev/api/products?limit=${ITEMS_PER_PAGE}&offset=${offset}`;
+    let apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/products?limit=${ITEMS_PER_PAGE}&offset=${offset}`;
     
     if (currentSearchTerm.trim() !== '') {
       apiUrl += `&name_like=${encodeURIComponent(currentSearchTerm.trim())}`;
@@ -121,7 +121,7 @@ export default function AdminProductsPage() {
     if (!confirmDelete) return;
     setActionMessage(null); 
     setIsDeleting(prev => ({ ...prev, [productId]: true })); 
-    const apiUrl = `https://automatic-space-pancake-gr4rjjxpxg5fwj6w-3000.app.github.dev/api/products/${productId}`;
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/products/${productId}`;
     try {
       const response = await fetch(apiUrl, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }});
       if (response.status === 204 || response.ok) { 

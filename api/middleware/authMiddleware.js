@@ -53,7 +53,11 @@ function authorizeRole(roles) {
   };
 }
 
+// Convenience middleware for admin role
+const requireAdmin = authorizeRole('admin');
+
 module.exports = { 
   authenticateToken, 
-  authorizeRole 
+  authorizeRole,
+  requireAdmin
 };

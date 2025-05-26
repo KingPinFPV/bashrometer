@@ -51,7 +51,7 @@ export default function EditRetailerPage() {
     
     setIsLoading(true);
     setMessage('');
-    const apiUrl = `https://automatic-space-pancake-gr4rjjxpxg5fwj6w-3000.app.github.dev/api/retailers/${retailerId}`;
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/retailers/${retailerId}`;
 
     try {
       const response = await fetch(apiUrl, {
@@ -121,7 +121,7 @@ export default function EditRetailerPage() {
 
     setIsSubmitting(true);
     setMessage('');
-    const apiUrl = `https://automatic-space-pancake-gr4rjjxpxg5fwj6w-3000.app.github.dev/api/retailers/${retailerId}`;
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/retailers/${retailerId}`;
 
     try {
       const response = await fetch(apiUrl, {

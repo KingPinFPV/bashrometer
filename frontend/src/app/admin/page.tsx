@@ -45,6 +45,18 @@ export default function AdminDashboardPage() {
             עבור לניהול דיווחים &rarr;
           </Link>
         </div>
+
+        {/* קישור לניהול בקשות מוצרים וקמעונאים */}
+        <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+          <h2 className="text-xl font-semibold text-slate-700 mb-2">בקשות מוצרים וקמעונאים</h2>
+          <p className="text-slate-600 mb-4">אשר או דחה בקשות מהמשתמשים להוספת מוצרים וקמעונאים חדשים.</p>
+          <Link 
+            href="/admin/requests" 
+            className="text-sky-600 hover:text-sky-700 font-medium"
+          >
+            עבור לניהול בקשות &rarr;
+          </Link>
+        </div>
       </div>
     </div>
   );
