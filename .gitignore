@@ -1,5 +1,3 @@
-# ניצור .gitignore ראשי
-cat > .gitignore << 'EOF'
 # Dependencies
 node_modules/
 .pnp
@@ -43,4 +41,7 @@ yarn-error.log*
 # OS
 .DS_Store
 Thumbs.db
-EOF
+
+# Temporary files
+local_files.txt
+git_files.txt
