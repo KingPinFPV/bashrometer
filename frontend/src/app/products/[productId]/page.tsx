@@ -191,117 +191,437 @@ export default function ProductDetailPage() {
     return <div className="text-center py-10">המוצר לא נמצא. (מתוך [productId]/page.tsx)</div>;
   }
 
-  console.log("ProductDetailPage: Rendering product details for:", product.name); // הצג רק שם כדי למנוע לוג ארוך מדי
+  // Styling
+  const containerStyle = {
+    minHeight: 'calc(100vh - 200px)',
+    background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
+    padding: '2rem',
+    position: 'relative' as const,
+  };
+
+  const overlayStyle = {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'radial-gradient(circle at 30% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%)',
+    pointerEvents: 'none' as const,
+  };
+
+  const contentStyle = {
+    maxWidth: '1200px',
+    margin: '0 auto',
+    position: 'relative' as const,
+    zIndex: 10,
+  };
+
+  const cardStyle = {
+    background: 'rgba(255, 255, 255, 0.1)',
+    backdropFilter: 'blur(20px)',
+    borderRadius: '20px',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    padding: '2rem',
+    marginBottom: '2rem',
+    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+  };
+
+  const titleStyle = {
+    fontSize: '2.5rem',
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: '1rem',
+    background: 'linear-gradient(135deg, #3b82f6 0%, #f97316 100%)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+  };
+
+  console.log("ProductDetailPage: Rendering product details for:", product.name);
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Product Main Details */}
-      <div className="bg-white p-6 rounded-lg shadow-lg mb-8">
-        {product.image_url && (
-          <img 
-            src={product.image_url} 
-            alt={product.name} 
-            className="w-full md:w-1/3 h-auto object-cover rounded-md mb-4 md:float-right md:ml-6 rtl:md:float-left rtl:md:mr-6" 
-          />
-        )}
-        {!product.image_url && (
-           <div className="w-full md:w-1/3 h-60 bg-slate-200 rounded-md mb-4 md:float-right md:ml-6 rtl:md:float-left rtl:md:mr-6 flex items-center justify-center text-slate-400">
-             אין תמונה זמינה
-           </div>
-        )}
-        <h1 className="text-3xl sm:text-4xl font-bold text-slate-800 mb-3">{product.name}</h1>
-        {product.brand && <p className="text-lg text-slate-600 mb-1"><strong>מותג:</strong> {product.brand}</p>}
-        {product.category && <p className="text-lg text-slate-600 mb-1"><strong>קטגוריה:</strong> {product.category}</p>}
-        {product.cut_type && <p className="text-sm text-slate-500 mb-1">סוג נתח: {product.cut_type}</p>}
-        {product.animal_type && <p className="text-sm text-slate-500 mb-1">סוג חיה: {product.animal_type}</p>}
-        {product.kosher_level && <p className="text-sm text-slate-500 mb-1">כשרות: {product.kosher_level}</p>}
-        {product.origin_country && <p className="text-sm text-slate-500 mb-4">ארץ מקור: {product.origin_country}</p>}
-        
-        {product.description && <p className="text-slate-700 mt-4 mb-4 whitespace-pre-wrap">{product.description}</p>}
-        {product.short_description && !product.description && <p className="text-slate-700 mt-4 mb-4">{product.short_description}</p>}
-        
-        {product.default_weight_per_unit_grams && (product.unit_of_measure === 'unit' || product.unit_of_measure === 'package') && (
-          <p className="text-sm text-slate-500">משקל ברירת מחדל ליחידה/מארז: {product.default_weight_per_unit_grams} גרם</p>
-        )}
-      </div>
+    <main style={containerStyle}>
+      <div style={overlayStyle}></div>
+      <div style={contentStyle}>
+        {/* Product Main Details */}
+        <div style={cardStyle}>
+          <div style={{display: 'flex', gap: '2rem', flexWrap: 'wrap'}}>
+            {/* Product Image */}
+            <div style={{flex: '0 0 300px'}}>
+              {product.image_url ? (
+                <img 
+                  src={product.image_url} 
+                  alt={product.name} 
+                  style={{
+                    width: '100%',
+                    height: '300px',
+                    objectFit: 'cover',
+                    borderRadius: '16px',
+                    border: '1px solid rgba(255, 255, 255, 0.2)'
+                  }}
+                />
+              ) : (
+                <div style={{
+                  width: '100%',
+                  height: '300px',
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  borderRadius: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#cbd5e1',
+                  fontSize: '1rem',
+                  border: '1px solid rgba(255, 255, 255, 0.2)'
+                }}>
+                  🥩 אין תמונה זמינה
+                </div>
+              )}
+            </div>
 
-      {user && product && (
-        <div className="my-6 text-center sm:text-right">
-          <Link
-            href={`/report-price?productId=${product.id}&productName=${encodeURIComponent(product.name)}`}
-            className="inline-block bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors text-sm sm:text-base"
-          >
-            מצאת מחיר אחר? דווח לנו על מחיר למוצר "{product.name}"
-          </Link>
+            {/* Product Info */}
+            <div style={{flex: '1', minWidth: '300px'}}>
+              <h1 style={titleStyle}>{product.name}</h1>
+              
+              <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem'}}>
+                {product.brand && (
+                  <div style={{
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    padding: '0.75rem',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(59, 130, 246, 0.3)'
+                  }}>
+                    <div style={{color: '#60a5fa', fontSize: '0.875rem', marginBottom: '0.25rem'}}>🏷️ מותג</div>
+                    <div style={{color: '#ffffff', fontWeight: '600'}}>{product.brand}</div>
+                  </div>
+                )}
+                
+                {product.category && (
+                  <div style={{
+                    background: 'rgba(249, 115, 22, 0.1)',
+                    padding: '0.75rem',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(249, 115, 22, 0.3)'
+                  }}>
+                    <div style={{color: '#fb923c', fontSize: '0.875rem', marginBottom: '0.25rem'}}>📂 קטגוריה</div>
+                    <div style={{color: '#ffffff', fontWeight: '600'}}>{product.category}</div>
+                  </div>
+                )}
+                
+                {product.cut_type && (
+                  <div style={{
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    padding: '0.75rem',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(16, 185, 129, 0.3)'
+                  }}>
+                    <div style={{color: '#10b981', fontSize: '0.875rem', marginBottom: '0.25rem'}}>🔪 סוג נתח</div>
+                    <div style={{color: '#ffffff', fontWeight: '600'}}>{product.cut_type}</div>
+                  </div>
+                )}
+                
+                {product.kosher_level && (
+                  <div style={{
+                    background: 'rgba(139, 92, 246, 0.1)',
+                    padding: '0.75rem',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(139, 92, 246, 0.3)'
+                  }}>
+                    <div style={{color: '#a78bfa', fontSize: '0.875rem', marginBottom: '0.25rem'}}>✡️ כשרות</div>
+                    <div style={{color: '#ffffff', fontWeight: '600'}}>{product.kosher_level}</div>
+                  </div>
+                )}
+              </div>
+
+              {(product.description || product.short_description) && (
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  padding: '1rem',
+                  borderRadius: '12px',
+                  marginBottom: '1rem',
+                  border: '1px solid rgba(255, 255, 255, 0.1)'
+                }}>
+                  <div style={{color: '#cbd5e1', fontSize: '0.875rem', marginBottom: '0.5rem'}}>📝 תיאור</div>
+                  <div style={{color: '#e2e8f0', lineHeight: '1.6'}}>
+                    {product.description || product.short_description}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1.5rem'}}>
+                <Link
+                  href={`/report-price?productId=${product.id}&productName=${encodeURIComponent(product.name)}`}
+                  style={{
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: 'white',
+                    padding: '0.875rem 1.5rem',
+                    borderRadius: '12px',
+                    fontWeight: '600',
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.25)',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 8px 25px 0 rgba(16, 185, 129, 0.35)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 14px 0 rgba(16, 185, 129, 0.25)';
+                  }}
+                >
+                  💰 דווח מחיר למוצר זה
+                </Link>
+                
+                <Link
+                  href="/price-comparison"
+                  style={{
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                    color: 'white',
+                    padding: '0.875rem 1.5rem',
+                    borderRadius: '12px',
+                    fontWeight: '600',
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    boxShadow: '0 4px 14px 0 rgba(59, 130, 246, 0.25)',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 8px 25px 0 rgba(59, 130, 246, 0.35)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 14px 0 rgba(59, 130, 246, 0.25)';
+                  }}
+                >
+                  📊 השווה מחירים
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
-      )}
 
-      <h2 className="text-2xl font-semibold text-slate-700 mb-6">השוואת מחירים:</h2>
-      {product.price_examples && product.price_examples.length > 0 ? (
-        <div className="overflow-x-auto bg-white rounded-lg shadow-lg">
-          <table className="min-w-full divide-y divide-slate-200">
-             <thead className="bg-slate-100">
-              <tr>
-                <th scope="col" className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">קמעונאי</th>
-                <th scope="col" className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">מחיר (ל-100 גרם)</th>
-                <th scope="col" className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">מחיר ליח' מכירה</th>
-                <th scope="col" className="hidden md:table-cell px-3 sm:px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">תאריך דיווח</th>
-                <th scope="col" className="hidden lg:table-cell px-3 sm:px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">הערות</th>
-                <th scope="col" className="px-3 sm:px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">אימות קהילה</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-slate-200">
-              {product.price_examples.map((price) => (
-                <tr key={price.price_id} className={`${price.is_on_sale ? 'bg-green-50 hover:bg-green-100' : 'hover:bg-slate-50'} transition-colors`}>
-                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{price.retailer}</td>
-                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-slate-700 font-semibold">
-                    {price.calculated_price_per_100g ? `₪${price.calculated_price_per_100g.toFixed(2)}` : 'לא זמין'}
-                  </td>
-                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                    {price.sale_price && price.is_on_sale ? (
-                      <>
-                        <span className="line-through text-slate-400 mr-1 rtl:ml-1 rtl:mr-0">₪{Number(price.regular_price).toFixed(2)}</span>
-                        <span className="font-bold text-red-600">₪{Number(price.sale_price).toFixed(2)}</span>
-                      </>
-                    ) : (
-                      `₪${Number(price.regular_price).toFixed(2)}`
+        {/* Price Comparison Section */}
+        <div style={cardStyle}>
+          <h2 style={{
+            fontSize: '2rem',
+            fontWeight: 'bold',
+            color: '#ffffff',
+            marginBottom: '1.5rem',
+            background: 'linear-gradient(135deg, #f97316 0%, #3b82f6 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+          }}>
+            💰 השוואת מחירים - 5 הרשתות המובילות
+          </h2>
+
+          {product.price_examples && product.price_examples.length > 0 ? (
+            <div style={{display: 'grid', gap: '1rem'}}>
+              {product.price_examples.slice(0, 5).map((price, index) => {
+                const isLowest = index === 0; // הנחה שהמחירים ממוינים
+                const isSale = price.is_on_sale && price.sale_price;
+                
+                return (
+                  <div
+                    key={price.price_id}
+                    style={{
+                      background: isLowest 
+                        ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.1) 100%)'
+                        : 'rgba(255, 255, 255, 0.05)',
+                      border: isLowest 
+                        ? '2px solid rgba(16, 185, 129, 0.5)'
+                        : '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: '16px',
+                      padding: '1.5rem',
+                      position: 'relative',
+                      transition: 'all 0.3s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.15)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    {isLowest && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '-10px',
+                        right: '20px',
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        color: 'white',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '20px',
+                        fontSize: '0.75rem',
+                        fontWeight: 'bold',
+                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+                      }}>
+                        🏆 המחיר הזול ביותר!
+                      </div>
                     )}
-                    <span className="text-xs text-slate-400 ml-1 rtl:mr-1 rtl:ml-0"> ({Number(price.quantity_for_price)} {price.unit_for_price})</span>
-                  </td>
-                  <td className="hidden md:table-cell px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                    {new Date(price.submission_date).toLocaleDateString('he-IL')}
-                  </td>
-                  <td className="hidden lg:table-cell px-3 sm:px-6 py-4 text-sm text-slate-500 max-w-[150px] sm:max-w-xs truncate" title={price.notes || undefined}>{price.notes || '-'}</td>
-                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-center">
-                    <button
-                      onClick={() => handleLikeToggle(price.price_id, price.current_user_liked)}
-                      disabled={likeActionLoading[price.price_id] || !user} // שימוש במצב טעינה ספציפי לכפתור
-                      className={`p-1.5 rounded-full transition-colors disabled:opacity-50 ${
-                        price.current_user_liked 
-                          ? 'bg-red-500 text-white hover:bg-red-600' 
-                          : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
-                      }`}
-                      title={price.current_user_liked ? "הסר לייק" : "עשה לייק"}
-                    >
-                      {/* הצגת אייקון טעינה אם הפעולה מתבצעת */}
-                      {likeActionLoading[price.price_id] ? (
-                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                      ) : (
-                        price.current_user_liked ? '❤️' : '🤍' 
-                      )}
-                    </button>
-                    <span className="ml-2 rtl:mr-2 text-xs">({price.likes_count})</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+                    {isSale && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '-10px',
+                        left: '20px',
+                        background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                        color: 'white',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '20px',
+                        fontSize: '0.75rem',
+                        fontWeight: 'bold',
+                        boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)'
+                      }}>
+                        🏷️ במבצע!
+                      </div>
+                    )}
+
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem'}}>
+                      {/* Retailer Info */}
+                      <div style={{flex: '1', minWidth: '200px'}}>
+                        <Link
+                          href={`/retailers/${price.retailer_id}`}
+                          style={{
+                            fontSize: '1.25rem',
+                            fontWeight: 'bold',
+                            color: '#60a5fa',
+                            textDecoration: 'none',
+                            marginBottom: '0.5rem',
+                            display: 'block'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = '#3b82f6';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = '#60a5fa';
+                          }}
+                        >
+                          🏪 {price.retailer}
+                        </Link>
+                        <div style={{color: '#cbd5e1', fontSize: '0.875rem'}}>
+                          📅 דווח ב-{new Date(price.submission_date).toLocaleDateString('he-IL')}
+                        </div>
+                        {price.notes && (
+                          <div style={{color: '#94a3b8', fontSize: '0.875rem', marginTop: '0.25rem'}}>
+                            📝 {price.notes}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Price Info */}
+                      <div style={{textAlign: 'center'}}>
+                        <div style={{
+                          fontSize: '2rem',
+                          fontWeight: 'bold',
+                          color: isLowest ? '#10b981' : '#ffffff',
+                          marginBottom: '0.25rem'
+                        }}>
+                          ₪{price.calculated_price_per_100g ? price.calculated_price_per_100g.toFixed(2) : 'N/A'}
+                        </div>
+                        <div style={{color: '#cbd5e1', fontSize: '0.875rem', marginBottom: '0.5rem'}}>
+                          למאה גרם
+                        </div>
+                        
+                        <div style={{fontSize: '0.875rem', color: '#94a3b8'}}>
+                          {isSale ? (
+                            <>
+                              <span style={{textDecoration: 'line-through', marginLeft: '0.5rem'}}>
+                                ₪{Number(price.regular_price).toFixed(2)}
+                              </span>
+                              <span style={{color: '#ef4444', fontWeight: 'bold'}}>
+                                ₪{Number(price.sale_price).toFixed(2)}
+                              </span>
+                            </>
+                          ) : (
+                            `₪${Number(price.regular_price).toFixed(2)}`
+                          )}
+                          <div>({Number(price.quantity_for_price)} {price.unit_for_price})</div>
+                        </div>
+                      </div>
+
+                      {/* Like Button */}
+                      <div style={{textAlign: 'center'}}>
+                        <button
+                          onClick={() => handleLikeToggle(price.price_id, price.current_user_liked)}
+                          disabled={likeActionLoading[price.price_id] || !user}
+                          style={{
+                            background: price.current_user_liked 
+                              ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                              : 'rgba(255, 255, 255, 0.1)',
+                            color: price.current_user_liked ? 'white' : '#cbd5e1',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            borderRadius: '12px',
+                            padding: '0.75rem',
+                            cursor: likeActionLoading[price.price_id] || !user ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.3s ease',
+                            fontSize: '1.5rem',
+                            opacity: likeActionLoading[price.price_id] || !user ? 0.5 : 1
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!likeActionLoading[price.price_id] && user) {
+                              e.currentTarget.style.transform = 'scale(1.1)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'scale(1)';
+                          }}
+                        >
+                          {likeActionLoading[price.price_id] ? '⏳' : (price.current_user_liked ? '❤️' : '🤍')}
+                        </button>
+                        <div style={{color: '#cbd5e1', fontSize: '0.75rem', marginTop: '0.25rem'}}>
+                          {price.likes_count} לייקים
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{
+              textAlign: 'center',
+              padding: '3rem',
+              color: '#cbd5e1',
+              background: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '16px',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}>
+              <div style={{fontSize: '3rem', marginBottom: '1rem'}}>🔍</div>
+              <h3 style={{fontSize: '1.5rem', marginBottom: '0.5rem', color: '#ffffff'}}>
+                אין דיווחי מחירים עדיין
+              </h3>
+              <p style={{marginBottom: '1.5rem'}}>
+                היה הראשון לדווח על מחיר למוצר זה ועזור לקהילה!
+              </p>
+              <Link
+                href={`/report-price?productId=${product.id}&productName=${encodeURIComponent(product.name)}`}
+                style={{
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: 'white',
+                  padding: '1rem 2rem',
+                  borderRadius: '12px',
+                  fontWeight: '600',
+                  textDecoration: 'none',
+                  display: 'inline-block',
+                  boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.25)',
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                💰 דווח מחיר ראשון
+              </Link>
+            </div>
+          )}
         </div>
-      ) : (
-        <p className="text-slate-600 mt-4">אין דיווחי מחירים זמינים עבור מוצר זה כרגע.</p>
-      )}
-    </div>
+      </div>
+    </main>
   );
 }

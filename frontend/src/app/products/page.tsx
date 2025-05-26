@@ -31,22 +31,51 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // View and filtering states
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [sortBy, setSortBy] = useState<string>('name');
+  const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>('ASC');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  
+  // Categories for filtering
+  const [categories, setCategories] = useState<string[]>([]);
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
+  const itemsPerPage = 20;
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (
+    page: number = 1, 
+    search: string = '', 
+    category: string = '', 
+    sort: string = 'name', 
+    order: 'ASC' | 'DESC' = 'ASC'
+  ) => {
     setIsLoading(true);
     setError(null);
     try {
       const base = apiBase.endsWith('/') ? apiBase.slice(0, -1) : apiBase;
-      const apiUrl = `${base}/api/products?limit=50`;
+      
+      const params = new URLSearchParams({
+        limit: itemsPerPage.toString(),
+        offset: ((page - 1) * itemsPerPage).toString(),
+        sort_by: sort,
+        order: order
+      });
+      
+      if (search.trim()) params.append('name_like', search.trim());
+      if (category) params.append('category', category);
+      
+      const apiUrl = `${base}/api/products?${params.toString()}`;
       console.log("Fetching products from", apiUrl);
 
       const response = await fetch(apiUrl, {
         credentials: 'include',
         cache: 'no-store',
       });
-      console.log("ProductsPage fetch response status:", response.status);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -56,52 +85,381 @@ export default function ProductsPage() {
       const data: ApiResponse = await response.json();
       console.log("ProductsPage fetched data:", data);
       setProducts(data.data ?? []);
+      setTotalPages(Math.ceil((data.page_info.total_items || 0) / itemsPerPage));
+      setCurrentPage(page);
     } catch (e: any) {
       console.error("ProductsPage - Failed to fetch products:", e);
       setError(e.message || 'Failed to load products. Please try again later.');
     } finally {
       setIsLoading(false);
-      console.log("ProductsPage: Finished fetching products.");
     }
   };
 
+  // Fetch categories for filter dropdown
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch(`${apiBase}/api/products?limit=1000`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const uniqueCategories = [...new Set(
+          data.data
+            .map((p: Product) => p.category)
+            .filter((cat: string) => cat && cat.trim() !== '')
+        )] as string[];
+        setCategories(uniqueCategories.sort());
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  // Handle search with debouncing
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchProducts(1, searchQuery, selectedCategory, sortBy, sortOrder);
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, selectedCategory, sortBy, sortOrder]);
+
   useEffect(() => {
     fetchProducts();
+    fetchCategories();
   }, []);
+
+  const containerStyle = {
+    minHeight: 'calc(100vh - 200px)',
+    background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
+    padding: '3rem 2rem',
+    position: 'relative' as const,
+  };
+
+  const overlayStyle = {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'radial-gradient(circle at 70% 20%, rgba(249, 115, 22, 0.1) 0%, transparent 50%)',
+    pointerEvents: 'none' as const,
+  };
+
+  const contentStyle = {
+    maxWidth: '1536px',
+    margin: '0 auto',
+    position: 'relative' as const,
+    zIndex: 10,
+  };
+
+  const titleStyle = {
+    fontSize: '3rem',
+    fontWeight: 'bold',
+    textAlign: 'center' as const,
+    marginBottom: '3rem',
+    background: 'linear-gradient(135deg, #3b82f6 0%, #f97316 100%)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+    textShadow: '0 0 20px rgba(59, 130, 246, 0.3)',
+  };
+
+  const loadingStyle = {
+    textAlign: 'center' as const,
+    padding: '4rem 0',
+    color: '#e2e8f0',
+    fontSize: '1.25rem',
+    background: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: '16px',
+    backdropFilter: 'blur(10px)',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+  };
+
+  const errorStyle = {
+    textAlign: 'center' as const,
+    padding: '4rem 0',
+    color: '#fca5a5',
+    fontSize: '1.25rem',
+    background: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: '16px',
+    backdropFilter: 'blur(10px)',
+    border: '1px solid rgba(239, 68, 68, 0.3)',
+  };
+
+  const gridStyle = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+    gap: '2rem',
+    marginTop: '2rem',
+  };
 
   if (isLoading) {
     return (
-      <div className="text-center py-10">
-        טוען מוצרים... (מתוך /products/page.tsx)
-      </div>
+      <main style={containerStyle}>
+        <div style={overlayStyle}></div>
+        <div style={contentStyle}>
+          <div style={loadingStyle}>
+            🔄 טוען מוצרים...
+          </div>
+        </div>
+      </main>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center py-10 text-red-600">
-        שגיאה בטעינת המוצרים (מתוך /products/page.tsx): {error}
-      </div>
+      <main style={containerStyle}>
+        <div style={overlayStyle}></div>
+        <div style={contentStyle}>
+          <div style={errorStyle}>
+            ❌ שגיאה בטעינת המוצרים: {error}
+          </div>
+        </div>
+      </main>
     );
   }
 
   if (products.length === 0) {
     return (
-      <div className="text-center py-10">
-        לא נמצאו מוצרים. (מתוך /products/page.tsx)
-      </div>
+      <main style={containerStyle}>
+        <div style={overlayStyle}></div>
+        <div style={contentStyle}>
+          <div style={loadingStyle}>
+            📦 לא נמצאו מוצרים
+          </div>
+        </div>
+      </main>
     );
   }
 
+  // Handle pagination
+  const handlePageChange = (page: number) => {
+    fetchProducts(page, searchQuery, selectedCategory, sortBy, sortOrder);
+  };
+
+  // Sort options
+  const sortOptions = [
+    { value: 'name', label: 'שם מוצר (א-ב)', order: 'ASC' },
+    { value: 'name', label: 'שם מוצר (ב-א)', order: 'DESC' },
+    { value: 'min_price_per_100g', label: 'מחיר (זול לגבוה)', order: 'ASC' },
+    { value: 'min_price_per_100g', label: 'מחיר (גבוה לזול)', order: 'DESC' },
+    { value: 'brand', label: 'מותג (א-ב)', order: 'ASC' },
+    { value: 'category', label: 'קטגוריה', order: 'ASC' },
+  ];
+
+  const controlsStyle = {
+    background: 'rgba(255, 255, 255, 0.1)',
+    backdropFilter: 'blur(10px)',
+    borderRadius: '16px',
+    padding: '1.5rem',
+    marginBottom: '2rem',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+  };
+
+  const searchStyle = {
+    width: '100%',
+    padding: '0.75rem 1rem',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
+    borderRadius: '12px',
+    background: 'rgba(255, 255, 255, 0.1)',
+    color: '#ffffff',
+    fontSize: '1rem',
+    outline: 'none',
+    backdropFilter: 'blur(10px)',
+  };
+
+  const selectStyle = {
+    padding: '0.75rem 1rem',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
+    borderRadius: '12px',
+    background: 'rgba(255, 255, 255, 0.1)',
+    color: '#ffffff',
+    fontSize: '1rem',
+    outline: 'none',
+    backdropFilter: 'blur(10px)',
+    minWidth: '150px',
+  };
+
+  const buttonStyle = (active: boolean) => ({
+    padding: '0.75rem 1rem',
+    border: `1px solid ${active ? '#3b82f6' : 'rgba(255, 255, 255, 0.3)'}`,
+    borderRadius: '12px',
+    background: active ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+    color: '#ffffff',
+    fontSize: '0.875rem',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease',
+    backdropFilter: 'blur(10px)',
+  });
+
+  const paginationStyle = {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '1rem',
+    marginTop: '2rem',
+    padding: '1rem',
+  };
+
+  const pageButtonStyle = (active: boolean) => ({
+    padding: '0.5rem 1rem',
+    border: `1px solid ${active ? '#3b82f6' : 'rgba(255, 255, 255, 0.3)'}`,
+    borderRadius: '8px',
+    background: active ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+    color: '#ffffff',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease',
+    minWidth: '40px',
+    textAlign: 'center' as const,
+  });
+
+  const renderPagination = () => {
+    const pages = [];
+    const showPages = Math.min(5, totalPages);
+    const startPage = Math.max(1, currentPage - Math.floor(showPages / 2));
+    const endPage = Math.min(totalPages, startPage + showPages - 1);
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(
+        <button
+          key={i}
+          style={pageButtonStyle(i === currentPage)}
+          onClick={() => handlePageChange(i)}
+        >
+          {i}
+        </button>
+      );
+    }
+
+    return (
+      <div style={paginationStyle}>
+        {currentPage > 1 && (
+          <button
+            style={pageButtonStyle(false)}
+            onClick={() => handlePageChange(currentPage - 1)}
+          >
+            ◀
+          </button>
+        )}
+        {pages}
+        {currentPage < totalPages && (
+          <button
+            style={pageButtonStyle(false)}
+            onClick={() => handlePageChange(currentPage + 1)}
+          >
+            ▶
+          </button>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <main className="px-8 py-12 max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold text-slate-700 mb-8">
-        רשימת מוצרים (מתוך /products/page.tsx)
-      </h1>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {products.map((product) => (
-          <ProductCard key={product.id} product={product} />
-        ))}
+    <main style={containerStyle}>
+      <div style={overlayStyle}></div>
+      <div style={contentStyle}>
+        <h1 style={titleStyle}>
+          🥩 רשימת מוצרים
+        </h1>
+        
+        {/* Controls Panel */}
+        <div style={controlsStyle}>
+          {/* Search and Filters Row */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr auto auto',
+            gap: '1rem',
+            marginBottom: '1rem',
+            alignItems: 'center'
+          }}>
+            <input
+              type="text"
+              placeholder="🔍 חפש מוצרים..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={searchStyle}
+            />
+            
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              style={selectStyle}
+            >
+              <option value="">כל הקטגוריות</option>
+              {categories.map(category => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={`${sortBy}-${sortOrder}`}
+              onChange={(e) => {
+                const [field, order] = e.target.value.split('-');
+                setSortBy(field);
+                setSortOrder(order as 'ASC' | 'DESC');
+              }}
+              style={selectStyle}
+            >
+              {sortOptions.map((option, index) => (
+                <option key={index} value={`${option.value}-${option.order}`}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* View Mode Toggle */}
+          <div style={{
+            display: 'flex',
+            gap: '0.5rem',
+            justifyContent: 'flex-end'
+          }}>
+            <button
+              style={buttonStyle(viewMode === 'grid')}
+              onClick={() => setViewMode('grid')}
+            >
+              🔲 רשת
+            </button>
+            <button
+              style={buttonStyle(viewMode === 'list')}
+              onClick={() => setViewMode('list')}
+            >
+              📋 רשימה
+            </button>
+          </div>
+        </div>
+
+        {/* Products Display */}
+        <div style={{
+          ...gridStyle,
+          gridTemplateColumns: viewMode === 'list' 
+            ? '1fr' 
+            : 'repeat(auto-fill, minmax(280px, 1fr))',
+        }}>
+          {products.map((product) => (
+            <ProductCard 
+              key={product.id} 
+              product={product} 
+              viewMode={viewMode}
+            />
+          ))}
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && renderPagination()}
+
+        {/* Results Info */}
+        <div style={{
+          textAlign: 'center',
+          color: '#cbd5e1',
+          marginTop: '1rem',
+          fontSize: '0.875rem'
+        }}>
+          עמוד {currentPage} מתוך {totalPages} • {products.length} מוצרים
+        </div>
       </div>
     </main>
   );

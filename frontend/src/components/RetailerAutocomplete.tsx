@@ -199,8 +199,8 @@ export default function RetailerAutocomplete({
         required={required}
         name={name}
         id={id}
-        className={`w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm ${
-          disabled ? 'bg-slate-100 cursor-not-allowed' : ''
+        className={`form-input ${
+          disabled ? 'bg-gray-100 cursor-not-allowed' : ''
         } ${className}`}
         autoComplete="off"
       />
@@ -208,13 +208,13 @@ export default function RetailerAutocomplete({
       {/* Loading indicator */}
       {isLoading && (
         <div className="absolute left-3 top-2.5">
-          <div className="animate-spin h-4 w-4 border-2 border-sky-500 border-t-transparent rounded-full"></div>
+          <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
         </div>
       )}
 
       {/* Suggestions dropdown */}
       {showSuggestions && (suggestions.length > 0 || error) && (
-        <ul className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-md shadow-lg max-h-60 overflow-auto">
+        <ul className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
           {error ? (
             <li className="px-3 py-2 text-red-600 text-sm">
               {error}
@@ -223,8 +223,8 @@ export default function RetailerAutocomplete({
             suggestions.map((retailer, index) => (
               <li
                 key={retailer.id}
-                className={`px-3 py-2 cursor-pointer text-sm hover:bg-sky-50 border-b border-slate-100 last:border-b-0 ${
-                  index === selectedIndex ? 'bg-sky-100' : ''
+                className={`px-3 py-2 cursor-pointer text-sm hover:bg-primary-50 border-b border-gray-100 last:border-b-0 ${
+                  index === selectedIndex ? 'bg-primary-100' : ''
                 } ${
                   selectedRetailerId === retailer.id.toString() ? 'bg-green-50 border-green-200' : ''
                 }`}
@@ -232,7 +232,7 @@ export default function RetailerAutocomplete({
               >
                 <div className="flex items-center justify-between">
                   <span className="font-medium truncate">{retailer.name}</span>
-                  <div className="text-xs text-slate-500 flex-shrink-0 mr-2 rtl:ml-2 rtl:mr-0">
+                  <div className="text-xs text-gray-600 flex-shrink-0 mr-2 rtl:ml-2 rtl:mr-0">
                     {retailer.type && (
                       <span className="mr-2 rtl:ml-2 rtl:mr-0">{retailer.type}</span>
                     )}
@@ -249,19 +249,19 @@ export default function RetailerAutocomplete({
 
       {/* No results message with option to add new retailer */}
       {showSuggestions && !isLoading && !error && suggestions.length === 0 && inputValue.trim().length >= minLength && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-md shadow-lg">
-          <div className="px-3 py-2 text-slate-500 text-sm">
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+          <div className="px-3 py-2 text-gray-600 text-sm">
             לא נמצאו קמעונאים עבור "{inputValue}"
           </div>
           {allowNewRequests && onNewRetailerRequest && (
-            <div className="border-t border-slate-200">
+            <div className="border-t border-gray-200">
               <button
                 type="button"
                 onClick={() => {
                   onNewRetailerRequest(inputValue.trim());
                   setShowSuggestions(false);
                 }}
-                className="w-full px-3 py-2 text-left text-sm text-sky-600 hover:bg-sky-50 focus:outline-none focus:bg-sky-50"
+                className="w-full px-3 py-2 text-left text-sm text-primary-600 hover:bg-primary-50 focus:outline-none focus:bg-primary-50"
               >
                 + בקש להוסיף קמעונאי חדש: "{inputValue.trim()}"
               </button>

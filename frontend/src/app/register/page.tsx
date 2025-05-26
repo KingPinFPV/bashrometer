@@ -4,7 +4,7 @@
 import { useState, FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation'; // ייבוא ה-Router
-import { useAuth } from '@/contexts/AuthContext'; // <-- ייבוא חדש
+// import { useAuth } from '@/contexts/AuthContext'; // <-- ייבוא חדש
 
 export default function RegisterPage() {
   const [name, setName] = useState('');
@@ -13,7 +13,7 @@ export default function RegisterPage() {
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const { login } = useAuth(); // <-- שימוש ב-hook
+  // const { login } = useAuth(); // <-- שימוש ב-hook
   const router = useRouter();  // <-- אתחול ה-Router
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -61,71 +61,214 @@ export default function RegisterPage() {
     }
   };
 
-  // ... שאר קוד ה-JSX של הטופס נשאר כפי שהוא ...
+  const containerStyle = {
+    minHeight: 'calc(100vh - 200px)',
+    background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
+    padding: '3rem 2rem',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative' as const,
+  };
+
+  const overlayStyle = {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'radial-gradient(circle at 30% 70%, rgba(249, 115, 22, 0.1) 0%, transparent 50%)',
+    pointerEvents: 'none' as const,
+  };
+
+  const formContainerStyle = {
+    maxWidth: '400px',
+    width: '100%',
+    background: 'rgba(255, 255, 255, 0.1)',
+    backdropFilter: 'blur(20px)',
+    borderRadius: '20px',
+    padding: '2.5rem',
+    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    position: 'relative' as const,
+    zIndex: 10,
+  };
+
+  const titleStyle = {
+    fontSize: '2.5rem',
+    fontWeight: 'bold',
+    textAlign: 'center' as const,
+    marginBottom: '2rem',
+    background: 'linear-gradient(135deg, #f97316 0%, #3b82f6 100%)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+  };
+
+  const labelStyle = {
+    display: 'block',
+    color: '#e2e8f0',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    marginBottom: '0.5rem',
+  };
+
+  const inputStyle = {
+    width: '100%',
+    padding: '0.75rem 1rem',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    borderRadius: '12px',
+    fontSize: '1rem',
+    background: 'rgba(255, 255, 255, 0.1)',
+    backdropFilter: 'blur(10px)',
+    color: '#ffffff',
+    transition: 'all 0.3s ease',
+    outline: 'none',
+  };
+
+  const buttonStyle = {
+    width: '100%',
+    background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+    color: 'white',
+    padding: '1rem',
+    borderRadius: '12px',
+    fontWeight: 'bold',
+    fontSize: '1rem',
+    border: 'none',
+    cursor: 'pointer',
+    boxShadow: '0 4px 14px 0 rgba(249, 115, 22, 0.25)',
+    transition: 'all 0.3s ease',
+    transform: 'translateY(0)',
+  };
+
+  const linkStyle = {
+    textAlign: 'center' as const,
+    fontSize: '0.875rem',
+    color: '#cbd5e1',
+    marginTop: '1.5rem',
+  };
+
+  const linkTextStyle = {
+    color: '#fb923c',
+    fontWeight: '600',
+    textDecoration: 'none',
+  };
+
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-xl">
-      <h1 className="text-3xl font-bold text-center text-slate-700 mb-8">הרשמה לבשרומטר</h1>
-      <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <label htmlFor="name" className="block text-slate-700 text-sm font-semibold mb-2">
-            שם (אופציונלי)
-          </label>
-          <input
-            type="text"
-            id="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
-          />
-        </div>
-        <div className="mb-4">
-          <label htmlFor="email" className="block text-slate-700 text-sm font-semibold mb-2">
-            כתובת אימייל <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="email"
-            id="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
-          />
-        </div>
-        <div className="mb-6">
-          <label htmlFor="password" className="block text-slate-700 text-sm font-semibold mb-2">
-            סיסמה <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="password"
-            id="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
-          />
-        </div>
+    <div style={containerStyle}>
+      <div style={overlayStyle}></div>
+      <div style={formContainerStyle}>
+        <h1 style={titleStyle}>📝 הרשמה לבשרומטר</h1>
+        <form onSubmit={handleSubmit}>
+          <div style={{marginBottom: '1.5rem'}}>
+            <label htmlFor="name" style={labelStyle}>
+              שם (אופציונלי)
+            </label>
+            <input
+              type="text"
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              style={inputStyle}
+              onFocus={(e) => {
+                e.target.style.borderColor = 'rgba(249, 115, 22, 0.5)';
+                e.target.style.boxShadow = '0 0 0 3px rgba(249, 115, 22, 0.1)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                e.target.style.boxShadow = 'none';
+              }}
+            />
+          </div>
+          <div style={{marginBottom: '1.5rem'}}>
+            <label htmlFor="email" style={labelStyle}>
+              כתובת אימייל <span style={{color: '#f87171'}}>*</span>
+            </label>
+            <input
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              style={inputStyle}
+              onFocus={(e) => {
+                e.target.style.borderColor = 'rgba(249, 115, 22, 0.5)';
+                e.target.style.boxShadow = '0 0 0 3px rgba(249, 115, 22, 0.1)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                e.target.style.boxShadow = 'none';
+              }}
+            />
+          </div>
+          <div style={{marginBottom: '2rem'}}>
+            <label htmlFor="password" style={labelStyle}>
+              סיסמה <span style={{color: '#f87171'}}>*</span>
+            </label>
+            <input
+              type="password"
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              style={inputStyle}
+              onFocus={(e) => {
+                e.target.style.borderColor = 'rgba(249, 115, 22, 0.5)';
+                e.target.style.boxShadow = '0 0 0 3px rgba(249, 115, 22, 0.1)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                e.target.style.boxShadow = 'none';
+              }}
+            />
+          </div>
 
-        {message && (
-          <p className={`mb-4 text-sm p-3 rounded-md ${message.includes('בהצלחה') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-            {message}
-          </p>
-        )}
+          {message && (
+            <div style={{
+              marginBottom: '1.5rem',
+              padding: '0.75rem',
+              borderRadius: '12px',
+              fontSize: '0.875rem',
+              background: message.includes('בהצלחה') ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+              color: message.includes('בהצלחה') ? '#4ade80' : '#f87171',
+              border: `1px solid ${message.includes('בהצלחה') ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+            }}>
+              {message}
+            </div>
+          )}
 
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:shadow-outline disabled:opacity-50"
-        >
-          {isLoading ? 'שולח פרטים...' : 'הירשם'}
-        </button>
-      </form>
-      <p className="text-center text-sm text-slate-600 mt-6">
-        כבר יש לך חשבון?{' '}
-        <Link href="/login" className="text-sky-600 hover:text-sky-800 font-semibold">
-          התחבר כאן
-        </Link>
-      </p>
+          <button
+            type="submit"
+            disabled={isLoading}
+            style={{
+              ...buttonStyle,
+              opacity: isLoading ? 0.7 : 1,
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+            }}
+            onMouseEnter={(e) => {
+              if (!isLoading) {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 8px 25px 0 rgba(249, 115, 22, 0.35)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isLoading) {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 14px 0 rgba(249, 115, 22, 0.25)';
+              }
+            }}
+          >
+            {isLoading ? '⏳ שולח פרטים...' : '✨ הירשם'}
+          </button>
+        </form>
+        <p style={linkStyle}>
+          כבר יש לך חשבון?{' '}
+          <Link href="/login" style={linkTextStyle}>
+            התחבר כאן
+          </Link>
+        </p>
+      </div>
     </div>
   );
 }

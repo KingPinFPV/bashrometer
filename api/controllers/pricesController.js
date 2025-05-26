@@ -181,12 +181,251 @@ const getAllPrices = async (req, res, next) => {
 
 // --- שאר הפונקציות נשארות כפי ששלחת, עם הוספת next וקריאה ל-next(err) ---
 
-const getPriceById = async (req, res, next) => { /* ... הקוד שלך עם next(err) ... */ };
-const createPriceReport = async (req, res, next) => { /* ... הקוד שלך עם next(err) ... */ };
-const updatePrice = async (req, res, next) => { /* ... הקוד שלך עם next(err) ... */ };
-const deletePrice = async (req, res, next) => { /* ... הקוד שלך עם next(err) ... */ };
-const likePriceReport = async (req, res, next) => { /* ... הקוד שלך עם next(err) ... */ };
-const unlikePriceReport = async (req, res, next) => { /* ... הקוד שלך עם next(err) ... */ };
+const getPriceById = async (req, res, next) => {
+  const { id } = req.params;
+  const numericPriceId = parseInt(id, 10);
+  if (isNaN(numericPriceId)) {
+    return res.status(400).json({ error: 'Invalid price ID format.' });
+  }
+
+  try {
+    const priceDetails = await getFullPriceDetails(numericPriceId, req.user ? req.user.id : null);
+    if (!priceDetails) {
+      return res.status(404).json({ error: 'Price report not found.' });
+    }
+    res.json(priceDetails);
+  } catch (err) {
+    console.error(`Error fetching price by ID ${id}:`, err.message);
+    next(err);
+  }
+};
+
+const createPriceReport = async (req, res, next) => {
+  const {
+    product_id, retailer_id, regular_price, sale_price, is_on_sale,
+    unit_for_price, quantity_for_price, notes, source = 'user_report',
+    report_type = 'price_update', price_valid_from, price_valid_to
+  } = req.body;
+
+  // Validation
+  if (!product_id || !retailer_id || !regular_price || !unit_for_price || !quantity_for_price) {
+    return res.status(400).json({
+      error: 'Missing required fields: product_id, retailer_id, regular_price, unit_for_price, quantity_for_price'
+    });
+  }
+
+  if (!req.user || !req.user.id) {
+    return res.status(401).json({ error: 'User authentication required to submit price reports.' });
+  }
+
+  try {
+    // Verify product exists
+    const productCheck = await pool.query('SELECT id FROM products WHERE id = $1 AND is_active = TRUE', [product_id]);
+    if (productCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found or inactive.' });
+    }
+
+    // Verify retailer exists
+    const retailerCheck = await pool.query('SELECT id FROM retailers WHERE id = $1 AND is_active = TRUE', [retailer_id]);
+    if (retailerCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Retailer not found or inactive.' });
+    }
+
+    // Create price report
+    const insertQuery = `
+      INSERT INTO prices (
+        product_id, retailer_id, user_id, regular_price, sale_price, is_on_sale,
+        unit_for_price, quantity_for_price, notes, source, report_type,
+        price_valid_from, price_valid_to, price_submission_date, status
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_DATE, 'approved'
+      ) RETURNING id
+    `;
+
+    const values = [
+      product_id, retailer_id, req.user.id, regular_price, 
+      is_on_sale && sale_price ? sale_price : null, 
+      is_on_sale || false,
+      unit_for_price, quantity_for_price, notes || null, 
+      source, report_type,
+      price_valid_from || null, 
+      price_valid_to || null
+    ];
+
+    const result = await pool.query(insertQuery, values);
+    const newPriceId = result.rows[0].id;
+
+    // Fetch complete price details to return
+    const createdPrice = await getFullPriceDetails(newPriceId, req.user.id);
+    
+    res.status(201).json({
+      message: 'Price report created successfully',
+      price: createdPrice
+    });
+
+  } catch (err) {
+    console.error('Error creating price report:', err.message);
+    next(err);
+  }
+};
+
+const updatePrice = async (req, res, next) => {
+  const { id } = req.params;
+  const numericPriceId = parseInt(id, 10);
+  if (isNaN(numericPriceId)) {
+    return res.status(400).json({ error: 'Invalid price ID format.' });
+  }
+
+  const {
+    regular_price, sale_price, is_on_sale, unit_for_price, 
+    quantity_for_price, notes, price_valid_to
+  } = req.body;
+
+  try {
+    // Check if price exists and user has permission
+    const existingPrice = await pool.query(
+      'SELECT user_id FROM prices WHERE id = $1', 
+      [numericPriceId]
+    );
+    
+    if (existingPrice.rows.length === 0) {
+      return res.status(404).json({ error: 'Price report not found.' });
+    }
+
+    // Allow update if user is owner or admin
+    const isOwner = existingPrice.rows[0].user_id === req.user.id;
+    const isAdmin = req.user.role === 'admin';
+    
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: 'Permission denied to update this price report.' });
+    }
+
+    // Build dynamic update query
+    const fields = [];
+    const values = [];
+    let paramCount = 1;
+
+    if (regular_price !== undefined) { fields.push(`regular_price = $${paramCount++}`); values.push(regular_price); }
+    if (sale_price !== undefined) { fields.push(`sale_price = $${paramCount++}`); values.push(sale_price); }
+    if (is_on_sale !== undefined) { fields.push(`is_on_sale = $${paramCount++}`); values.push(is_on_sale); }
+    if (unit_for_price !== undefined) { fields.push(`unit_for_price = $${paramCount++}`); values.push(unit_for_price); }
+    if (quantity_for_price !== undefined) { fields.push(`quantity_for_price = $${paramCount++}`); values.push(quantity_for_price); }
+    if (notes !== undefined) { fields.push(`notes = $${paramCount++}`); values.push(notes); }
+    if (price_valid_to !== undefined) { fields.push(`price_valid_to = $${paramCount++}`); values.push(price_valid_to); }
+
+    if (fields.length === 0) {
+      return res.status(400).json({ error: 'No fields provided for update.' });
+    }
+
+    fields.push(`updated_at = CURRENT_TIMESTAMP`);
+    values.push(numericPriceId);
+
+    const updateQuery = `UPDATE prices SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING id`;
+    await pool.query(updateQuery, values);
+
+    const updatedPrice = await getFullPriceDetails(numericPriceId, req.user.id);
+    res.json(updatedPrice);
+
+  } catch (err) {
+    console.error(`Error updating price ${id}:`, err.message);
+    next(err);
+  }
+};
+
+const deletePrice = async (req, res, next) => {
+  const { id } = req.params;
+  const numericPriceId = parseInt(id, 10);
+  if (isNaN(numericPriceId)) {
+    return res.status(400).json({ error: 'Invalid price ID format.' });
+  }
+
+  try {
+    // Check if price exists and user has permission
+    const existingPrice = await pool.query(
+      'SELECT user_id FROM prices WHERE id = $1', 
+      [numericPriceId]
+    );
+    
+    if (existingPrice.rows.length === 0) {
+      return res.status(404).json({ error: 'Price report not found.' });
+    }
+
+    const isOwner = existingPrice.rows[0].user_id === req.user.id;
+    const isAdmin = req.user.role === 'admin';
+    
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: 'Permission denied to delete this price report.' });
+    }
+
+    await pool.query('DELETE FROM prices WHERE id = $1', [numericPriceId]);
+    res.status(204).send();
+
+  } catch (err) {
+    console.error(`Error deleting price ${id}:`, err.message);
+    next(err);
+  }
+};
+
+const likePriceReport = async (req, res, next) => {
+  const { priceId } = req.params;
+  const numericPriceId = parseInt(priceId, 10);
+  
+  if (isNaN(numericPriceId)) {
+    return res.status(400).json({ error: 'Invalid price ID format.' });
+  }
+
+  if (!req.user || !req.user.id) {
+    return res.status(401).json({ error: 'Authentication required.' });
+  }
+
+  try {
+    // Check if price exists
+    const priceCheck = await pool.query('SELECT id FROM prices WHERE id = $1', [numericPriceId]);
+    if (priceCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Price report not found.' });
+    }
+
+    // Add like (ignore if already exists)
+    await pool.query(
+      'INSERT INTO price_report_likes (price_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [numericPriceId, req.user.id]
+    );
+
+    const updatedPrice = await getFullPriceDetails(numericPriceId, req.user.id);
+    res.json(updatedPrice);
+
+  } catch (err) {
+    console.error(`Error liking price report ${priceId}:`, err.message);
+    next(err);
+  }
+};
+
+const unlikePriceReport = async (req, res, next) => {
+  const { priceId } = req.params;
+  const numericPriceId = parseInt(priceId, 10);
+  
+  if (isNaN(numericPriceId)) {
+    return res.status(400).json({ error: 'Invalid price ID format.' });
+  }
+
+  if (!req.user || !req.user.id) {
+    return res.status(401).json({ error: 'Authentication required.' });
+  }
+
+  try {
+    await pool.query(
+      'DELETE FROM price_report_likes WHERE price_id = $1 AND user_id = $2',
+      [numericPriceId, req.user.id]
+    );
+
+    const updatedPrice = await getFullPriceDetails(numericPriceId, req.user.id);
+    res.json(updatedPrice);
+
+  } catch (err) {
+    console.error(`Error unliking price report ${priceId}:`, err.message);
+    next(err);
+  }
+};
 
 // --- פונקציה חדשה לעדכון סטטוס ---
 const updatePriceReportStatus = async (req, res, next) => {

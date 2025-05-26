@@ -1,26 +1,216 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+  --primary: #3b82f6;
+  --accent: #f97316;
+  --background: #f8fafc;
+  --card: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+    --background: #0f172a;
+    --card: #334155;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-gray-200;
+  }
+  
+  body {
+    color: #1e293b; /* תיקון: טקסט כהה וקריא תמיד */
+    background: var(--background);
+    direction: rtl;
+  }
+}
+
+@layer components {
+  /* כפתורים מעוצבים */
+  .btn-primary {
+    @apply bg-gradient-primary text-white px-6 py-3 rounded-lg font-medium 
+           shadow-primary hover:shadow-card-hover transform hover:scale-105 
+           transition-all duration-200 focus:outline-none focus:ring-2 
+           focus:ring-primary-500 focus:ring-offset-2;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-100 hover:bg-gray-200 text-gray-800 px-6 py-3 rounded-lg 
+           font-medium border border-gray-300 shadow-sm hover:shadow-md 
+           transform hover:scale-105 transition-all duration-200;
+  }
+
+  .btn-accent {
+    @apply bg-gradient-accent text-white px-6 py-3 rounded-lg font-medium 
+           shadow-accent hover:shadow-card-hover transform hover:scale-105 
+           transition-all duration-200;
+  }
+
+  /* שדות טופס מעוצבים */
+  .form-input {
+    @apply w-full px-4 py-3 border-2 border-gray-200 rounded-lg 
+           focus:ring-2 focus:ring-primary-500 focus:border-primary-500 
+           text-gray-900 bg-white shadow-sm hover:border-gray-300 
+           transition-all duration-200 placeholder-gray-500;
+  }
+
+  .form-select {
+    @apply w-full px-4 py-3 border-2 border-gray-200 rounded-lg 
+           focus:ring-2 focus:ring-primary-500 focus:border-primary-500 
+           text-gray-900 bg-white shadow-sm hover:border-gray-300 
+           transition-all duration-200;
+  }
+
+  .form-textarea {
+    @apply form-input resize-none min-h-[100px];
+  }
+
+  .form-label {
+    @apply block text-sm font-semibold text-gray-700 mb-2;
+  }
+
+  .form-error {
+    @apply text-error-500 text-sm mt-1 font-medium;
+  }
+
+  .form-success {
+    @apply text-success-500 text-sm mt-1 font-medium;
+  }
+
+  .form-checkbox {
+    @apply h-4 w-4 text-primary-600 border-gray-300 rounded 
+           focus:ring-primary-500 focus:ring-2;
+  }
+
+  /* כותרות */
+  .heading-primary {
+    @apply text-3xl font-bold text-gray-900 mb-4 
+           bg-gradient-to-r from-primary-600 to-accent-500 
+           bg-clip-text text-transparent;
+  }
+
+  .heading-secondary {
+    @apply text-2xl font-semibold text-gray-800 mb-3;
+  }
+
+  .heading-tertiary {
+    @apply text-xl font-medium text-gray-700 mb-2;
+  }
+
+  /* כרטיסים מעוצבים */
+  .card {
+    @apply bg-white border border-gray-200 rounded-xl shadow-card 
+           hover:shadow-card-hover transition-all duration-300 
+           backdrop-blur-sm;
+  }
+
+  .card-dark {
+    @apply bg-background-card border border-gray-600 rounded-xl 
+           shadow-lg hover:shadow-xl transition-all duration-300;
+  }
+
+  .card-gradient {
+    @apply bg-gradient-to-br from-white to-gray-50 border border-gray-200 
+           rounded-xl shadow-card hover:shadow-card-hover 
+           transition-all duration-300;
+  }
+
+  /* הודעות */
+  .alert {
+    @apply p-4 rounded-lg border font-medium shadow-sm;
+  }
+
+  .alert-success {
+    @apply bg-success-50 text-success-600 border-success-200;
+  }
+
+  .alert-error {
+    @apply bg-error-50 text-error-600 border-error-200;
+  }
+
+  .alert-warning {
+    @apply bg-warning-50 text-warning-600 border-warning-200;
+  }
+
+  .alert-info {
+    @apply bg-primary-50 text-primary-600 border-primary-200;
+  }
+
+  /* מכולים */
+  .page-container {
+    @apply container mx-auto px-4 py-8 max-w-7xl;
+  }
+
+  .page-container-sm {
+    @apply max-w-4xl mx-auto px-4 py-8;
+  }
+
+  .page-container-xs {
+    @apply max-w-2xl mx-auto px-4 py-6;
+  }
+
+  /* טקסט עזר */
+  .text-primary {
+    @apply text-gray-900; /* תיקון: טקסט כהה וקריא */
+  }
+
+  .text-secondary {
+    @apply text-gray-600; /* תיקון: טקסט אפור וקריא */
+  }
+
+  .text-muted {
+    @apply text-gray-500;
+  }
+
+  /* אלמנטים אינטראקטיביים */
+  .link-primary {
+    @apply text-primary-600 hover:text-primary-700 font-medium 
+           transition-colors duration-200 underline-offset-4 
+           hover:underline;
+  }
+
+  .link-accent {
+    @apply text-accent-600 hover:text-accent-700 font-medium 
+           transition-colors duration-200;
+  }
+
+  /* טעינה */
+  .loading-spinner {
+    @apply animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600;
+  }
+
+  .loading-dots {
+    @apply flex space-x-1 rtl:space-x-reverse;
+  }
+
+  .loading-dots div {
+    @apply w-2 h-2 bg-primary-500 rounded-full animate-bounce;
+  }
+
+  /* אנימציות מיוחדות */
+  .fade-in {
+    @apply animate-fade-in;
+  }
+
+  .slide-up {
+    @apply animate-slide-up;
+  }
+
+  /* רספונסיביות */
+  .grid-responsive {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6;
+  }
+
+  .flex-responsive {
+    @apply flex flex-col md:flex-row gap-4 md:gap-6;
+  }
 }

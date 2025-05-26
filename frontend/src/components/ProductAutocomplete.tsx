@@ -83,7 +83,37 @@ export default function ProductAutocomplete({
       }
 
       const data = await response.json();
-      setSuggestions(data.data || []);
+      
+      // Smart sorting by relevance
+      const products = data.data || [];
+      const sortedProducts = products.sort((a: Product, b: Product) => {
+        const queryLower = query.toLowerCase().trim();
+        const aName = a.name.toLowerCase();
+        const bName = b.name.toLowerCase();
+        
+        // Exact match comes first
+        const aExactMatch = aName === queryLower;
+        const bExactMatch = bName === queryLower;
+        if (aExactMatch && !bExactMatch) return -1;
+        if (!aExactMatch && bExactMatch) return 1;
+        
+        // Starts with query comes next
+        const aStartsWith = aName.startsWith(queryLower);
+        const bStartsWith = bName.startsWith(queryLower);
+        if (aStartsWith && !bStartsWith) return -1;
+        if (!aStartsWith && bStartsWith) return 1;
+        
+        // Contains query in brand
+        const aBrandMatch = a.brand?.toLowerCase().includes(queryLower) || false;
+        const bBrandMatch = b.brand?.toLowerCase().includes(queryLower) || false;
+        if (aBrandMatch && !bBrandMatch) return -1;
+        if (!aBrandMatch && bBrandMatch) return 1;
+        
+        // Sort by length (shorter = more relevant)
+        return a.name.length - b.name.length;
+      });
+      
+      setSuggestions(sortedProducts);
       setShowSuggestions(true);
       setSelectedIndex(-1);
     } catch (err) {
@@ -200,8 +230,8 @@ export default function ProductAutocomplete({
         required={required}
         name={name}
         id={id}
-        className={`w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm ${
-          disabled ? 'bg-slate-100 cursor-not-allowed' : ''
+        className={`form-input ${
+          disabled ? 'bg-gray-100 cursor-not-allowed' : ''
         } ${className}`}
         autoComplete="off"
       />
@@ -209,13 +239,13 @@ export default function ProductAutocomplete({
       {/* Loading indicator */}
       {isLoading && (
         <div className="absolute left-3 top-2.5">
-          <div className="animate-spin h-4 w-4 border-2 border-sky-500 border-t-transparent rounded-full"></div>
+          <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
         </div>
       )}
 
       {/* Suggestions dropdown */}
       {showSuggestions && (suggestions.length > 0 || error) && (
-        <ul className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-md shadow-lg max-h-60 overflow-auto">
+        <ul className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
           {error ? (
             <li className="px-3 py-2 text-red-600 text-sm">
               {error}
@@ -224,8 +254,8 @@ export default function ProductAutocomplete({
             suggestions.map((product, index) => (
               <li
                 key={product.id}
-                className={`px-3 py-2 cursor-pointer text-sm hover:bg-sky-50 border-b border-slate-100 last:border-b-0 ${
-                  index === selectedIndex ? 'bg-sky-100' : ''
+                className={`px-3 py-2 cursor-pointer text-sm hover:bg-primary-50 border-b border-gray-100 last:border-b-0 ${
+                  index === selectedIndex ? 'bg-primary-100' : ''
                 } ${
                   selectedProductId === product.id.toString() ? 'bg-green-50 border-green-200' : ''
                 }`}
@@ -235,11 +265,11 @@ export default function ProductAutocomplete({
                   <div className="flex-1 truncate">
                     <span className="font-medium">{product.name}</span>
                     {product.brand && (
-                      <span className="text-slate-500 mr-2 rtl:ml-2 rtl:mr-0">({product.brand})</span>
+                      <span className="text-gray-600 mr-2 rtl:ml-2 rtl:mr-0">({product.brand})</span>
                     )}
                   </div>
                   {product.category && (
-                    <span className="text-xs text-slate-500 flex-shrink-0 mr-2 rtl:ml-2 rtl:mr-0">
+                    <span className="text-xs text-gray-600 flex-shrink-0 mr-2 rtl:ml-2 rtl:mr-0">
                       {product.category}
                     </span>
                   )}
@@ -252,21 +282,21 @@ export default function ProductAutocomplete({
 
       {/* No results message with option to add new product */}
       {showSuggestions && !isLoading && !error && suggestions.length === 0 && inputValue.trim().length >= minLength && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-md shadow-lg">
-          <div className="px-3 py-2 text-slate-500 text-sm">
-            לא נמצאו מוצרים עבור "{inputValue}"
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+          <div className="px-3 py-2 text-gray-600 text-sm">
+            לא נמצאו מוצרים עבור &quot;{inputValue}&quot;
           </div>
           {allowNewRequests && onNewProductRequest && (
-            <div className="border-t border-slate-200">
+            <div className="border-t border-gray-200">
               <button
                 type="button"
                 onClick={() => {
                   onNewProductRequest(inputValue.trim());
                   setShowSuggestions(false);
                 }}
-                className="w-full px-3 py-2 text-left text-sm text-sky-600 hover:bg-sky-50 focus:outline-none focus:bg-sky-50"
+                className="w-full px-3 py-2 text-left text-sm text-primary-600 hover:bg-primary-50 focus:outline-none focus:bg-primary-50"
               >
-                + בקש להוסיף מוצר חדש: "{inputValue.trim()}"
+                + בקש להוסיף מוצר חדש: &quot;{inputValue.trim()}&quot;
               </button>
             </div>
           )}

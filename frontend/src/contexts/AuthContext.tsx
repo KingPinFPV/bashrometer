@@ -29,10 +29,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // מתחיל כ-true עד שנסיים לטעון מה-localStorage
+  const [isLoading, setIsLoading] = useState(typeof window === 'undefined' ? false : true); // התחל false בצד השרת
   const router = useRouter();
 
   useEffect(() => {
+    // בדוק שאנחנו בצד הלקוח לפני שנגש ל-localStorage
+    if (typeof window === 'undefined') {
+      setIsLoading(false);
+      return;
+    }
+
     // נסה לטעון טוקן ופרטי משתמש מה-localStorage בעת טעינת האפליקציה
     try {
       const storedToken = localStorage.getItem('authToken');
@@ -45,9 +51,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error("Failed to parse auth data from localStorage", error);
       // אם יש בעיה, נקה את ה-localStorage כדי למנוע לולאות שגיאה
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('userData');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userData');
+      }
     } finally {
+      console.log('AuthContext: Setting isLoading to false');
       setIsLoading(false); // סיימנו לטעון (או לנסות לטעון)
     }
   }, []); // ה-useEffect הזה רץ פעם אחת בלבד, בעת טעינת הרכיב
@@ -55,16 +64,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = (userData: User, authToken: string) => {
     setUser(userData);
     setToken(authToken);
-    localStorage.setItem('authToken', authToken);
-    localStorage.setItem('userData', JSON.stringify(userData));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('authToken', authToken);
+      localStorage.setItem('userData', JSON.stringify(userData));
+    }
     // אין צורך בניתוב כאן, הדף שקרא ל-login ידאג לניתוב
   };
 
   const logout = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userData');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('userData');
+    }
     router.push('/login'); // העבר לדף ההתחברות לאחר התנתקות
   };
 

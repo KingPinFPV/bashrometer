@@ -19,7 +19,7 @@ const AdminPagination: React.FC<AdminPaginationProps> = ({ currentPage, totalPag
   // לדוגמה, הצג תמיד את הדף הראשון, האחרון, והדפים סביב הדף הנוכחי
   const maxPagesToShow = 5; // מספר מקסימלי של כפתורי מספרים להצגה
   let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-  let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+  const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
 
   if (endPage - startPage + 1 < maxPagesToShow) {
     startPage = Math.max(1, endPage - maxPagesToShow + 1);
