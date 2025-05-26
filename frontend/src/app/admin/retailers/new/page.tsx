@@ -32,17 +32,17 @@ export default function CreateRetailerPage() {
   const router = useRouter();
 
   const [formData, setFormData] = useState<RetailerFormData>({
-    name: '',
-    chain: '',
-    address: '',
-    type: 'סופרמרקט', // ערך ברירת מחדל
-    geo_lat: null,
-    geo_lon: null,
-    opening_hours: '',
-    phone: '',
-    website: '',
-    notes: '',
-    is_active: true,
+    name: '', // שדה חובה - character varying NOT NULL
+    chain: '', // character varying nullable
+    address: '', // character varying nullable  
+    type: '', // character varying nullable
+    geo_lat: null, // double precision nullable
+    geo_lon: null, // double precision nullable
+    opening_hours: '', // character varying nullable
+    phone: '', // character varying nullable
+    website: '', // character varying nullable
+    notes: '', // text nullable
+    is_active: true, // boolean default true
   });
 
   const [message, setMessage] = useState<string>('');
@@ -66,8 +66,8 @@ export default function CreateRetailerPage() {
       setMessage("שגיאה: אין לך הרשאה לבצע פעולה זו.");
       return;
     }
-    if (!formData.name.trim() || !formData.type.trim()) {
-      setMessage("שגיאה: שם קמעונאי וסוג הם שדות חובה.");
+    if (!formData.name.trim()) {
+      setMessage("שגיאה: שם קמעונאי הוא שדה חובה.");
       return;
     }
 
@@ -90,7 +90,7 @@ export default function CreateRetailerPage() {
       if (response.ok && 'id' in responseData) {
         setMessage(`קמעונאי "${responseData.name}" נוצר בהצלחה! (ID: ${responseData.id})`);
         setFormData({ // איפוס הטופס
-          name: '', chain: '', address: '', type: 'סופרמרקט', geo_lat: null, geo_lon: null,
+          name: '', chain: '', address: '', type: '', geo_lat: null, geo_lon: null,
           opening_hours: '', phone: '', website: '', notes: '', is_active: true,
         });
         setTimeout(() => {
@@ -107,8 +107,20 @@ export default function CreateRetailerPage() {
     }
   };
 
-  // רשימת סוגי קמעונאים (מה-schema.sql שלך)
-  const retailerTypes = ['סופרמרקט', 'קצביה', 'מעדניה', 'חנות נוחות', 'אונליין', 'שוק'];
+  // רשימת סוגי קמעונאים המותאמת לישראל
+  const retailerTypes = [
+    'סופרמרקט',
+    'קצביה', 
+    'מעדניה',
+    'חנות נוחות',
+    'שוק',
+    'היפרמרקט',
+    'רשת קמעונאית',
+    'מכולת',
+    'דלק שופ',
+    'קמעונאי באינטרנט',
+    'אחר'
+  ];
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
@@ -136,13 +148,14 @@ export default function CreateRetailerPage() {
             className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm" />
         </div>
 
-        {/* סוג (שדה חובה) */}
+        {/* סוג (אופציונלי) */}
         <div>
           <label htmlFor="type" className="block text-sm font-medium text-slate-700">
-            סוג קמעונאי <span className="text-red-500">*</span>
+            סוג קמעונאי
           </label>
-          <select name="type" id="type" value={formData.type} onChange={handleChange} required
+          <select name="type" id="type" value={formData.type || ''} onChange={handleChange}
             className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md">
+            <option value="">-- בחר סוג --</option>
             {retailerTypes.map(type => <option key={type} value={type}>{type}</option>)}
           </select>
         </div>
@@ -155,16 +168,26 @@ export default function CreateRetailerPage() {
         </div>
 
         {/* קואורדינטות (אופציונלי) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label htmlFor="geo_lat" className="block text-sm font-medium text-slate-700">קו רוחב (Lat)</label>
-            <input type="number" name="geo_lat" id="geo_lat" value={formData.geo_lat === null ? '' : formData.geo_lat} onChange={handleChange} step="any"
-              className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm" />
-          </div>
-          <div>
-            <label htmlFor="geo_lon" className="block text-sm font-medium text-slate-700">קו אורך (Lon)</label>
-            <input type="number" name="geo_lon" id="geo_lon" value={formData.geo_lon === null ? '' : formData.geo_lon} onChange={handleChange} step="any"
-              className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm" />
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">
+            קואורדינטות GPS (אופציונלי)
+          </label>
+          <p className="text-xs text-slate-500 mb-3">
+            ניתן לקבל קואורדינטות מגוגל מפות על ידי לחיצה ימנית על המיקום
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="geo_lat" className="block text-xs font-medium text-slate-600">קו רוחב (Latitude)</label>
+              <input type="number" name="geo_lat" id="geo_lat" value={formData.geo_lat === null ? '' : formData.geo_lat} onChange={handleChange} step="any"
+                placeholder="32.0853"
+                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm" />
+            </div>
+            <div>
+              <label htmlFor="geo_lon" className="block text-xs font-medium text-slate-600">קו אורך (Longitude)</label>
+              <input type="number" name="geo_lon" id="geo_lon" value={formData.geo_lon === null ? '' : formData.geo_lon} onChange={handleChange} step="any"
+                placeholder="34.7818"
+                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm" />
+            </div>
           </div>
         </div>
 
@@ -172,6 +195,7 @@ export default function CreateRetailerPage() {
         <div>
           <label htmlFor="opening_hours" className="block text-sm font-medium text-slate-700">שעות פתיחה</label>
           <input type="text" name="opening_hours" id="opening_hours" value={formData.opening_hours || ''} onChange={handleChange}
+            placeholder="לדוגמה: א׳-ה׳ 08:00-22:00, ו׳ 08:00-15:00"
             className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm" />
         </div>
 
@@ -179,6 +203,7 @@ export default function CreateRetailerPage() {
         <div>
           <label htmlFor="phone" className="block text-sm font-medium text-slate-700">טלפון</label>
           <input type="tel" name="phone" id="phone" value={formData.phone || ''} onChange={handleChange}
+            placeholder="לדוגמה: 03-1234567 או 050-1234567"
             className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm" />
         </div>
 
@@ -186,6 +211,7 @@ export default function CreateRetailerPage() {
         <div>
           <label htmlFor="website" className="block text-sm font-medium text-slate-700">אתר אינטרנט</label>
           <input type="url" name="website" id="website" value={formData.website || ''} onChange={handleChange}
+            placeholder="https://example.com"
             className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm" />
         </div>
 

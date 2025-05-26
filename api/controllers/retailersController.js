@@ -90,8 +90,8 @@ const createRetailer = async (req, res, next) => {
     opening_hours, phone, website, notes, is_active = true
   } = req.body;
 
-  if (!name || !type) {
-    return res.status(400).json({ error: 'Retailer name and type are required.' });
+  if (!name) {
+    return res.status(400).json({ error: 'Retailer name is required.' });
   }
 
   try {
@@ -100,10 +100,16 @@ const createRetailer = async (req, res, next) => {
         (name, chain, address, type, geo_lat, geo_lon, opening_hours, phone, website, notes, is_active) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
       [
-        name, chain || null, address || null, type, 
+        name.trim(), 
+        chain?.trim() || null, 
+        address?.trim() || null, 
+        type?.trim() || null, 
         geo_lat ? parseFloat(geo_lat) : null, 
         geo_lon ? parseFloat(geo_lon) : null, 
-        opening_hours || null, phone || null, website || null, notes || null, 
+        opening_hours?.trim() || null, 
+        phone?.trim() || null, 
+        website?.trim() || null, 
+        notes?.trim() || null, 
         typeof is_active === 'boolean' ? is_active : true
       ]
     );
