@@ -18,7 +18,14 @@ interface Retailer {
 }
 
 export default function ReportPricePage() {
-  const { user } = useAuth();
+  const { user, token, authError, checkAuthStatus, clearAuthError } = useAuth();
+
+  // Utility function to normalize product names
+  const normalizeProductName = (name: string): string => {
+    return name.trim()
+      .replace(/אנטיקוט/g, 'אנטריקוט')  // Fix specific naming issue
+      .replace(/\s+/g, ' '); // Replace multiple spaces with single space
+  };
   
   // URL params for pre-filling
   // const [searchParams, setSearchParams] = useState<URLSearchParams | null>(null);
@@ -47,9 +54,14 @@ export default function ReportPricePage() {
   
   // Side lists states
   const [meatCuts, setMeatCuts] = useState<string[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]); // New: all products for sidebar
   const [allRetailers, setAllRetailers] = useState<{id: number, name: string}[]>([]);
   const [selectedMeatCut, setSelectedMeatCut] = useState<string>('');
   const [selectedRetailerFromList, setSelectedRetailerFromList] = useState<{id: number, name: string} | null>(null);
+
+  // New: Authentication state
+  const [authValidated, setAuthValidated] = useState<boolean>(false);
+  const [showAuthError, setShowAuthError] = useState<boolean>(false);
   
   // Refs for handling clicks outside dropdowns
   const productDropdownRef = useRef<HTMLDivElement>(null);
@@ -77,16 +89,31 @@ export default function ReportPricePage() {
     }
   }, []);
 
-  const loadMeatCuts = async () => {
+  // Load all products for sidebar synchronization
+  const loadAllProducts = async () => {
     try {
-      // In a real app, you'd have an API for this. For now, using static data
-      const cuts = [
-        'אנטריקוט', 'פילה', 'שניצל', 'קצבים', 'צלעות', 'כתף', 'שוק', 'קפה',
-        'גולש', 'אונטר', 'רוסטביף', 'סטייק', 'המבורגר', 'קבב', 'נקניק'
-      ];
-      setMeatCuts(cuts);
+      const response = await fetch(`${apiBase}/api/products?limit=200`, {
+        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const products = (data.data || []).map((p: Product) => ({
+          ...p,
+          name: normalizeProductName(p.name) // Normalize all product names
+        }));
+        setAllProducts(products);
+        
+        // Extract unique meat cuts from products
+        const cuts = [...new Set(products
+          .filter((p: Product) => p.category && p.category.includes('בקר'))
+          .map((p: Product) => p.name)
+        )].slice(0, 15); // Limit to 15 most common
+        
+        setMeatCuts(cuts);
+      }
     } catch (error) {
-      console.error('Error loading meat cuts:', error);
+      console.error('Error loading products:', error);
     }
   };
 
@@ -94,6 +121,7 @@ export default function ReportPricePage() {
     try {
       const response = await fetch(`${apiBase}/api/retailers?limit=100`, {
         credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
       });
       if (response.ok) {
         const data = await response.json();
@@ -108,14 +136,28 @@ export default function ReportPricePage() {
     }
   };
 
-  // Load meat cuts and retailers
+  // Authentication check and data loading
   useEffect(() => {
+    const initializeAuth = async () => {
+      if (user && token) {
+        const isValid = await checkAuthStatus();
+        setAuthValidated(isValid);
+        if (!isValid) {
+          setShowAuthError(true);
+        }
+      } else if (!user) {
+        setShowAuthError(true);
+      }
+    };
+
     const initData = async () => {
-      await loadMeatCuts();
+      await loadAllProducts(); // Load products first (includes meat cuts)
       await loadAllRetailers();
     };
+
+    initializeAuth();
     initData();
-  }, []);
+  }, [user, token]); // Removed checkAuthStatus from dependencies to avoid infinite loops
 
   // Search products autocomplete
   const searchProducts = async (query: string) => {
@@ -173,31 +215,48 @@ export default function ReportPricePage() {
     searchRetailers(value);
   };
 
-  // Handle product selection
+  // Improved product selection with validation
   const handleProductSelect = (product: Product) => {
-    setSelectedProduct(product);
-    setProductInput(product.name);
+    const normalizedProduct = {
+      ...product,
+      name: normalizeProductName(product.name)
+    };
+    setSelectedProduct(normalizedProduct);
+    setProductInput(normalizedProduct.name);
     setShowProductDropdown(false);
     setProductSuggestions([]);
+    clearAuthError(); // Clear any auth errors on successful selection
   };
 
-  // Handle retailer selection
+  // Improved retailer selection with validation  
   const handleRetailerSelect = (retailer: Retailer) => {
     setSelectedRetailer(retailer);
     setRetailerInput(retailer.name);
     setShowRetailerDropdown(false);
     setRetailerSuggestions([]);
+    clearAuthError(); // Clear any auth errors on successful selection
   };
 
-  // Handle meat cut selection from side list
-  const handleMeatCutSelect = (cut: string) => {
-    setSelectedMeatCut(cut);
-    setProductInput(cut);
-    // Try to find exact match in suggestions
-    searchProducts(cut);
+  // Handle meat cut selection from side list (find exact product match)
+  const handleMeatCutSelect = (cutName: string) => {
+    setSelectedMeatCut(cutName);
+    setProductInput(cutName);
+    
+    // Find exact product match from allProducts
+    const matchedProduct = allProducts.find(p => 
+      normalizeProductName(p.name) === normalizeProductName(cutName)
+    );
+    
+    if (matchedProduct) {
+      setSelectedProduct(matchedProduct);
+      setMessage(''); // Clear any validation errors
+    } else {
+      // If no exact match, search for suggestions
+      searchProducts(cutName);
+    }
   };
 
-  // Handle retailer selection from side list
+  // Handle retailer selection from side list with proper ID mapping
   const handleRetailerFromListSelect = (retailer: {id: number, name: string}) => {
     setSelectedRetailerFromList(retailer);
     setRetailerInput(retailer.name);
@@ -205,6 +264,7 @@ export default function ReportPricePage() {
       id: retailer.id,
       name: retailer.name
     });
+    setMessage(''); // Clear any validation errors
   };
 
   // Clear meat cut selection
@@ -240,32 +300,61 @@ export default function ReportPricePage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Handle form submission
+  // Improved form validation
+  const validateForm = (): string | null => {
+    if (!selectedProduct || !selectedProduct.id) {
+      return 'אנא בחר מוצר מהרשימה או מהרשימה הצדדית.';
+    }
+    
+    if (!selectedRetailer || !selectedRetailer.id) {
+      return 'אנא בחר קמעונאי מהרשימה או מהרשימה הצדדית.';
+    }
+    
+    if (!regularPrice || parseFloat(regularPrice) <= 0) {
+      return 'אנא הזן מחיר רגיל תקין.';
+    }
+
+    if (isOnSale && (!salePrice || parseFloat(salePrice) <= 0)) {
+      return 'אנא הזן מחיר מבצע תקין או בטל את סימון המבצע.';
+    }
+
+    if (isOnSale && parseFloat(salePrice) >= parseFloat(regularPrice)) {
+      return 'מחיר המבצע חייב להיות נמוך ממחיר רגיל.';
+    }
+
+    if (!user || !user.id) {
+      return 'אנא התחבר כדי לדווח על מחירים.';
+    }
+
+    if (!authValidated) {
+      return 'יש בעיה באימות המשתמש. אנא התחבר מחדש.';
+    }
+
+    return null; // No validation errors
+  };
+
+  // Handle form submission with improved validation and auth
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     
-    if (!selectedProduct) {
-      setMessage("אנא בחר מוצר מהרשימה.");
-      return;
-    }
+    // Clear previous messages
+    setMessage('');
+    clearAuthError();
     
-    if (!selectedRetailer) {
-      setMessage("אנא בחר קמעונאי מהרשימה.");
-      return;
-    }
-    
-    if (!regularPrice) {
-      setMessage("אנא הזן מחיר רגיל.");
+    // Validate form
+    const validationError = validateForm();
+    if (validationError) {
+      setMessage(validationError);
       return;
     }
 
-    if (!user) {
-      setMessage("אנא התחבר כדי לדווח על מחירים.");
+    // Double-check authentication before submission
+    if (!await checkAuthStatus()) {
+      setMessage('אימות נכשל. אנא התחבר מחדש.');
       return;
     }
 
     setIsSubmitting(true);
-    setMessage('');
 
     try {
       const priceData = {
@@ -285,6 +374,7 @@ export default function ReportPricePage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`, // Include auth token
         },
         credentials: 'include',
         body: JSON.stringify(priceData),
@@ -317,21 +407,44 @@ export default function ReportPricePage() {
     }
   };
 
-  // Beautiful styling with inline styles for guaranteed rendering
+  // Beautiful styling with consistent app theme
   const containerStyle = {
-    maxWidth: '48rem',
+    minHeight: 'calc(100vh - 200px)',
+    background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
+    padding: '3rem 2rem',
+    position: 'relative' as const,
+    overflow: 'hidden',
+  };
+
+  const overlayStyle = {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'radial-gradient(circle at 30% 30%, rgba(59, 130, 246, 0.1) 0%, transparent 50%)',
+    pointerEvents: 'none' as const,
+  };
+
+  const mainLayoutStyle = {
+    display: 'grid',
+    gridTemplateColumns: '1fr 300px 300px',
+    gap: '2rem',
+    alignItems: 'start',
+    maxWidth: '1400px',
     margin: '0 auto',
-    padding: '2rem 1rem',
-    animation: 'fadeIn 0.6s ease-out',
+    position: 'relative' as const,
+    zIndex: 10,
   };
 
   const cardStyle = {
-    backgroundColor: 'white',
-    border: '1px solid #e5e7eb',
-    borderRadius: '1rem',
-    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-    padding: '2rem',
-    transition: 'box-shadow 0.3s ease',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backdropFilter: 'blur(10px)',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    borderRadius: '1.5rem',
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+    padding: '2.5rem',
+    transition: 'all 0.3s ease',
   };
 
   const headerStyle = {
@@ -340,13 +453,15 @@ export default function ReportPricePage() {
   };
 
   const titleStyle = {
-    fontSize: '2.25rem',
-    lineHeight: '2.5rem',
+    fontSize: '2.5rem',
+    lineHeight: '1.2',
     fontWeight: 'bold',
     background: 'linear-gradient(135deg, #3b82f6 0%, #f97316 100%)',
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
     marginBottom: '1rem',
+    textShadow: '0 0 20px rgba(59, 130, 246, 0.3)',
   };
 
   const subtitleStyle = {
@@ -396,15 +511,17 @@ export default function ReportPricePage() {
       : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
     color: 'white',
     border: 'none',
-    borderRadius: '0.75rem',
+    borderRadius: '12px',
     fontSize: '1.125rem',
     fontWeight: '600',
     cursor: isSubmitting ? 'not-allowed' : 'pointer',
-    transition: 'all 0.3s ease',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
     boxShadow: isSubmitting 
       ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-      : '0 4px 14px 0 rgba(59, 130, 246, 0.25)',
+      : '0 4px 14px 0 rgba(59, 130, 246, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1)',
     transform: 'translateY(0)',
+    position: 'relative' as const,
+    overflow: 'hidden',
   };
 
   const checkboxStyle = {
@@ -425,9 +542,9 @@ export default function ReportPricePage() {
     animation: 'slideUp 0.4s ease-out',
   });
 
-  // Filtered meat cuts and retailers for side lists
+  // Filtered products and retailers for side lists with normalization
   const filteredMeatCuts = meatCuts.filter(cut => 
-    cut.toLowerCase().includes(productInput.toLowerCase())
+    normalizeProductName(cut).toLowerCase().includes(normalizeProductName(productInput).toLowerCase())
   );
   
   const filteredRetailers = allRetailers.filter(retailer => 
@@ -435,24 +552,29 @@ export default function ReportPricePage() {
   );
 
   const sideListStyle = {
-    backgroundColor: 'rgba(248, 250, 252, 0.8)',
-    backdropFilter: 'blur(10px)',
-    border: '1px solid #e2e8f0',
-    borderRadius: '1rem',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backdropFilter: 'blur(15px)',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
+    borderRadius: '1.5rem',
     padding: '1.5rem',
-    maxHeight: '400px',
+    maxHeight: '500px',
     overflowY: 'auto' as const,
-    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+    transition: 'all 0.3s ease',
   };
 
   const sideListHeaderStyle = {
     fontSize: '1.125rem',
     fontWeight: '600',
-    color: '#374151',
+    color: '#1e293b',
     marginBottom: '1rem',
     display: 'flex',
     alignItems: 'center',
     gap: '0.5rem',
+    background: 'linear-gradient(135deg, #3b82f6 0%, #f97316 100%)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
   };
 
   const sideListItemStyle = {
@@ -490,15 +612,10 @@ export default function ReportPricePage() {
     transition: 'all 0.2s ease',
   };
 
-  const mainLayoutStyle = {
-    display: 'grid',
-    gridTemplateColumns: '1fr 300px 300px',
-    gap: '2rem',
-    alignItems: 'start',
-  };
 
   return (
     <div style={containerStyle}>
+      <div style={overlayStyle}></div>
       <style jsx>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(20px); }
@@ -547,6 +664,40 @@ export default function ReportPricePage() {
           <div style={{fontSize: '4rem', lineHeight: '1', marginBottom: '1rem'}}>🥩</div>
           <h1 style={titleStyle}>דיווח על מחיר חדש</h1>
           <p style={subtitleStyle}>עזור לקהילה על ידי שיתוף מחירים עדכניים</p>
+          
+          {/* Authentication Status Display */}
+          {user && (
+            <div style={{
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              color: 'white',
+              padding: '0.5rem 1rem',
+              borderRadius: '0.5rem',
+              fontSize: '0.875rem',
+              marginBottom: '1rem',
+              display: 'inline-block'
+            }}>
+              👤 מחובר כ: {user.name || user.email}
+            </div>
+          )}
+          
+          {/* Authentication Error Display */}
+          {(authError || showAuthError) && (
+            <div style={{
+              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+              color: 'white',
+              padding: '0.75rem 1rem',
+              borderRadius: '0.5rem',
+              fontSize: '0.875rem',
+              marginBottom: '1rem',
+              cursor: 'pointer'
+            }} onClick={() => {
+              clearAuthError();
+              setShowAuthError(false);
+            }}>
+              ⚠️ {authError || 'יש צורך בהתחברות למערכת'}
+              <span style={{marginRight: '1rem', fontSize: '0.75rem'}}>לחץ כדי לסגור</span>
+            </div>
+          )}
         </div>
         
         <form onSubmit={handleSubmit} style={formStyle}>

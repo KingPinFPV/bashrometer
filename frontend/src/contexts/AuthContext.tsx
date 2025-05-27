@@ -18,8 +18,11 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean; // לניהול טעינה ראשונית של המצב מה-localStorage
+  authError: string | null; // New: אירועי שגיאה
   login: (userData: User, token: string) => void;
   logout: () => void;
+  checkAuthStatus: () => Promise<boolean>; // New: בדיקת סטטוס אימות
+  clearAuthError: () => void; // New: ניקוי שגיאות
 }
 
 // יצירת הקונטקסט עם ערך ברירת מחדל
@@ -30,7 +33,59 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(typeof window === 'undefined' ? false : true); // התחל false בצד השרת
+  const [authError, setAuthError] = useState<string | null>(null); // New: שגיאות אימות
   const router = useRouter();
+
+  // New: בדיקת סטטוס אימות
+  const checkAuthStatus = async (): Promise<boolean> => {
+    const currentToken = token || localStorage.getItem('authToken');
+    if (!currentToken) {
+      setAuthError('לא נמצא טוקן אימות');
+      return false;
+    }
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/me`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${currentToken}`,
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        console.error('Auth check failed:', response.status, response.statusText);
+        if (response.status === 401 || response.status === 403) {
+          setAuthError('הטוקן לא תקף או פג תוקפו');
+          logout();
+          return false;
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const userData = await response.json();
+      
+      // עדכן מידע משתמש אם השתנה
+      if (userData && userData.id !== user?.id) {
+        setUser(userData);
+        localStorage.setItem('userData', JSON.stringify(userData));
+      }
+      
+      setAuthError(null); // ניקוי שגיאות בעת הצלחה
+      return true;
+    } catch (error) {
+      console.error('Auth status check error:', error);
+      setAuthError('שגיאה בבדיקת סטטוס אימות');
+      logout();
+      return false;
+    }
+  };
+
+  // New: ניקוי שגיאות
+  const clearAuthError = () => {
+    setAuthError(null);
+  };
 
   useEffect(() => {
     // בדוק שאנחנו בצד הלקוח לפני שנגש ל-localStorage
@@ -64,6 +119,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = (userData: User, authToken: string) => {
     setUser(userData);
     setToken(authToken);
+    setAuthError(null); // ניקוי שגיאות בעת התחברות מוצלחת
     if (typeof window !== 'undefined') {
       localStorage.setItem('authToken', authToken);
       localStorage.setItem('userData', JSON.stringify(userData));
@@ -74,6 +130,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     setUser(null);
     setToken(null);
+    setAuthError(null); // ניקוי שגיאות בעת התנתקות
     if (typeof window !== 'undefined') {
       localStorage.removeItem('authToken');
       localStorage.removeItem('userData');
@@ -82,7 +139,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      token, 
+      isLoading, 
+      authError, 
+      login, 
+      logout, 
+      checkAuthStatus, 
+      clearAuthError 
+    }}>
       {children}
     </AuthContext.Provider>
   );

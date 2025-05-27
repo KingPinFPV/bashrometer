@@ -68,6 +68,7 @@ bashrometer-fullstack/
 # Clone the repository
 git clone https://github.com/KingPinFPV/bashrometer.git
 cd bashrometer/v2/bashrometer-fullstack
+cd bashrometer-fullstack
 
 # Install all dependencies (both API and Frontend)
 npm run install:all
