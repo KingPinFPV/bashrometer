@@ -1,0 +1,999 @@
+{
+  "metadata": {
+    "source": "מחתרת הבשר",
+    "update_date": "2021-02-01",
+    "description": "נתוני מחירי בשר מהבשרומטר - מדד מחירי הבשר של מחתרת הבשר",
+    "total_products": 57,
+    "total_retailers": 30,
+    "total_prices": 587
+  },
+  "products": [
+    {
+      "id": 1,
+      "name": "אונטריב בקר",
+      "category": "בקר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 2,
+      "name": "אוסבוקו בקר",
+      "category": "בקר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 3,
+      "name": "אוסבוקו חזיר",
+      "category": "חזיר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 4,
+      "name": "אנטריקוט בקר",
+      "category": "בקר",
+      "cut_type": "סטייק",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 5,
+      "name": "אסאדו בקר",
+      "category": "בקר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 6,
+      "name": "אצבעות אנטריקוט בקר",
+      "category": "בקר",
+      "cut_type": "סטייק",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 7,
+      "name": "אשכים טלה",
+      "category": "טלה",
+      "cut_type": "איברים",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 8,
+      "name": "בריסקט בקר",
+      "category": "בקר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 9,
+      "name": "דנוור בקר",
+      "category": "בקר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 10,
+      "name": "ואסיו בקר",
+      "category": "בקר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 11,
+      "name": "וייסבראטן בקר",
+      "category": "בקר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 12,
+      "name": "זנב שור בקר",
+      "category": "בקר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 13,
+      "name": "חגורות פילה בקר",
+      "category": "בקר",
+      "cut_type": "סטייק",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 14,
+      "name": "חזה אווז קפוא",
+      "category": "אווז",
+      "cut_type": "חזה",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 15,
+      "name": "חזה הודו",
+      "category": "הודו",
+      "cut_type": "חזה",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 16,
+      "name": "חזה עוף",
+      "category": "עוף",
+      "cut_type": "חזה",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 17,
+      "name": "חזה עם עצם בקר",
+      "category": "בקר",
+      "cut_type": "חזה",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 18,
+      "name": "חטיפי אסאדו בקר",
+      "category": "בקר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 19,
+      "name": "טחון בקר",
+      "category": "בקר",
+      "cut_type": "טחון",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 20,
+      "name": "טיבון טלה",
+      "category": "טלה",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 21,
+      "name": "כבד עוף",
+      "category": "עוף",
+      "cut_type": "איברים",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 22,
+      "name": "כתף 5 בקר",
+      "category": "בקר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 23,
+      "name": "כתף טלה",
+      "category": "טלה",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 24,
+      "name": "כתף מרכזי 4 בקר",
+      "category": "בקר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 25,
+      "name": "לחי בקר",
+      "category": "בקר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 26,
+      "name": "ליה טלה",
+      "category": "טלה",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 27,
+      "name": "לשון בקר",
+      "category": "בקר",
+      "cut_type": "איברים",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 28,
+      "name": "מוח בקר",
+      "category": "בקר",
+      "cut_type": "איברים",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 29,
+      "name": "מכסה אנטריקוט בקר",
+      "category": "בקר",
+      "cut_type": "סטייק",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 30,
+      "name": "ניו יורק סטייק בקר",
+      "category": "בקר",
+      "cut_type": "סטייק",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 31,
+      "name": "נתח קצבים דק בקר",
+      "category": "בקר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 32,
+      "name": "נתח קצבים עבה בקר",
+      "category": "בקר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 33,
+      "name": "סינטה בקר",
+      "category": "בקר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 34,
+      "name": "סינטה חזיר",
+      "category": "חזיר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 35,
+      "name": "סלמון קפוא דגים",
+      "category": "דגים ופירות ים",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 36,
+      "name": "ספריבס טלה",
+      "category": "טלה",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 37,
+      "name": "ספריבס/ברוסט חזיר",
+      "category": "חזיר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 38,
+      "name": "פולקה חזיר",
+      "category": "חזיר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 39,
+      "name": "פילה בקר",
+      "category": "בקר",
+      "cut_type": "סטייק",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 40,
+      "name": "פילה חזיר",
+      "category": "חזיר",
+      "cut_type": "סטייק",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 41,
+      "name": "פילה מדומה בקר",
+      "category": "בקר",
+      "cut_type": "סטייק",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 42,
+      "name": "פיקניה בקר",
+      "category": "בקר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 43,
+      "name": "פלאנק בקר",
+      "category": "בקר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 44,
+      "name": "פרגיות עוף",
+      "category": "עוף",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 45,
+      "name": "פריים ריב בקר",
+      "category": "בקר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 46,
+      "name": "צוואר חזיר",
+      "category": "חזיר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 47,
+      "name": "צוואר טלה",
+      "category": "טלה",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 48,
+      "name": "שווארמה הודו",
+      "category": "הודו",
+      "cut_type": "שווארמה",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 49,
+      "name": "שולטר חזיר",
+      "category": "חזיר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 50,
+      "name": "שוק אווז קפוא",
+      "category": "אווז",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 51,
+      "name": "שוק טלה",
+      "category": "טלה",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 52,
+      "name": "שייטל בקר",
+      "category": "בקר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 53,
+      "name": "שפיץ שייטל בקר",
+      "category": "בקר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 54,
+      "name": "שקדים בקר",
+      "category": "בקר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 55,
+      "name": "שריר מס 8 בקר",
+      "category": "בקר",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 56,
+      "name": "קלמארי 500גר פירות ים",
+      "category": "דגים ופירות ים",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    },
+    {
+      "id": 57,
+      "name": "שרימפס 1קג פירות ים",
+      "category": "דגים ופירות ים",
+      "cut_type": "שונות",
+      "kosher_type": null,
+      "brand": null,
+      "weight_unit": "kilogram"
+    }
+  ],
+  "retailers": [
+    {
+      "id": 1,
+      "name": "עיראקי מקור הבשר",
+      "location": "טירה, ראשלצ, ראש העין",
+      "website": "https://bneiraqi.co.il/",
+      "delivery_fee": "40",
+      "kosher": false,
+      "notes": "בשר טרי"
+    },
+    {
+      "id": 2,
+      "name": "בשר פרימיום",
+      "location": "משלוח מרכז-צפון", 
+      "website": null,
+      "delivery_fee": "חינם מעל 500",
+      "kosher": false,
+      "notes": "בשר טרי"
+    },
+    {
+      "id": 3,
+      "name": "קרל ברג",
+      "location": "כל הארץ",
+      "website": "https://karlberg.co.il/home",
+      "delivery_fee": "לא",
+      "kosher": false,
+      "notes": "בשר טרי"
+    },
+    {
+      "id": 4,
+      "name": "דבאח גן שמואל",
+      "location": "טירה,ראשלצ,גן שמואל,כרמיאל",
+      "website": "https://www.duchan.co.il/",
+      "delivery_fee": "לא",
+      "kosher": false,
+      "notes": "בשר טרי"
+    },
+    {
+      "id": 5,
+      "name": "קשת טעמים",
+      "location": "כל הארץ",
+      "website": "https://www.keshet-teamim.co.il/",
+      "delivery_fee": "30",
+      "kosher": false,
+      "notes": "בשר טרי"
+    },
+    {
+      "id": 6,
+      "name": "טיב טעם",
+      "location": "כל הארץ",
+      "website": "https://www.tivtaam.co.il/",
+      "delivery_fee": "?",
+      "kosher": false,
+      "notes": "בשר טרי"
+    },
+    {
+      "id": 7,
+      "name": "הצרכניה",
+      "location": "אבן יהודה",
+      "website": "https://www.hazarhaniya.com/",
+      "delivery_fee": "?",
+      "kosher": false,
+      "notes": "בשר טרי"
+    },
+    {
+      "id": 8,
+      "name": "ולדמן",
+      "location": "אשדוד",
+      "website": "https://valdman.shopo.co.il/",
+      "delivery_fee": "חינם מעל 300",
+      "kosher": false,
+      "notes": "בשר טרי"
+    },
+    {
+      "id": 9,
+      "name": "שמשון כהן",
+      "location": "ת\"א",
+      "website": "https://www.facebook.com/ShimshonCohen.meat/",
+      "delivery_fee": "120 לשרון",
+      "kosher": false,
+      "notes": "בשר טרי"
+    },
+    {
+      "id": 10,
+      "name": "קנקון",
+      "location": "מודיעין,אשדוד",
+      "website": "https://cancun.co.il/",
+      "delivery_fee": "?",
+      "kosher": false,
+      "notes": "בשר טרי"
+    },
+    {
+      "id": 11,
+      "name": "סוד הבשר",
+      "location": "כפס",
+      "website": "http://www.sodhabasar.co.il/",
+      "delivery_fee": "?",
+      "kosher": false,
+      "notes": "בשר טרי"
+    },
+    {
+      "id": 12,
+      "name": "חינאווי",
+      "location": null,
+      "website": "http://www.hinnawi.com/",
+      "delivery_fee": "30-80",
+      "kosher": false,
+      "notes": "בשר טרי"
+    },
+    {
+      "id": 13,
+      "name": "בשר בכפר",
+      "location": "אבו גוש",
+      "website": "https://www.basar-bakfar.co.il/",
+      "delivery_fee": "30",
+      "kosher": false,
+      "notes": "בשר טרי"
+    },
+    {
+      "id": 14,
+      "name": "רמי לוי",
+      "location": "כל הארץ",
+      "website": "https://www.rami-levy.co.il/he/shop",
+      "delivery_fee": null,
+      "kosher": true,
+      "notes": "בשר טרי"
+    },
+    {
+      "id": 15,
+      "name": "מעדני גורמה",
+      "location": "מרכז",
+      "website": "online.gorme.co.il",
+      "delivery_fee": null,
+      "kosher": true,
+      "notes": "בשר טרי"
+    },
+    {
+      "id": 16,
+      "name": "איתן מעדני בשר",
+      "location": "כל הארץ",
+      "website": "http://www.eitan-meat.co.il/",
+      "delivery_fee": "?",
+      "kosher": true,
+      "notes": "בשר טרי"
+    },
+    {
+      "id": 17,
+      "name": "באפלו מיטליז",
+      "location": null,
+      "website": null,
+      "delivery_fee": null,
+      "kosher": false,
+      "notes": "בשר טרי"
+    },
+    {
+      "id": 18,
+      "name": "אטיאסדו",
+      "location": null,
+      "website": null,
+      "delivery_fee": null,
+      "kosher": true,
+      "notes": "בשר טרי"
+    },
+    {
+      "id": 19,
+      "name": "הכהנים",
+      "location": null,
+      "website": null,
+      "delivery_fee": null,
+      "kosher": true,
+      "notes": "בשר טרי"
+    },
+    {
+      "id": 20,
+      "name": "החלוצים",
+      "location": null,
+      "website": null,
+      "delivery_fee": null,
+      "kosher": true,
+      "notes": "בשר טרי"
+    },
+    {
+      "id": 21,
+      "name": "מיט פלייס",
+      "location": null,
+      "website": null,
+      "delivery_fee": null,
+      "kosher": true,
+      "notes": "בשר טרי"
+    },
+    {
+      "id": 22,
+      "name": "בשר בעיר",
+      "location": null,
+      "website": null,
+      "delivery_fee": null,
+      "kosher": true,
+      "notes": "בשר טרי"
+    },
+    {
+      "id": 23,
+      "name": "פסקוביץ",
+      "location": null,
+      "website": null,
+      "delivery_fee": null,
+      "kosher": true,
+      "notes": "בשר טרי"
+    },
+    {
+      "id": 24,
+      "name": "דובלה",
+      "location": null,
+      "website": null,
+      "delivery_fee": null,
+      "kosher": false,
+      "notes": "בשר קפוא"
+    },
+    {
+      "id": 25,
+      "name": "צמד קצבים",
+      "location": null,
+      "website": null,
+      "delivery_fee": null,
+      "kosher": false,
+      "notes": "עדכון בקרוב"
+    },
+    {
+      "id": 26,
+      "name": "נתח בשרים",
+      "location": null,
+      "website": null,
+      "delivery_fee": null,
+      "kosher": false,
+      "notes": "עדכון בקרוב"
+    },
+    {
+      "id": 27,
+      "name": "ויקטורי",
+      "location": null,
+      "website": null,
+      "delivery_fee": null,
+      "kosher": true,
+      "notes": "עדכון בקרוב"
+    },
+    {
+      "id": 28,
+      "name": "שירי",
+      "location": null,
+      "website": null,
+      "delivery_fee": null,
+      "kosher": false,
+      "notes": "עדכון בקרוב"
+    },
+    {
+      "id": 29,
+      "name": "blue cow",
+      "location": null,
+      "website": null,
+      "delivery_fee": null,
+      "kosher": false,
+      "notes": "עדכון בקרוב"
+    },
+    {
+      "id": 30,
+      "name": "שף בשר",
+      "location": null,
+      "website": null,
+      "delivery_fee": null,
+      "kosher": false,
+      "notes": "עדכון בקרוב"
+    }
+  ],
+  "prices": [
+    {
+      "id": 1,
+      "product_id": 4,
+      "retailer_id": 14,
+      "price": 85,
+      "unit": "kilogram",
+      "reported_date": "2021-02-01",
+      "status": "approved",
+      "source": "מחתרת הבשר"
+    },
+    {
+      "id": 2,
+      "product_id": 4,
+      "retailer_id": 15,
+      "price": 89,
+      "unit": "kilogram",
+      "reported_date": "2021-02-01",
+      "status": "approved",
+      "source": "מחתרת הבשר"
+    },
+    {
+      "id": 3,
+      "product_id": 4,
+      "retailer_id": 3,
+      "price": 120,
+      "unit": "kilogram",
+      "reported_date": "2021-02-01",
+      "status": "approved",
+      "source": "מחתרת הבשר"
+    },
+    {
+      "id": 4,
+      "product_id": 4,
+      "retailer_id": 6,
+      "price": 115,
+      "unit": "kilogram",
+      "reported_date": "2021-02-01",
+      "status": "approved",
+      "source": "מחתרת הבשר"
+    },
+    {
+      "id": 5,
+      "product_id": 4,
+      "retailer_id": 1,
+      "price": 95,
+      "unit": "kilogram",
+      "reported_date": "2021-02-01",
+      "status": "approved",
+      "source": "מחתרת הבשר"
+    },
+    {
+      "id": 6,
+      "product_id": 19,
+      "retailer_id": 14,
+      "price": 42,
+      "unit": "kilogram",
+      "reported_date": "2021-02-01",
+      "status": "approved",
+      "source": "מחתרת הבשר"
+    },
+    {
+      "id": 7,
+      "product_id": 19,
+      "retailer_id": 15,
+      "price": 45,
+      "unit": "kilogram",
+      "reported_date": "2021-02-01",
+      "status": "approved",
+      "source": "מחתרת הבשר"
+    },
+    {
+      "id": 8,
+      "product_id": 19,
+      "retailer_id": 3,
+      "price": 52,
+      "unit": "kilogram",
+      "reported_date": "2021-02-01",
+      "status": "approved",
+      "source": "מחתרת הבשר"
+    },
+    {
+      "id": 9,
+      "product_id": 19,
+      "retailer_id": 6,
+      "price": 48,
+      "unit": "kilogram",
+      "reported_date": "2021-02-01",
+      "status": "approved",
+      "source": "מחתרת הבשר"
+    },
+    {
+      "id": 10,
+      "product_id": 19,
+      "retailer_id": 1,
+      "price": 38,
+      "unit": "kilogram",
+      "reported_date": "2021-02-01",
+      "status": "approved",
+      "source": "מחתרת הבשר"
+    },
+    {
+      "id": 11,
+      "product_id": 16,
+      "retailer_id": 14,
+      "price": 28,
+      "unit": "kilogram",
+      "reported_date": "2021-02-01",
+      "status": "approved",
+      "source": "מחתרת הבשר"
+    },
+    {
+      "id": 12,
+      "product_id": 16,
+      "retailer_id": 15,
+      "price": 32,
+      "unit": "kilogram",
+      "reported_date": "2021-02-01",
+      "status": "approved",
+      "source": "מחתרת הבשר"
+    },
+    {
+      "id": 13,
+      "product_id": 16,
+      "retailer_id": 6,
+      "price": 35,
+      "unit": "kilogram",
+      "reported_date": "2021-02-01",
+      "status": "approved",
+      "source": "מחתרת הבשר"
+    },
+    {
+      "id": 14,
+      "product_id": 16,
+      "retailer_id": 1,
+      "price": 25,
+      "unit": "kilogram",
+      "reported_date": "2021-02-01",
+      "status": "approved",
+      "source": "מחתרת הבשר"
+    },
+    {
+      "id": 15,
+      "product_id": 39,
+      "retailer_id": 14,
+      "price": 180,
+      "unit": "kilogram",
+      "reported_date": "2021-02-01",
+      "status": "approved",
+      "source": "מחתרת הבשר"
+    },
+    {
+      "id": 16,
+      "product_id": 39,
+      "retailer_id": 15,
+      "price": 185,
+      "unit": "kilogram",
+      "reported_date": "2021-02-01",
+      "status": "approved",
+      "source": "מחתרת הבשר"
+    },
+    {
+      "id": 17,
+      "product_id": 39,
+      "retailer_id": 3,
+      "price": 220,
+      "unit": "kilogram",
+      "reported_date": "2021-02-01",
+      "status": "approved",
+      "source": "מחתרת הבשר"
+    },
+    {
+      "id": 18,
+      "product_id": 39,
+      "retailer_id": 6,
+      "price": 195,
+      "unit": "kilogram",
+      "reported_date": "2021-02-01",
+      "status": "approved",
+      "source": "מחתרת הבשר"
+    },
+    {
+      "id": 19,
+      "product_id": 39,
+      "retailer_id": 1,
+      "price": 165,
+      "unit": "kilogram",
+      "reported_date": "2021-02-01",
+      "status": "approved",
+      "source": "מחתרת הבשר"
+    },
+    {
+      "id": 20,
+      "product_id": 21,
+      "retailer_id": 14,
+      "price": 18,
+      "unit": "kilogram",
+      "reported_date": "2021-02-01",
+      "status": "approved",
+      "source": "מחתרת הבשר"
+    }
+  ]
+}
