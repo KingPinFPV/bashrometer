@@ -254,7 +254,7 @@ export default function RetailerAutocomplete({
             לא נמצאו קמעונאים עבור "{inputValue}"
           </div>
           {allowNewRequests && onNewRetailerRequest && (
-            <div className="border-t border-gray-200">
+            <div className="border-t border-gray-300">
               <button
                 type="button"
                 onClick={() => {

@@ -109,9 +109,9 @@ export default function CreateProductPage() {
       } else {
         setMessage((responseData as { error: string }).error || 'אירעה שגיאה ביצירת המוצר.');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to create product:", error);
-      setMessage(`שגיאת רשת ביצירת המוצר: ${error.message}`);
+      setMessage(`שגיאת רשת ביצירת המוצר: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setIsLoading(false);
     }

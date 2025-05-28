@@ -287,7 +287,7 @@ export default function ProductAutocomplete({
             לא נמצאו מוצרים עבור &quot;{inputValue}&quot;
           </div>
           {allowNewRequests && onNewProductRequest && (
-            <div className="border-t border-gray-200">
+            <div className="border-t border-gray-300">
               <button
                 type="button"
                 onClick={() => {

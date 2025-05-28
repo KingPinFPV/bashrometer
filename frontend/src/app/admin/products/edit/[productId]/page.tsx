@@ -85,9 +85,9 @@ export default function EditProductPage() {
         image_url: productData.image_url,
         is_active: productData.is_active,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to fetch product for editing:", error);
-      setMessage(`שגיאה בטעינת המוצר לעריכה: ${error.message}`);
+      setMessage(`שגיאה בטעינת המוצר לעריכה: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setIsLoading(false);
     }
@@ -148,9 +148,9 @@ export default function EditProductPage() {
       } else {
         setMessage(responseData.error || 'אירעה שגיאה בעדכון המוצר.');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to update product:", error);
-      setMessage(`שגיאת רשת בעדכון המוצר: ${error.message}`);
+      setMessage(`שגיאת רשת בעדכון המוצר: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setIsSubmitting(false);
     }
