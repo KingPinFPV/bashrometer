@@ -1,5 +1,6 @@
 // src/components/ProductCard.tsx
 import Link from 'next/link';
+import PriceDisplay from './PriceDisplay';
 
 interface Product {
   id: number;
@@ -185,7 +186,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
 
         {product.min_price_per_100g !== null ? (
           <div style={priceStyle}>
-            💰 החל מ-₪{product.min_price_per_100g.toFixed(2)} ל-100 גר&apos;
+            <PriceDisplay
+              price={product.min_price_per_100g}
+              normalizedPrice={product.min_price_per_100g}
+              unit="100g"
+              quantity={1}
+              displayMode="compact"
+              size="sm"
+            />
           </div>
         ) : (
           <div style={noPriceStyle}>

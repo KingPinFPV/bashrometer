@@ -4,7 +4,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/contexts/AuthContext'; //
+import { useAuth } from '@/contexts/AuthContext';
+import PriceDisplay from '@/components/PriceDisplay';
 
 // Interfaces (כפי שהיו אצלך)
 interface PriceExample {
@@ -531,20 +532,17 @@ export default function ProductDetailPage() {
                           למאה גרם
                         </div>
                         
-                        <div style={{fontSize: '0.875rem', color: '#94a3b8'}}>
-                          {isSale ? (
-                            <>
-                              <span style={{textDecoration: 'line-through', marginLeft: '0.5rem'}}>
-                                ₪{Number(price.regular_price).toFixed(2)}
-                              </span>
-                              <span style={{color: '#ef4444', fontWeight: 'bold'}}>
-                                ₪{Number(price.sale_price).toFixed(2)}
-                              </span>
-                            </>
-                          ) : (
-                            `₪${Number(price.regular_price).toFixed(2)}`
-                          )}
-                          <div>({Number(price.quantity_for_price)} {price.unit_for_price})</div>
+                        <div style={{fontSize: '0.875rem'}}>
+                          <PriceDisplay
+                            price={Number(price.regular_price)}
+                            normalizedPrice={price.calculated_price_per_100g}
+                            unit={price.unit_for_price}
+                            quantity={Number(price.quantity_for_price)}
+                            isOnSale={isSale}
+                            salePrice={price.sale_price ? Number(price.sale_price) : null}
+                            displayMode="detailed"
+                            size="sm"
+                          />
                         </div>
                       </div>
 
