@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // New: בדיקת סטטוס אימות
   const checkAuthStatus = async (): Promise<boolean> => {
-    const currentToken = token || localStorage.getItem('authToken');
+    const currentToken = token || (typeof window !== 'undefined' ? localStorage.getItem('authToken') : null);
     if (!currentToken) {
       setAuthError('לא נמצא טוקן אימות');
       return false;
@@ -69,7 +69,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // עדכן מידע משתמש אם השתנה
       if (userData && userData.id !== user?.id) {
         setUser(userData);
-        localStorage.setItem('userData', JSON.stringify(userData));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('userData', JSON.stringify(userData));
+        }
       }
       
       setAuthError(null); // ניקוי שגיאות בעת הצלחה

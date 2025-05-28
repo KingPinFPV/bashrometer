@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { filterValidReports, safeParseNumber, safeParseString } from '@/lib/typeGuards';
 import { 
   CheckCircle,
   XCircle,
@@ -33,16 +34,23 @@ interface PriceReport {
 const PriceReportsManagement: React.FC = () => {
   const { token } = useAuth();
   const [reports, setReports] = useState<PriceReport[]>([]);
+  const [filteredReports, setFilteredReports] = useState<PriceReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [mounted, setMounted] = useState(false);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
+  // Fix hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     const fetchReports = async () => {
-      if (!token) return;
+      if (!token || !mounted) return;
 
       try {
         setLoading(true);
@@ -55,7 +63,9 @@ const PriceReportsManagement: React.FC = () => {
         }
 
         const data = await response.json();
-        setReports(data.data || []);
+        // Use type guards to validate data
+        const validReports = filterValidReports(data.data || []);
+        setReports(validReports);
 
       } catch (err) {
         console.error('Error fetching price reports:', err);
@@ -66,7 +76,35 @@ const PriceReportsManagement: React.FC = () => {
     };
 
     fetchReports();
-  }, [token, API_URL]);
+  }, [token, API_URL, mounted]);
+
+  // Filter reports with null checks
+  useEffect(() => {
+    if (!reports || reports.length === 0) {
+      setFilteredReports([]);
+      return;
+    }
+    
+    let filtered = reports.filter(report => {
+      // Ensure report and status exist
+      if (!report || !report.status) return false;
+      return true;
+    });
+
+    if (searchTerm) {
+      filtered = filtered.filter(report =>
+        (report.product_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (report.retailer_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (report.user_name?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (statusFilter && statusFilter !== 'all') {
+      filtered = filtered.filter(report => report.status === statusFilter);
+    }
+
+    setFilteredReports(filtered);
+  }, [reports, searchTerm, statusFilter]);
 
   const handleStatusUpdate = async (reportId: number, newStatus: 'approved' | 'rejected') => {
     if (!token) return;
@@ -101,15 +139,33 @@ const PriceReportsManagement: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('he', {
-      day: '2-digit',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    if (!dateString) return 'לא זמין';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'תאריך לא תקין';
+      return date.toLocaleDateString('he', {
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return 'תאריך לא תקין';
+    }
+  };
+
+  const formatPrice = (price: number | string) => {
+    const numPrice = safeParseNumber(price);
+    return `₪${numPrice.toFixed(2)}`;
   };
 
   const getStatusBadge = (status: string) => {
+    if (!status) return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+        לא זמין
+      </span>
+    );
+
     const badges = {
       pending_approval: { color: 'bg-yellow-100 text-yellow-800', icon: Clock, text: 'ממתין לאישור' },
       approved: { color: 'bg-green-100 text-green-800', icon: CheckCircle, text: 'אושר' },
@@ -117,7 +173,13 @@ const PriceReportsManagement: React.FC = () => {
     };
     
     const badge = badges[status as keyof typeof badges];
-    if (!badge) return null;
+    if (!badge) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+          {status}
+        </span>
+      );
+    }
     
     const Icon = badge.icon;
     
@@ -129,18 +191,21 @@ const PriceReportsManagement: React.FC = () => {
     );
   };
 
-  const filteredReports = reports.filter(report => {
-    const matchesStatus = statusFilter === 'all' || report.status === statusFilter;
-    const matchesSearch = searchTerm === '' || 
-      report.product_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      report.retailer_name.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    return matchesStatus && matchesSearch;
-  });
+  const pendingCount = reports.filter(r => r && r.status === 'pending_approval').length;
+  const approvedCount = reports.filter(r => r && r.status === 'approved').length;
+  const rejectedCount = reports.filter(r => r && r.status === 'rejected').length;
 
-  const pendingCount = reports.filter(r => r.status === 'pending_approval').length;
-  const approvedCount = reports.filter(r => r.status === 'approved').length;
-  const rejectedCount = reports.filter(r => r.status === 'rejected').length;
+  // Show loading during hydration
+  if (!mounted) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">טוען ממשק ניהול...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -244,19 +309,19 @@ const PriceReportsManagement: React.FC = () => {
               {filteredReports.map((report) => (
                 <tr key={report.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{report.product_name}</div>
+                    <div className="text-sm font-medium text-gray-900">{safeParseString(report.product_name) || 'לא זמין'}</div>
                     <div className="text-sm text-gray-500">#{report.id}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {report.retailer_name}
+                    {safeParseString(report.retailer_name) || 'לא זמין'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
-                      ₪{report.regular_price} / {report.unit_for_price}
+                      {formatPrice(report.regular_price)} / {report.unit_for_price || 'יחידה'}
                     </div>
                     {report.is_on_sale && report.sale_price && (
                       <div className="text-sm text-green-600">
-                        מבצע: ₪{report.sale_price}
+                        מבצע: {formatPrice(report.sale_price)}
                       </div>
                     )}
                   </td>

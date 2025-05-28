@@ -26,8 +26,14 @@ interface AdminLayoutProps {
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { user, isLoading, token, logout } = useAuth();
   const router = useRouter();
+
+  // Fix hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
   // Mock pending reports count - בייצור יבוא מ-API
   const pendingReports = 5;
@@ -125,6 +131,18 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const handleLogout = () => {
     logout();
   };
+
+  // Show loading during hydration
+  if (!mounted) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">טוען ממשק ניהול...</p>
+        </div>
+      </div>
+    );
+  }
 
   // בזמן טעינת פרטי המשתמש מהקונטקסט
   if (isLoading) {
