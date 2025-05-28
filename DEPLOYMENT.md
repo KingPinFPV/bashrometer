@@ -237,3 +237,263 @@ For deployment issues:
 ---
 
 **Happy Deploying! 🎉**
+
+בשמחה! הנה מדריך הפריסה של Bashrometer בתרגום מלא לעברית, מותאם לסגנון הישראלי:
+
+---
+
+# 🚀 מדריך פריסה — Bashrometer
+
+## 📋 דרישות מקדימות
+
+* התקנת Docker ו-Docker Compose
+* התקנת Git
+* שם דומיין (לסביבת פרודקשן)
+* תעודות SSL (לאתרים מאובטחים/HTTPS)
+
+## 🛠️ הכנת סביבת העבודה
+
+1. **שכפול הריפוזיטורי (Clone):**
+
+   ```bash
+   git clone <your-repo-url>
+   cd bashrometer-fullstack
+   ```
+
+2. **יצירת קובץ משתני סביבה:**
+
+   ```bash
+   cp .env.example .env
+   # ערוך את .env עם הערכים שלך
+   ```
+
+3. **יצירת JWT Secret:**
+
+   ```bash
+   openssl rand -base64 64
+   # העתק את הפלט למשתנה JWT_SECRET בקובץ .env
+   ```
+
+## 🐳 פריסה לסביבת פיתוח
+
+```bash
+# הרצת הסביבה בפיתוח
+docker-compose -f docker-compose.dev.yml up -d
+
+# צפייה בלוגים
+docker-compose -f docker-compose.dev.yml logs -f
+
+# עצירת השירותים
+docker-compose -f docker-compose.dev.yml down
+```
+
+**כתובות גישה:**
+
+* פרונטנד: [http://localhost:3001](http://localhost:3001)
+* API: [http://localhost:3000](http://localhost:3000)
+* מסד נתונים: localhost:5432
+* Redis: localhost:6379
+
+## 🎯 פריסה לסביבת Production
+
+1. **הכנת משתני סביבה לפרודקשן:**
+
+   ```bash
+   # הגדר משתנים לסביבת ייצור
+   export NODE_ENV=production
+   export DB_PASSWORD="$(openssl rand -base64 32)"
+   export JWT_SECRET="$(openssl rand -base64 64)"
+   export REDIS_PASSWORD="$(openssl rand -base64 32)"
+   ```
+
+2. **פריסה עם docker-compose:**
+
+   ```bash
+   # בנייה והרצת השירותים בפרודקשן
+   docker-compose -f docker-compose.prod.yml up -d --build
+
+   # בדיקת סטטוס השירותים
+   docker-compose -f docker-compose.prod.yml ps
+   docker-compose -f docker-compose.prod.yml logs
+   ```
+
+3. **הגדרת SSL (אופציונלי אך מומלץ):**
+
+   ```bash
+   # התקנת Let's Encrypt עם Certbot
+   sudo apt-get install certbot python3-certbot-nginx
+   sudo certbot --nginx -d yourdomain.com
+
+   # או העתק את תעודות ה-SSL שלך לתיקייה nginx/ssl/
+   mkdir -p nginx/ssl
+   cp your-cert.pem nginx/ssl/
+   cp your-key.pem nginx/ssl/
+   ```
+
+## 🔧 בדיקות בריאות (Health Checks)
+
+```bash
+# בדיקת מצב ה-API
+curl http://localhost:3000/api/health
+
+# בדיקת הפרונטנד
+curl http://localhost:3001/
+
+# בדיקת כל השירותים
+docker-compose -f docker-compose.prod.yml exec api npm run health
+```
+
+## 📊 ניטור (Monitoring) — אופציונלי
+
+אפשר להפעיל ניטור עם Prometheus & Grafana:
+
+```bash
+# הרצת ניטור
+docker-compose -f docker-compose.prod.yml --profile monitoring up -d
+
+# גישה לניטור
+# Prometheus: http://localhost:9090
+# Grafana: http://localhost:3003 (admin/your_grafana_password)
+```
+
+## 🗄️ ניהול מסד נתונים
+
+```bash
+# גיבוי מסד הנתונים
+docker-compose exec db pg_dump -U bashrometer bashrometer > backup.sql
+
+# שחזור מסד נתונים
+docker-compose exec -T db psql -U bashrometer bashrometer < backup.sql
+
+# גישה ל-shell של מסד הנתונים
+docker-compose exec db psql -U bashrometer bashrometer
+```
+
+## 🔄 אינטגרציה רציפה (CI/CD) עם GitHub Actions
+
+הריפוזיטורי כולל Workflows ל-GitHub Actions עבור:
+
+* **בדיקות אוטומטיות** בעת Pull Request
+* **סריקות אבטחה** עם Trivy
+* **בנייה ודחיפת דוקר** ל-Registry
+* **בדיקות אינטגרציה** עם docker-compose
+
+### הגדרת GitHub Actions:
+
+1. **אפשר Actions** בהגדרות הריפו
+
+2. **הגדר משתני סביבה (Secrets) בריפו:**
+
+   * `JWT_SECRET`: מפתח ה-JWT שלך
+   * `DB_PASSWORD`: סיסמת מסד נתונים
+   * `REDIS_PASSWORD`: סיסמת רדיס
+
+3. **בצע Push ל-main** כדי להפעיל את הצנרת
+
+## 🛡️ שיקולי אבטחה
+
+### צ'קליסט לפרודקשן:
+
+* [ ] השתמש בסיסמאות חזקות לכל השירותים
+* [ ] הפעל SSL/HTTPS
+* [ ] הגדר חוקים לחומת אש
+* [ ] הפעל סבב לוגים אוטומטי (log rotation)
+* [ ] הפעל גיבויים אוטומטיים
+* [ ] נטר שימוש במשאבים
+* [ ] הגדר התרעות לנפילות שירותים
+
+### כותרות אבטחה:
+
+האפליקציה כוללת את הכותרות:
+
+* X-Frame-Options: DENY
+* X-Content-Type-Options: nosniff
+* X-XSS-Protection: 1; mode=block
+* Referrer-Policy: origin-when-cross-origin
+
+## 📝 פתרון בעיות (Troubleshooting)
+
+### תקלות נפוצות:
+
+1. **השירותים לא עולים:**
+
+   ```bash
+   # בדוק לוגים
+   docker-compose logs [service-name]
+
+   # בדוק שימוש במשאבים
+   docker stats
+   ```
+
+2. **שגיאות חיבור למסד נתונים:**
+
+   ```bash
+   # בדוק שה-DB רץ
+   docker-compose exec db pg_isready -U bashrometer
+
+   # איפוס מסד נתונים
+   docker-compose down -v
+   docker-compose up -d
+   ```
+
+3. **בדיקת בריאות ל-API נכשלת:**
+
+   ```bash
+   # בדוק לוגי API
+   docker-compose logs api
+
+   # בדוק את ה-API ישירות
+   curl -v http://localhost:3000/api/health
+   ```
+
+4. **שגיאות בבניית הפרונטנד:**
+
+   ```bash
+   # בדוק לוגים של הפרונטנד
+   docker-compose logs frontend
+
+   # הרץ בנייה מחדש
+   docker-compose build frontend
+   ```
+
+## 📈 שיפור ביצועים (Performance)
+
+### טיפים לפרודקשן:
+
+1. **הגבלת משאבים:** הגדר memory/CPU ב-docker-compose.prod.yml
+2. **כוונון מסד נתונים:** התאם הגדרות PostgreSQL לעומסים שלך
+3. **קאשינג:** הפעל Redis ל-caching של תשובות API
+4. **CDN:** השתמש ב-CDN למשאבים סטטיים
+5. **איזון עומסים:** הפעל מספר אינסטנסים במקביל
+
+## 🔧 תחזוקה שוטפת
+
+### משימות קבועות:
+
+```bash
+# עדכון תלויות
+npm audit fix
+
+# עדכון דוקר אימג'ים
+docker-compose pull
+docker-compose up -d
+
+# ניקוי משאבים לא בשימוש
+docker system prune -a
+
+# תחזוקת DB
+docker-compose exec db psql -U bashrometer -c "VACUUM ANALYZE;"
+```
+
+## 📞 תמיכה
+
+לבעיות בפריסה:
+
+1. בדוק לוגים: `docker-compose logs`
+2. וודא משתני סביבה נכונים
+3. בדוק נקודות health
+4. עיין ב-GitHub Issues לבעיות מוכרות
+
+---
+
+**פריסה מוצלחת! 🎉**
