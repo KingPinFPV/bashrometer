@@ -621,6 +621,146 @@ export default function ProductDetailPage() {
             </div>
           )}
         </div>
+
+        {/* Price History Section */}
+        {product.price_examples && product.price_examples.length > 0 && (
+          <div style={cardStyle}>
+            <h2 style={{
+              fontSize: '2rem',
+              fontWeight: 'bold',
+              color: '#ffffff',
+              marginBottom: '1.5rem',
+              background: 'linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }}>
+              📈 היסטוריית מחירים
+            </h2>
+
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '16px',
+              padding: '1.5rem',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              overflowX: 'auto'
+            }}>
+              <div style={{minWidth: '600px'}}>
+                {/* Table Header */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 150px 120px 100px 100px',
+                  gap: '1rem',
+                  padding: '1rem',
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  borderRadius: '12px',
+                  marginBottom: '0.5rem',
+                  fontWeight: 'bold',
+                  color: '#cbd5e1',
+                  fontSize: '0.875rem'
+                }}>
+                  <div>🏪 קמעונאי</div>
+                  <div>📅 תאריך דיווח</div>
+                  <div>💰 מחיר למ״ג</div>
+                  <div>🏷️ מבצע</div>
+                  <div>👍 לייקים</div>
+                </div>
+
+                {/* Table Rows */}
+                {product.price_examples
+                  .sort((a, b) => new Date(b.submission_date).getTime() - new Date(a.submission_date).getTime())
+                  .slice(0, 15)
+                  .map((price, index) => (
+                  <div
+                    key={price.price_id}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 150px 120px 100px 100px',
+                      gap: '1rem',
+                      padding: '1rem',
+                      background: index % 2 === 0 ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+                      borderRadius: '8px',
+                      alignItems: 'center',
+                      color: '#e2e8f0',
+                      fontSize: '0.875rem',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = index % 2 === 0 ? 'rgba(255, 255, 255, 0.05)' : 'transparent';
+                    }}
+                  >
+                    {/* Retailer */}
+                    <div style={{
+                      fontWeight: '600',
+                      color: '#60a5fa'
+                    }}>
+                      {price.retailer}
+                    </div>
+
+                    {/* Date */}
+                    <div>
+                      {new Date(price.submission_date).toLocaleDateString('he-IL', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+
+                    {/* Price per 100g */}
+                    <div style={{
+                      fontWeight: 'bold',
+                      color: index === 0 ? '#10b981' : '#ffffff'
+                    }}>
+                      ₪{price.calculated_price_per_100g ? price.calculated_price_per_100g.toFixed(2) : 'N/A'}
+                    </div>
+
+                    {/* Sale status */}
+                    <div>
+                      {price.is_on_sale && price.sale_price ? (
+                        <span style={{
+                          color: '#ef4444',
+                          fontWeight: 'bold',
+                          background: 'rgba(239, 68, 68, 0.1)',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '6px',
+                          fontSize: '0.75rem'
+                        }}>
+                          מבצע
+                        </span>
+                      ) : (
+                        <span style={{color: '#6b7280'}}>רגיל</span>
+                      )}
+                    </div>
+
+                    {/* Likes */}
+                    <div style={{
+                      textAlign: 'center',
+                      color: price.likes_count > 0 ? '#f59e0b' : '#6b7280'
+                    }}>
+                      {price.likes_count}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {product.price_examples.length > 15 && (
+                <div style={{
+                  textAlign: 'center',
+                  marginTop: '1rem',
+                  color: '#94a3b8',
+                  fontSize: '0.875rem'
+                }}>
+                  מוצגים 15 דיווחים אחרונים מתוך {product.price_examples.length} דיווחים
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );

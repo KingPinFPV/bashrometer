@@ -1,0 +1,335 @@
+name: CI/CD - Bashrometer
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME_API: ${{ github.repository }}/api
+  IMAGE_NAME_FRONTEND: ${{ github.repository }}/frontend
+
+jobs:
+  # API Tests and Build
+  api-test-and-build:
+    name: API - Test & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./api
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: test_user
+          POSTGRES_DB: bashrometer_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: api/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup test database
+        run: |
+          PGPASSWORD=test_password psql -h localhost -U test_user -d bashrometer_test -f schema.sql
+        env:
+          PGPASSWORD: test_password
+
+      - name: Run tests
+        run: npm test
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/bashrometer_test
+          JWT_SECRET: test_jwt_secret_for_ci_cd_pipeline_bashrometer
+
+      - name: Run ESLint
+        run: npm run lint --if-present
+
+      - name: Build Docker image
+        run: docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}:${{ github.sha }} .
+
+      - name: Save Docker image
+        run: docker save ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}:${{ github.sha }} > api-image.tar
+
+      - name: Upload API image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-docker-image
+          path: api/api-image.tar
+          retention-days: 1
+
+  # Frontend Tests and Build
+  frontend-test-and-build:
+    name: Frontend - Test & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run type checking
+        run: npm run type-check --if-present
+
+      - name: Run ESLint
+        run: npm run lint --if-present
+
+      - name: Build application
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3000
+
+      - name: Build Docker image
+        run: docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:${{ github.sha }} .
+
+      - name: Save Docker image
+        run: docker save ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:${{ github.sha }} > frontend-image.tar
+
+      - name: Upload Frontend image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-docker-image
+          path: frontend/frontend-image.tar
+          retention-days: 1
+
+  # Integration Tests
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [api-test-and-build, frontend-test-and-build]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download API image
+        uses: actions/download-artifact@v4
+        with:
+          name: api-docker-image
+          path: ./
+
+      - name: Download Frontend image
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-docker-image
+          path: ./
+
+      - name: Load Docker images
+        run: |
+          docker load < api-image.tar
+          docker load < frontend-image.tar
+
+      - name: Run integration tests with docker-compose
+        run: |
+          # Override images in docker-compose to use our built images
+          export API_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}:${{ github.sha }}"
+          export FRONTEND_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:${{ github.sha }}"
+          
+          # Start services
+          docker-compose -f docker-compose.dev.yml up -d
+          
+          # Wait for services to be ready
+          sleep 30
+          
+          # Run basic health checks
+          curl -f http://localhost:3000/api/health || exit 1
+          curl -f http://localhost:3001/ || exit 1
+          
+          # Stop services
+          docker-compose -f docker-compose.dev.yml down
+
+  # Security Scanning
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: [api-test-and-build, frontend-test-and-build]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies - API
+        working-directory: ./api
+        run: npm ci
+
+      - name: Install dependencies - Frontend
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Run npm audit - API
+        working-directory: ./api
+        run: npm audit --audit-level=high
+
+      - name: Run npm audit - Frontend
+        working-directory: ./frontend
+        run: npm audit --audit-level=high
+
+      - name: Download API image
+        uses: actions/download-artifact@v4
+        with:
+          name: api-docker-image
+          path: ./
+
+      - name: Download Frontend image
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-docker-image
+          path: ./
+
+      - name: Load Docker images
+        run: |
+          docker load < api-image.tar
+          docker load < frontend-image.tar
+
+      - name: Run Trivy vulnerability scanner - API
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-api-results.sarif'
+
+      - name: Run Trivy vulnerability scanner - Frontend
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-frontend-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: '.'
+
+  # Deploy to Registry (only on main branch)
+  deploy-images:
+    name: Push to Registry
+    runs-on: ubuntu-latest
+    needs: [integration-tests, security-scan]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download API image
+        uses: actions/download-artifact@v4
+        with:
+          name: api-docker-image
+          path: ./
+
+      - name: Download Frontend image
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-docker-image
+          path: ./
+
+      - name: Load Docker images
+        run: |
+          docker load < api-image.tar
+          docker load < frontend-image.tar
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for API
+        id: meta-api
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Extract metadata for Frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Push API image
+        run: |
+          for tag in ${{ steps.meta-api.outputs.tags }}; do
+            docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}:${{ github.sha }} $tag
+            docker push $tag
+          done
+
+      - name: Push Frontend image
+        run: |
+          for tag in ${{ steps.meta-frontend.outputs.tags }}; do
+            docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:${{ github.sha }} $tag
+            docker push $tag
+          done
+
+  # Cleanup
+  cleanup:
+    name: Cleanup Artifacts
+    runs-on: ubuntu-latest
+    needs: [deploy-images]
+    if: always()
+    
+    steps:
+      - name: Delete API image artifact
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: api-docker-image
+          failOnError: false
+
+      - name: Delete Frontend image artifact
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: frontend-docker-image
+          failOnError: false

@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Enable standalone mode for Docker (disabled for development)
-  // output: 'standalone',
+  // Enable standalone mode for Docker in production
+  ...(process.env.NODE_ENV === 'production' && { output: 'standalone' }),
   // Optimize images
   images: {
     domains: ['localhost'],

@@ -5,6 +5,7 @@ import React, { useState, useEffect, FormEvent, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import Autocomplete from '@/components/Autocomplete';
 
 // ממשק לנתוני המוצר (זהה לזה שבדף יצירת מוצר)
@@ -33,16 +34,22 @@ interface Product extends ProductFormData {
 
 
 export default function EditProductPage() {
-  const { token, user } = useAuth();
+  const { token, user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
   const productId = params.productId as string;
+  const [mounted, setMounted] = useState(false);
 
   const [formData, setFormData] = useState<Partial<ProductFormData>>({}); // Partial כי נטען אסינכרונית
   const [originalProduct, setOriginalProduct] = useState<Product | null>(null);
   const [message, setMessage] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true); // טעינה ראשונית של המוצר
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false); // בזמן שליחת הטופס
+
+  // Fix hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const fetchProductToEdit = useCallback(async () => {
     if (!productId || !token || (user && user.role !== 'admin')) {
@@ -94,10 +101,10 @@ export default function EditProductPage() {
   }, [productId, token, user]);
 
   useEffect(() => {
-    if (productId) { // טען רק אם יש productId
+    if (productId && mounted && token) { // טען רק אם יש productId ו-mounted
       fetchProductToEdit();
     }
-  }, [productId, fetchProductToEdit]);
+  }, [productId, mounted, token, fetchProductToEdit]);
 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -111,46 +118,81 @@ export default function EditProductPage() {
     }
   };
 
+  const validateForm = (): string | null => {
+    if (!formData.name?.trim()) {
+      return "שם המוצר הוא שדה חובה";
+    }
+    if (formData.name.trim().length < 2) {
+      return "שם המוצר חייב להכיל לפחות 2 תווים";
+    }
+    if (!formData.unit_of_measure?.trim()) {
+      return "יחידת מידה היא שדה חובה";
+    }
+    if (formData.default_weight_per_unit_grams && formData.default_weight_per_unit_grams <= 0) {
+      return "משקל ברירת המחדל חייב להיות מספר חיובי";
+    }
+    return null;
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    
+    // Check authentication
     if (!token || (user && user.role !== 'admin')) {
       setMessage("שגיאה: אין לך הרשאה לבצע פעולה זו.");
       return;
     }
-    if (!formData.name?.trim() || !formData.unit_of_measure?.trim()) {
-      setMessage("שגיאה: שם מוצר ויחידת מידה הם שדות חובה.");
+
+    // Validate form
+    const validationError = validateForm();
+    if (validationError) {
+      setMessage(`שגיאת validation: ${validationError}`);
       return;
     }
 
     setIsSubmitting(true);
     setMessage('');
+    
+    // Prepare cleaned data for API
+    const cleanedData = {
+      ...formData,
+      name: formData.name?.trim(),
+      brand: formData.brand?.trim() || null,
+      category: formData.category?.trim() || null,
+      description: formData.description?.trim() || null,
+      short_description: formData.short_description?.trim() || null,
+      origin_country: formData.origin_country?.trim() || null,
+      animal_type: formData.animal_type?.trim() || null,
+      cut_type: formData.cut_type?.trim() || null,
+      image_url: formData.image_url?.trim() || null,
+    };
 
     const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/products/${productId}`;
 
     try {
       const response = await fetch(apiUrl, {
-        method: 'PUT', // שימוש במתודת PUT לעדכון
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(cleanedData),
       });
 
       const responseData = await response.json();
 
-      if (response.ok) { // 200 OK בדרך כלל לעדכון מוצלח
-        setMessage(`מוצר "${responseData.name}" עודכן בהצלחה!`);
-        setOriginalProduct(responseData); // עדכן את המקור עם הנתונים המעודכנים
+      if (response.ok) {
+        setMessage(`מוצר "${responseData.name}" עודכן בהצלחה! מעביר לרשימת מוצרים...`);
+        setOriginalProduct(responseData);
         setTimeout(() => {
-          router.push('/admin/products'); // חזרה לרשימת המוצרים
+          router.push('/admin/products');
         }, 1500);
       } else {
         setMessage(responseData.error || 'אירעה שגיאה בעדכון המוצר.');
       }
     } catch (error: unknown) {
       console.error("Failed to update product:", error);
-      setMessage(`שגיאת רשת בעדכון המוצר: ${error instanceof Error ? error.message : String(error)}`);
+      setMessage(`שגיאת רשת בעדכון המוצר: ${error instanceof Error ? error.message : 'שגיאה לא ידועה'}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -160,26 +202,79 @@ export default function EditProductPage() {
   const kosherLevels = ['לא ידוע', 'רגיל', 'מהדרין', 'גלאט', 'ללא', 'אחר'];
   const unitsOfMeasure = ['100g', 'kg', 'g', 'unit', 'package'];
 
-  if (isLoading) {
-    return <div className="text-center py-10">טוען פרטי מוצר לעריכה...</div>;
+  // Show loading during hydration
+  if (!mounted) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-2xl">
+        <div className="flex justify-center items-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">טוען עמוד עריכת מוצר...</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  if (!originalProduct && !isLoading) { // אם הטעינה הסתיימה ואין מוצר
+  // Check authentication
+  if (authLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-2xl">
+        <div className="flex justify-center items-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">בודק הרשאות...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || user.role !== 'admin') {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-2xl">
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <div className="text-center">
+            <p className="text-red-800">אין לך הרשאה לגשת לדף זה</p>
+            <Link href="/admin" className="text-blue-600 hover:text-blue-800 mt-2 inline-block">
+              חזרה לדף הניהול
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-2xl">
+        <div className="flex justify-center items-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">טוען פרטי מוצר לעריכה...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!originalProduct && !isLoading) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-2xl text-center">
-        <h1 className="text-2xl font-bold text-red-700 mb-4">שגיאה</h1>
-        <p className="text-slate-600 mb-4">{message || "המוצר המבוקש לא נמצא או שאין לך הרשאה לצפות בו."}</p>
-        <Link href="/admin/products" className="text-sky-600 hover:text-sky-700">
-          &larr; חזרה לרשימת המוצרים
-        </Link>
+        <div className="bg-red-50 border border-red-200 rounded-md p-6">
+          <h1 className="text-2xl font-bold text-red-700 mb-4">שגיאה</h1>
+          <p className="text-slate-600 mb-4">{message || "המוצר המבוקש לא נמצא או שאין לך הרשאה לצפות בו."}</p>
+          <Link href="/admin/products" className="text-sky-600 hover:text-sky-700">
+            ← חזרה לרשימת המוצרים
+          </Link>
+        </div>
       </div>
     );
   }
   
-  // ה-JSX של הטופס יהיה זהה כמעט לחלוטין לטופס היצירה,
-  // ההבדל העיקרי הוא שהשדות מאוכלסים מה-formData שמקבל ערכים מ-originalProduct.
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl">
+    <ErrorBoundary>
+      <div className="container mx-auto px-4 py-8 max-w-2xl">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-slate-800">עריכת מוצר: {originalProduct?.name || ''}</h1>
         <Link href="/admin/products" className="text-sky-600 hover:text-sky-700">
@@ -214,8 +309,15 @@ export default function EditProductPage() {
         {/* קטגוריה */}
         <div>
           <label htmlFor="category" className="block text-sm font-medium text-slate-700">קטגוריה</label>
-          <input type="text" name="category" id="category" value={formData.category || ''} onChange={handleChange}
-            className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm" />
+          <Autocomplete
+            placeholder="חפש קטגוריה..."
+            value={formData.category || ''}
+            onChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
+            endpoint="categories"
+            name="category"
+            id="category"
+            className="mt-1"
+          />
         </div>
         
         {/* יחידת מידה */}
@@ -314,6 +416,7 @@ export default function EditProductPage() {
           </button>
         </div>
       </form>
-    </div>
-  );
+        </div>
+      </ErrorBoundary>
+    );
 }

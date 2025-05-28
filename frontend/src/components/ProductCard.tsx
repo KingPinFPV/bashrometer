@@ -185,7 +185,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
 
         {product.min_price_per_100g !== null ? (
           <div style={priceStyle}>
-            💰 החל מ-₪{product.min_price_per_100g.toFixed(2)} ל-100 גר'
+            💰 החל מ-₪{product.min_price_per_100g.toFixed(2)} ל-100 גר&apos;
           </div>
         ) : (
           <div style={noPriceStyle}>

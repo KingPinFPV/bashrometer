@@ -39,6 +39,12 @@ const ProductsManagement: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [deleteModal, setDeleteModal] = useState<{show: boolean, productId: number, productName: string}>({
+    show: false,
+    productId: 0,
+    productName: ''
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
   const ITEMS_PER_PAGE = 10;
@@ -86,38 +92,49 @@ const ProductsManagement: React.FC = () => {
     setCurrentPage(1); // Reset to first page when searching
   };
 
-  const handleDeleteProduct = async (productId: number, productName: string) => {
-    if (!token) return;
+  const showDeleteModal = (productId: number, productName: string) => {
+    setDeleteModal({
+      show: true,
+      productId,
+      productName
+    });
+    setShowActionsMenu(null); // Close actions menu
+  };
+
+  const hideDeleteModal = () => {
+    setDeleteModal({
+      show: false,
+      productId: 0,
+      productName: ''
+    });
+  };
+
+  const handleDeleteProduct = async () => {
+    if (!token || !deleteModal.productId) return;
     
-    if (!confirm(`האם אתה בטוח שברצונך למחוק את המוצר "${productName}"?`)) {
-      return;
-    }
+    setIsDeleting(true);
 
     try {
-      const response = await fetch(`${API_URL}/api/products/${productId}`, {
+      const response = await fetch(`${API_URL}/api/products/${deleteModal.productId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (response.ok) {
-        setProducts(products.filter(p => p.id !== productId));
-        alert('המוצר נמחק בהצלחה');
+        setProducts(products.filter(p => p.id !== deleteModal.productId));
+        hideDeleteModal();
+        // You could add a toast notification here instead of alert
       } else {
         throw new Error('שגיאה במחיקת המוצר');
       }
     } catch (err) {
       console.error('Error deleting product:', err);
-      alert('שגיאה במחיקת המוצר');
+      setError('שגיאה במחיקת המוצר');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('he', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
 
   if (loading) {
     return (
@@ -261,7 +278,7 @@ const ProductsManagement: React.FC = () => {
                             צפה במוצר
                           </a>
                           <button
-                            onClick={() => handleDeleteProduct(product.id, product.name)}
+                            onClick={() => showDeleteModal(product.id, product.name)}
                             className="w-full flex items-center px-4 py-2 text-sm text-red-700 hover:bg-red-50"
                           >
                             <Trash2 className="w-4 h-4 ml-2" />
@@ -317,6 +334,54 @@ const ProductsManagement: React.FC = () => {
             >
               סגור
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center mb-4">
+              <AlertCircle className="w-6 h-6 text-red-500 ml-3" />
+              <h3 className="text-lg font-medium text-gray-900">אישור מחיקת מוצר</h3>
+            </div>
+            
+            <p className="text-gray-600 mb-6">
+              האם אתה בטוח שברצונך למחוק את המוצר{' '}
+              <span className="font-semibold text-gray-900">&quot;{deleteModal.productName}&quot;</span>?
+              <br />
+              <span className="text-sm text-red-600 mt-2 block">
+                פעולה זו אינה ניתנת לביטול ותמחק את כל המחירים הקשורים למוצר זה.
+              </span>
+            </p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={hideDeleteModal}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                ביטול
+              </button>
+              <button
+                onClick={handleDeleteProduct}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white ml-2"></div>
+                    מוחק...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 ml-2" />
+                    מחק מוצר
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

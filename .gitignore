@@ -45,3 +45,13 @@ Thumbs.db
 # Temporary files
 local_files.txt
 git_files.txt
+
+# Logs
+api/logs/
+frontend/logs/
+logs/
+*.log
+
+# Backup files
+backups/
+*.sql.backup
