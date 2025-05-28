@@ -10,12 +10,15 @@ const retailersRoutes = require('./routes/retailers');
 const pricesRoutes = require('./routes/prices');
 const autocompleteRoutes = require('./routes/autocomplete');
 const requestsRoutes = require('./routes/requests');
+const analyticsRoutes = require('./routes/analytics');
 
 const app = express();
 
 // 1. CORS Middleware - הגדרה מפורטת ומוקדמת
 const allowedOrigins = [
-  'http://localhost:3000', // ה-Frontend שלך רץ על כתובת זו
+  'http://localhost:3000',
+  'http://localhost:3002', // Frontend port for development
+  'http://localhost:3001', // Alternative frontend port
   // הוסף כאן עוד Origins אם יש לך סביבות נוספות
   // לדוגמה, אם הייתה לך כתובת Codespace:
   // 'https://your-codespace-name-random-string.app.github.dev' 
@@ -66,6 +69,7 @@ app.use('/api/retailers', retailersRoutes);
 app.use('/api/prices', pricesRoutes);
 app.use('/api/autocomplete', autocompleteRoutes);
 app.use('/api/requests', requestsRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Simple root route for health check or basic info
 app.get('/', (req, res) => {
