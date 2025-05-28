@@ -204,7 +204,7 @@ const createPriceReport = async (req, res, next) => {
   const {
     product_id, retailer_id, regular_price, sale_price, is_on_sale,
     unit_for_price, quantity_for_price, notes, source = 'user_report',
-    report_type = 'price_update', price_valid_from, price_valid_to
+    report_type = 'community', price_valid_from, price_valid_to
   } = req.body;
 
   // Validation
@@ -231,6 +231,10 @@ const createPriceReport = async (req, res, next) => {
       return res.status(404).json({ error: 'Retailer not found or inactive.' });
     }
 
+    // User role-based status logic
+    const userRole = req.user.role || 'user';
+    const initialStatus = userRole === 'admin' ? 'approved' : 'pending_approval';
+
     // Create price report
     const insertQuery = `
       INSERT INTO prices (
@@ -238,7 +242,7 @@ const createPriceReport = async (req, res, next) => {
         unit_for_price, quantity_for_price, notes, source, report_type,
         price_valid_from, price_valid_to, price_submission_date, status
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_DATE, 'approved'
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_DATE, $14
       ) RETURNING id
     `;
 
@@ -249,7 +253,8 @@ const createPriceReport = async (req, res, next) => {
       unit_for_price, quantity_for_price, notes || null, 
       source, report_type,
       price_valid_from || null, 
-      price_valid_to || null
+      price_valid_to || null,
+      initialStatus
     ];
 
     const result = await pool.query(insertQuery, values);
@@ -259,6 +264,8 @@ const createPriceReport = async (req, res, next) => {
     const createdPrice = await getFullPriceDetails(newPriceId, req.user.id);
     
     res.status(201).json({
+      id: newPriceId,
+      status: createdPrice.status,
       message: 'Price report created successfully',
       price: createdPrice
     });

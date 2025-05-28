@@ -3,6 +3,7 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
+const { logger, httpLogger } = require('./utils/logger');
 
 const authRoutes = require('./routes/auth');
 const productsRoutes = require('./routes/products');
@@ -58,7 +59,12 @@ app.options('*', cors(corsOptions));
 app.use(cors(corsOptions));
 
 
-// 2. Body Parsers - אחרי CORS
+// 2. HTTP Request Logging - אחרי CORS
+if (process.env.NODE_ENV !== 'test') {
+  app.use(httpLogger);
+}
+
+// 3. Body Parsers - אחרי CORS ו-Logging
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -76,12 +82,75 @@ app.get('/', (req, res) => {
   res.send('Bashrometer API is running!');
 });
 
+// Health check endpoint for CI/CD and monitoring
+app.get('/api/health', async (req, res) => {
+  try {
+    const db = require('./db');
+    
+    // Check database connection
+    let dbStatus = 'unknown';
+    let dbLatency = null;
+    
+    if (db.pool) {
+      const start = Date.now();
+      try {
+        await db.pool.query('SELECT 1');
+        dbLatency = Date.now() - start;
+        dbStatus = 'healthy';
+      } catch (error) {
+        console.error('Health check DB error:', error);
+        dbStatus = 'unhealthy';
+      }
+    }
+
+    const healthData = {
+      status: dbStatus === 'healthy' ? 'healthy' : 'unhealthy',
+      timestamp: new Date().toISOString(),
+      service: 'bashrometer-api',
+      version: process.env.npm_package_version || '1.0.0',
+      environment: process.env.NODE_ENV || 'development',
+      uptime: process.uptime(),
+      checks: {
+        database: {
+          status: dbStatus,
+          latency: dbLatency ? `${dbLatency}ms` : null
+        },
+        memory: {
+          usage: Math.round((process.memoryUsage().heapUsed / process.memoryUsage().heapTotal) * 100),
+          heapUsed: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`,
+          heapTotal: `${Math.round(process.memoryUsage().heapTotal / 1024 / 1024)}MB`
+        }
+      }
+    };
+
+    // Set appropriate status code
+    const statusCode = healthData.status === 'healthy' ? 200 : 503;
+    res.status(statusCode).json(healthData);
+    
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.status(503).json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      service: 'bashrometer-api',
+      error: 'Health check failed'
+    });
+  }
+});
+
 // Global error handler
 app.use((err, req, res, next) => {
-  console.error("Global Error Handler Caught:", err.name, "-", err.message);
-  if (err.stack) {
-    console.error(err.stack);
-  }
+  // Use Winston logger instead of console.error
+  logger.error("Global Error Handler Caught:", {
+    name: err.name,
+    message: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    ip: req.ip,
+    userAgent: req.get('user-agent'),
+    userId: req.user?.id
+  });
 
   if (res.headersSent) {
     return next(err);

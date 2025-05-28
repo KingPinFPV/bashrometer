@@ -30,7 +30,13 @@ function authenticateToken(req, res, next) {
     
     // Add decoded user payload (e.g., id and role) to the request object
     // This payload comes from what we put into jwt.sign() in authController.js
-    req.user = { id: decoded.userId, role: decoded.role }; 
+    req.user = { 
+      id: decoded.userId, 
+      userId: decoded.userId, // Keep both for compatibility
+      role: decoded.role, 
+      email: decoded.email, 
+      name: decoded.name 
+    }; 
     next(); // Proceed to the next middleware or route handler
   });
 }
