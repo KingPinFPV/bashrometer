@@ -161,7 +161,21 @@ const getAllPrices = async (req, res, next) => {
     const totalItems = parseInt(totalCountResult.rows[0].count, 10);
     const result = await pool.query(mainQuery, queryParamsForMainQuery);
 
-    const pricesWithCalc = result.rows.map(row => { /* ... כפי שהיה ... */ });
+    const pricesWithCalc = result.rows.map(row => {
+      const calculatedPrice = calcPricePer100g({
+        regular_price: row.regular_price,
+        sale_price: row.sale_price,
+        unit_for_price: row.unit_for_price,
+        quantity_for_price: row.quantity_for_price,
+        default_weight_per_unit_grams: row.default_weight_per_unit_grams
+      });
+      
+      return {
+        ...row,
+        calculated_price_per_100g: calculatedPrice,
+        likes_count: parseInt(row.likes_count, 10) || 0
+      };
+    });
     
     res.json({ 
         data: pricesWithCalc, 
@@ -399,7 +413,14 @@ const likePriceReport = async (req, res, next) => {
     );
 
     const updatedPrice = await getFullPriceDetails(numericPriceId, req.user.id);
-    res.json(updatedPrice);
+    res.json({
+      message: 'Price report liked successfully',
+      priceId: numericPriceId,
+      userId: req.user.id,
+      userLiked: updatedPrice.current_user_liked,
+      likesCount: updatedPrice.likes_count,
+      ...updatedPrice
+    });
 
   } catch (err) {
     console.error(`Error liking price report ${priceId}:`, err.message);
@@ -426,7 +447,14 @@ const unlikePriceReport = async (req, res, next) => {
     );
 
     const updatedPrice = await getFullPriceDetails(numericPriceId, req.user.id);
-    res.json(updatedPrice);
+    res.json({
+      message: 'Price report unliked successfully',
+      priceId: numericPriceId,
+      userId: req.user.id,
+      userLiked: updatedPrice.current_user_liked,
+      likesCount: updatedPrice.likes_count,
+      ...updatedPrice
+    });
 
   } catch (err) {
     console.error(`Error unliking price report ${priceId}:`, err.message);
