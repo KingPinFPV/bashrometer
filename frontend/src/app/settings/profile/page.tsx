@@ -15,9 +15,23 @@ export default function EditProfilePage() {
   const router = useRouter();
 
   // Redirect if not authenticated
+  useEffect(() => {
+    if (!user || !token) {
+      router.push('/login');
+    }
+  }, [user, token, router]);
+
   if (!user || !token) {
-    router.push('/login');
-    return null;
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div className="sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+            <p className="mt-2 text-sm text-gray-600">מפנה להתחברות...</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Initialize form with current user data
