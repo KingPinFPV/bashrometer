@@ -1,8 +1,9 @@
 // src/app/report-price/page.tsx
 "use client";
 
-import { useState, FormEvent, useEffect, useRef } from 'react';
+import { useState, FormEvent, useEffect, useRef, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 interface Product {
   id: number;
@@ -18,7 +19,38 @@ interface Retailer {
 }
 
 export default function ReportPricePage() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        minHeight: 'calc(100vh - 200px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
+        padding: '2rem',
+      }}>
+        <div style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          borderRadius: '1.5rem',
+          padding: '3rem',
+          textAlign: 'center',
+          maxWidth: '500px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+        }}>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">טוען טופס דיווח מחיר...</p>
+        </div>
+      </div>
+    }>
+      <ReportPriceContent />
+    </Suspense>
+  );
+}
+
+function ReportPriceContent() {
   const { user, token, authError, checkAuthStatus, clearAuthError } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Utility function to normalize product names
   const normalizeProductName = (name: string): string => {
@@ -26,9 +58,6 @@ export default function ReportPricePage() {
       .replace(/אנטיקוט/g, 'אנטריקוט')  // Fix specific naming issue
       .replace(/\s+/g, ' '); // Replace multiple spaces with single space
   };
-  
-  // URL params for pre-filling
-  // const [searchParams, setSearchParams] = useState<URLSearchParams | null>(null);
   
   // Form states
   const [productInput, setProductInput] = useState<string>('');
@@ -45,19 +74,13 @@ export default function ReportPricePage() {
   // UI states
   const [message, setMessage] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState<boolean>(false);
   
   // Autocomplete states
   const [productSuggestions, setProductSuggestions] = useState<Product[]>([]);
   const [retailerSuggestions, setRetailerSuggestions] = useState<Retailer[]>([]);
   const [showProductDropdown, setShowProductDropdown] = useState<boolean>(false);
   const [showRetailerDropdown, setShowRetailerDropdown] = useState<boolean>(false);
-  
-  // Side lists states
-  const [meatCuts, setMeatCuts] = useState<string[]>([]);
-  const [allProducts, setAllProducts] = useState<Product[]>([]); // New: all products for sidebar
-  const [allRetailers, setAllRetailers] = useState<{id: number, name: string}[]>([]);
-  const [selectedMeatCut, setSelectedMeatCut] = useState<string>('');
-  const [selectedRetailerFromList, setSelectedRetailerFromList] = useState<{id: number, name: string} | null>(null);
 
   // New: Authentication state
   const [authValidated, setAuthValidated] = useState<boolean>(false);
@@ -89,201 +112,31 @@ export default function ReportPricePage() {
     }
   }, []);
 
-  // Load all products for sidebar synchronization
-  const loadAllProducts = async () => {
-    try {
-      const response = await fetch(`${apiBase}/api/products?limit=200`, {
-        credentials: 'include',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const products = (data.data || []).map((p: Product) => ({
-          ...p,
-          name: normalizeProductName(p.name) // Normalize all product names
-        }));
-        setAllProducts(products);
-        
-        // Extract unique meat cuts from products
-        const cuts = [...new Set(products
-          .filter((p: Product) => p.category && p.category.includes('בקר'))
-          .map((p: Product) => p.name)
-        )].slice(0, 15); // Limit to 15 most common
-        
-        setMeatCuts(cuts);
-      }
-    } catch (error) {
-      console.error('Error loading products:', error);
-    }
-  };
-
-  const loadAllRetailers = async () => {
-    try {
-      const response = await fetch(`${apiBase}/api/retailers?limit=100`, {
-        credentials: 'include',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const retailers = (data.data || []).map((r: {id: number, name: string}) => ({
-          id: r.id,
-          name: r.name
-        }));
-        setAllRetailers(retailers);
-      }
-    } catch (error) {
-      console.error('Error loading retailers:', error);
-    }
-  };
-
-  // Authentication check and data loading
+  // Enhanced auth check
   useEffect(() => {
-    const initializeAuth = async () => {
-      if (user && token) {
+    const validateAuth = async () => {
+      if (!user || !token) {
+        setShowAuthError(true);
+        return;
+      }
+
+      try {
         const isValid = await checkAuthStatus();
-        setAuthValidated(isValid);
-        if (!isValid) {
+        if (!isValid && authError) {
           setShowAuthError(true);
+        } else {
+          setAuthValidated(true);
+          setShowAuthError(false);
+          clearAuthError();
         }
-      } else if (!user) {
+      } catch (error) {
+        console.error('Auth validation error:', error);
         setShowAuthError(true);
       }
     };
 
-    const initData = async () => {
-      await loadAllProducts(); // Load products first (includes meat cuts)
-      await loadAllRetailers();
-    };
-
-    initializeAuth();
-    initData();
-  }, [user, token]); // Removed checkAuthStatus from dependencies to avoid infinite loops
-
-  // Search products autocomplete
-  const searchProducts = async (query: string) => {
-    if (query.length < 2) {
-      setProductSuggestions([]);
-      return;
-    }
-
-    try {
-      const response = await fetch(`${apiBase}/api/products?name_like=${encodeURIComponent(query)}&limit=10`, {
-        credentials: 'include',
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setProductSuggestions(data.data || []);
-      }
-    } catch (error) {
-      console.error('Error searching products:', error);
-    }
-  };
-
-  // Search retailers autocomplete
-  const searchRetailers = async (query: string) => {
-    if (query.length < 2) {
-      setRetailerSuggestions([]);
-      return;
-    }
-
-    try {
-      const response = await fetch(`${apiBase}/api/retailers?name_like=${encodeURIComponent(query)}&limit=10`, {
-        credentials: 'include',
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setRetailerSuggestions(data.data || []);
-      }
-    } catch (error) {
-      console.error('Error searching retailers:', error);
-    }
-  };
-
-  // Handle product input change
-  const handleProductInputChange = (value: string) => {
-    setProductInput(value);
-    setSelectedProduct(null);
-    setShowProductDropdown(true);
-    searchProducts(value);
-  };
-
-  // Handle retailer input change
-  const handleRetailerInputChange = (value: string) => {
-    setRetailerInput(value);
-    setSelectedRetailer(null);
-    setShowRetailerDropdown(true);
-    searchRetailers(value);
-  };
-
-  // Improved product selection with validation
-  const handleProductSelect = (product: Product) => {
-    const normalizedProduct = {
-      ...product,
-      name: normalizeProductName(product.name)
-    };
-    setSelectedProduct(normalizedProduct);
-    setProductInput(normalizedProduct.name);
-    setShowProductDropdown(false);
-    setProductSuggestions([]);
-    clearAuthError(); // Clear any auth errors on successful selection
-  };
-
-  // Improved retailer selection with validation  
-  const handleRetailerSelect = (retailer: Retailer) => {
-    setSelectedRetailer(retailer);
-    setRetailerInput(retailer.name);
-    setShowRetailerDropdown(false);
-    setRetailerSuggestions([]);
-    clearAuthError(); // Clear any auth errors on successful selection
-  };
-
-  // Handle meat cut selection from side list (find exact product match)
-  const handleMeatCutSelect = (cutName: string) => {
-    setSelectedMeatCut(cutName);
-    setProductInput(cutName);
-    
-    // Find exact product match from allProducts
-    const matchedProduct = allProducts.find(p => 
-      normalizeProductName(p.name) === normalizeProductName(cutName)
-    );
-    
-    if (matchedProduct) {
-      setSelectedProduct(matchedProduct);
-      setMessage(''); // Clear any validation errors
-    } else {
-      // If no exact match, search for suggestions
-      searchProducts(cutName);
-    }
-  };
-
-  // Handle retailer selection from side list with proper ID mapping
-  const handleRetailerFromListSelect = (retailer: {id: number, name: string}) => {
-    setSelectedRetailerFromList(retailer);
-    setRetailerInput(retailer.name);
-    setSelectedRetailer({
-      id: retailer.id,
-      name: retailer.name
-    });
-    setMessage(''); // Clear any validation errors
-  };
-
-  // Clear meat cut selection
-  const clearMeatCutSelection = () => {
-    setSelectedMeatCut('');
-    if (selectedMeatCut === productInput) {
-      setProductInput('');
-      setSelectedProduct(null);
-    }
-  };
-
-  // Clear retailer selection from list
-  const clearRetailerFromListSelection = () => {
-    setSelectedRetailerFromList(null);
-    if (selectedRetailerFromList && selectedRetailerFromList.name === retailerInput) {
-      setRetailerInput('');
-      setSelectedRetailer(null);
-    }
-  };
+    validateAuth();
+  }, [user, token, authError, checkAuthStatus, clearAuthError]);
 
   // Handle clicks outside dropdowns
   useEffect(() => {
@@ -300,101 +153,164 @@ export default function ReportPricePage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Improved form validation
-  const validateForm = (): string | null => {
-    if (!selectedProduct || !selectedProduct.id) {
-      return 'אנא בחר מוצר מהרשימה או מהרשימה הצדדית.';
-    }
-    
-    if (!selectedRetailer || !selectedRetailer.id) {
-      return 'אנא בחר קמעונאי מהרשימה או מהרשימה הצדדית.';
-    }
-    
-    if (!regularPrice || parseFloat(regularPrice) <= 0) {
-      return 'אנא הזן מחיר רגיל תקין.';
+  // Fetch product suggestions
+  const fetchProductSuggestions = async (query: string) => {
+    if (query.trim().length < 2) {
+      setProductSuggestions([]);
+      return;
     }
 
-    if (isOnSale && (!salePrice || parseFloat(salePrice) <= 0)) {
-      return 'אנא הזן מחיר מבצע תקין או בטל את סימון המבצע.';
-    }
+    try {
+      const normalizedQuery = normalizeProductName(query);
+      const response = await fetch(
+        `${apiBase}/api/autocomplete/products?q=${encodeURIComponent(normalizedQuery)}&limit=8`,
+        {
+          credentials: 'include',
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        }
+      );
 
-    if (isOnSale && parseFloat(salePrice) >= parseFloat(regularPrice)) {
-      return 'מחיר המבצע חייב להיות נמוך ממחיר רגיל.';
+      if (response.ok) {
+        const suggestions = await response.json();
+        setProductSuggestions(suggestions);
+        setShowProductDropdown(true);
+      }
+    } catch (error) {
+      console.error('Error fetching product suggestions:', error);
     }
-
-    if (!user || !user.id) {
-      return 'אנא התחבר כדי לדווח על מחירים.';
-    }
-
-    if (!authValidated) {
-      return 'יש בעיה באימות המשתמש. אנא התחבר מחדש.';
-    }
-
-    return null; // No validation errors
   };
 
-  // Handle form submission with improved validation and auth
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  // Fetch retailer suggestions
+  const fetchRetailerSuggestions = async (query: string) => {
+    if (query.trim().length < 2) {
+      setRetailerSuggestions([]);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${apiBase}/api/autocomplete/retailers?q=${encodeURIComponent(query)}&limit=8`,
+        {
+          credentials: 'include',
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        }
+      );
+
+      if (response.ok) {
+        const suggestions = await response.json();
+        setRetailerSuggestions(suggestions);
+        setShowRetailerDropdown(true);
+      }
+    } catch (error) {
+      console.error('Error fetching retailer suggestions:', error);
+    }
+  };
+
+  // Handle product input change
+  const handleProductInputChange = (value: string) => {
+    setProductInput(value);
+    setSelectedProduct(null);
     
-    // Clear previous messages
+    if (value.trim().length >= 2) {
+      fetchProductSuggestions(value);
+    } else {
+      setProductSuggestions([]);
+      setShowProductDropdown(false);
+    }
+  };
+
+  // Handle retailer input change
+  const handleRetailerInputChange = (value: string) => {
+    setRetailerInput(value);
+    setSelectedRetailer(null);
+    
+    if (value.trim().length >= 2) {
+      fetchRetailerSuggestions(value);
+    } else {
+      setRetailerSuggestions([]);
+      setShowRetailerDropdown(false);
+    }
+  };
+
+  // Handle product selection
+  const handleProductSelect = (product: Product) => {
+    setSelectedProduct(product);
+    setProductInput(product.name);
+    setShowProductDropdown(false);
+  };
+
+  // Handle retailer selection
+  const handleRetailerSelect = (retailer: Retailer) => {
+    setSelectedRetailer(retailer);
+    setRetailerInput(retailer.name);
+    setShowRetailerDropdown(false);
+  };
+
+  // Reset form function
+  const resetForm = () => {
+    setProductInput('');
+    setSelectedProduct(null);
+    setRetailerInput('');
+    setSelectedRetailer(null);
+    setRegularPrice('');
+    setSalePrice('');
+    setIsOnSale(false);
+    setNotes('');
+    setQuantity('1');
+    setUnit('kg');
     setMessage('');
-    clearAuthError();
-    
-    // Validate form
-    const validationError = validateForm();
-    if (validationError) {
-      setMessage(validationError);
-      return;
-    }
+  };
 
-    // Double-check authentication before submission
-    if (!await checkAuthStatus()) {
-      setMessage('אימות נכשל. אנא התחבר מחדש.');
-      return;
-    }
-
+  // Handle form submission
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
     setIsSubmitting(true);
+    setMessage('');
 
     try {
       const priceData = {
-        product_id: selectedProduct.id,
-        retailer_id: selectedRetailer.id,
+        product_id: selectedProduct?.id,
+        product_name: selectedProduct?.name || productInput,
+        retailer_id: selectedRetailer?.id,
+        retailer_name: selectedRetailer?.name || retailerInput,
         regular_price: parseFloat(regularPrice),
         sale_price: isOnSale && salePrice ? parseFloat(salePrice) : null,
         is_on_sale: isOnSale,
-        unit_for_price: unit,
-        quantity_for_price: parseFloat(quantity),
-        notes: notes || null,
-        source: 'user_report',
-        report_type: 'price_update'
+        quantity: parseFloat(quantity),
+        unit: unit,
+        notes: notes.trim() || null,
       };
 
       const response = await fetch(`${apiBase}/api/prices`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`, // Include auth token
+          'Authorization': `Bearer ${token}`,
         },
         credentials: 'include',
         body: JSON.stringify(priceData),
       });
 
       if (response.ok) {
-        await response.json();
-        setMessage('הדיווח נשלח בהצלחה! תודה רבה על התרומה לקהילה.');
+        const result = await response.json();
+        setShowSuccessMessage(true);
+
+        // Smart navigation logic
+        const fromProduct = searchParams.get('from') === 'product' || 
+                           (typeof window !== 'undefined' && document.referrer.includes('/products/'));
         
-        // Reset form
-        setProductInput('');
-        setSelectedProduct(null);
-        setRetailerInput('');
-        setSelectedRetailer(null);
-        setRegularPrice('');
-        setSalePrice('');
-        setIsOnSale(false);
-        setNotes('');
-        setQuantity('1');
-        setUnit('kg');
+        if (fromProduct) {
+          setMessage("הדיווח נשלח בהצלחה! ✅");
+          setTimeout(() => {
+            router.back();
+          }, 2000);
+        } else {
+          setMessage("הדיווח נשלח בהצלחה! ✅ אפשר לדווח על מוצר נוסף");
+          setTimeout(() => {
+            resetForm();
+            setShowSuccessMessage(false);
+          }, 3000);
+        }
       } else {
         const errorData = await response.json();
         setMessage(errorData.error || 'אירעה שגיאה בשליחת הדיווח. אנא נסה שוב.');
@@ -407,7 +323,59 @@ export default function ReportPricePage() {
     }
   };
 
-  // Beautiful styling with consistent app theme
+  // Authentication error display
+  if (showAuthError) {
+    return (
+      <div style={{
+        minHeight: 'calc(100vh - 200px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
+        padding: '2rem',
+      }}>
+        <div style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          borderRadius: '1.5rem',
+          padding: '3rem',
+          textAlign: 'center',
+          maxWidth: '500px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+        }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔐</div>
+          <h2 style={{ 
+            fontSize: '1.5rem', 
+            fontWeight: 'bold', 
+            color: '#1f2937', 
+            marginBottom: '1rem' 
+          }}>
+            נדרשת התחברות
+          </h2>
+          <p style={{ color: '#6b7280', marginBottom: '2rem' }}>
+            כדי לדווח על מחירים, אנא התחבר לחשבון שלך.
+          </p>
+          <button
+            onClick={() => router.push('/login')}
+            style={{
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              padding: '0.75rem 2rem',
+              borderRadius: '0.75rem',
+              border: 'none',
+              fontSize: '1rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            התחבר עכשיו
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Styling
   const containerStyle = {
     minHeight: 'calc(100vh - 200px)',
     background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
@@ -427,11 +395,10 @@ export default function ReportPricePage() {
   };
 
   const mainLayoutStyle = {
-    display: 'grid',
-    gridTemplateColumns: '1fr 300px 300px',
-    gap: '2rem',
-    alignItems: 'start',
-    maxWidth: '1400px',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    maxWidth: '800px',
     margin: '0 auto',
     position: 'relative' as const,
     zIndex: 10,
@@ -445,6 +412,8 @@ export default function ReportPricePage() {
     boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(255, 255, 255, 0.1)',
     padding: '2.5rem',
     transition: 'all 0.3s ease',
+    width: '100%',
+    maxWidth: '600px',
   };
 
   const headerStyle = {
@@ -496,603 +465,322 @@ export default function ReportPricePage() {
     boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
   };
 
-  // const inputFocusStyle = {
-  //   ...inputStyle,
-  //   borderColor: '#3b82f6',
-  //   boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
-  //   outline: 'none',
-  // };
-
-  const buttonStyle = {
-    width: '100%',
-    padding: '1rem 1.5rem',
-    background: isSubmitting 
-      ? 'linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)'
-      : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-    color: 'white',
-    border: 'none',
-    borderRadius: '12px',
-    fontSize: '1.125rem',
-    fontWeight: '600',
-    cursor: isSubmitting ? 'not-allowed' : 'pointer',
-    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    boxShadow: isSubmitting 
-      ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-      : '0 4px 14px 0 rgba(59, 130, 246, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1)',
-    transform: 'translateY(0)',
-    position: 'relative' as const,
-    overflow: 'hidden',
-  };
-
   const checkboxStyle = {
     width: '1.25rem',
     height: '1.25rem',
     accentColor: '#3b82f6',
-    marginLeft: '0.75rem',
   };
 
-  const alertStyle = (isSuccess: boolean) => ({
-    padding: '1rem',
+  const buttonStyle = {
+    backgroundColor: '#3b82f6',
+    color: 'white',
+    padding: '1rem 2rem',
     borderRadius: '0.75rem',
-    fontSize: '1rem',
-    fontWeight: '500',
-    backgroundColor: isSuccess ? '#dcfce7' : '#fee2e2',
-    color: isSuccess ? '#166534' : '#991b1b',
-    border: `2px solid ${isSuccess ? '#bbf7d0' : '#fecaca'}`,
-    animation: 'slideUp 0.4s ease-out',
-  });
-
-  // Filtered products and retailers for side lists with normalization
-  const filteredMeatCuts = meatCuts.filter(cut => 
-    normalizeProductName(cut).toLowerCase().includes(normalizeProductName(productInput).toLowerCase())
-  );
-  
-  const filteredRetailers = allRetailers.filter(retailer => 
-    retailer.name.toLowerCase().includes(retailerInput.toLowerCase())
-  );
-
-  const sideListStyle = {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    backdropFilter: 'blur(15px)',
-    border: '1px solid rgba(255, 255, 255, 0.3)',
-    borderRadius: '1.5rem',
-    padding: '1.5rem',
-    maxHeight: '500px',
-    overflowY: 'auto' as const,
-    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(255, 255, 255, 0.1)',
-    transition: 'all 0.3s ease',
-  };
-
-  const sideListHeaderStyle = {
+    border: 'none',
     fontSize: '1.125rem',
     fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: '1rem',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    background: 'linear-gradient(135deg, #3b82f6 0%, #f97316 100%)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    backgroundClip: 'text',
-  };
-
-  const sideListItemStyle = {
-    padding: '0.75rem',
-    borderRadius: '0.5rem',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
-    backgroundColor: 'white',
-    border: '1px solid #e5e7eb',
-    marginBottom: '0.5rem',
-    fontSize: '0.875rem',
+    boxShadow: '0 4px 14px 0 rgba(59, 130, 246, 0.25)',
+    transform: 'translateY(0)',
   };
 
-  const selectedItemStyle = {
-    ...sideListItemStyle,
-    backgroundColor: '#dbeafe',
-    borderColor: '#3b82f6',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  const disabledButtonStyle = {
+    ...buttonStyle,
+    backgroundColor: '#9ca3af',
+    cursor: 'not-allowed',
+    boxShadow: 'none',
   };
-
-  const clearButtonStyle = {
-    backgroundColor: '#ef4444',
-    color: 'white',
-    border: 'none',
-    borderRadius: '50%',
-    width: '1.5rem',
-    height: '1.5rem',
-    fontSize: '0.75rem',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transition: 'all 0.2s ease',
-  };
-
 
   return (
     <div style={containerStyle}>
       <div style={overlayStyle}></div>
-      <style jsx>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        input:focus {
-          border-color: #3b82f6 !important;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
-          outline: none !important;
-        }
-        textarea:focus {
-          border-color: #3b82f6 !important;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
-          outline: none !important;
-        }
-        button:hover:not(:disabled) {
-          transform: translateY(-2px) !important;
-          box-shadow: 0 8px 25px 0 rgba(59, 130, 246, 0.35) !important;
-        }
-        @media (max-width: 1200px) {
-          .main-layout {
-            grid-template-columns: 1fr !important;
-            gap: 1.5rem !important;
-          }
-          .side-lists {
-            display: grid !important;
-            grid-template-columns: 1fr 1fr !important;
-            gap: 1.5rem !important;
-          }
-        }
-        @media (max-width: 768px) {
-          .side-lists {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
-      
-      <div className="main-layout" style={mainLayoutStyle}>
-        {/* Main Form */}
+      <div style={mainLayoutStyle}>
         <div style={cardStyle}>
-        <div style={headerStyle}>
-          <div style={{fontSize: '4rem', lineHeight: '1', marginBottom: '1rem'}}>🥩</div>
-          <h1 style={titleStyle}>דיווח על מחיר חדש</h1>
-          <p style={subtitleStyle}>עזור לקהילה על ידי שיתוף מחירים עדכניים</p>
-          
-          {/* Authentication Status Display */}
-          {user && (
-            <div style={{
-              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-              color: 'white',
-              padding: '0.5rem 1rem',
-              borderRadius: '0.5rem',
-              fontSize: '0.875rem',
-              marginBottom: '1rem',
-              display: 'inline-block'
-            }}>
-              👤 מחובר כ: {user.name || user.email}
-            </div>
-          )}
-          
-          {/* Authentication Error Display */}
-          {(authError || showAuthError) && (
-            <div style={{
-              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-              color: 'white',
-              padding: '0.75rem 1rem',
-              borderRadius: '0.5rem',
-              fontSize: '0.875rem',
-              marginBottom: '1rem',
-              cursor: 'pointer'
-            }} onClick={() => {
-              clearAuthError();
-              setShowAuthError(false);
-            }}>
-              ⚠️ {authError || 'יש צורך בהתחברות למערכת'}
-              <span style={{marginRight: '1rem', fontSize: '0.75rem'}}>לחץ כדי לסגור</span>
-            </div>
-          )}
-        </div>
-        
-        <form onSubmit={handleSubmit} style={formStyle}>
-          {/* Product Autocomplete */}
-          <div ref={productDropdownRef} style={{position: 'relative'}}>
-            <label htmlFor="product" style={labelStyle}>
-              שם המוצר <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
-            </label>
-            <input
-              type="text"
-              id="product"
-              value={productInput}
-              onChange={(e) => handleProductInputChange(e.target.value)}
-              placeholder="התחל להקליד שם מוצר..."
-              style={{
-                ...inputStyle,
-                borderColor: selectedProduct ? '#10b981' : '#e5e7eb'
-              }}
-              required
-            />
-            
-            {showProductDropdown && productSuggestions.length > 0 && (
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                right: 0,
-                backgroundColor: 'white',
-                border: '2px solid #e5e7eb',
-                borderTop: 'none',
-                borderRadius: '0 0 0.75rem 0.75rem',
-                maxHeight: '200px',
-                overflowY: 'auto',
-                zIndex: 1000,
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-              }}>
-                {productSuggestions.map((product) => (
-                  <div
-                    key={product.id}
-                    onClick={() => handleProductSelect(product)}
-                    style={{
-                      padding: '0.75rem 1rem',
-                      cursor: 'pointer',
-                      borderBottom: '1px solid #f3f4f6',
-                      transition: 'background-color 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#f8fafc';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'white';
-                    }}
-                  >
-                    <div style={{fontWeight: '500', color: '#111827'}}>
-                      {product.name}
-                    </div>
-                    {product.brand && (
-                      <div style={{fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem'}}>
-                        {product.brand}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Retailer Autocomplete */}
-          <div ref={retailerDropdownRef} style={{position: 'relative'}}>
-            <label htmlFor="retailer" style={labelStyle}>
-              שם הקמעונאי <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
-            </label>
-            <input
-              type="text"
-              id="retailer"
-              value={retailerInput}
-              onChange={(e) => handleRetailerInputChange(e.target.value)}
-              placeholder="התחל להקליד שם קמעונאי..."
-              style={{
-                ...inputStyle,
-                borderColor: selectedRetailer ? '#10b981' : '#e5e7eb'
-              }}
-              required
-            />
-            
-            {showRetailerDropdown && retailerSuggestions.length > 0 && (
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                right: 0,
-                backgroundColor: 'white',
-                border: '2px solid #e5e7eb',
-                borderTop: 'none',
-                borderRadius: '0 0 0.75rem 0.75rem',
-                maxHeight: '200px',
-                overflowY: 'auto',
-                zIndex: 1000,
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-              }}>
-                {retailerSuggestions.map((retailer) => (
-                  <div
-                    key={retailer.id}
-                    onClick={() => handleRetailerSelect(retailer)}
-                    style={{
-                      padding: '0.75rem 1rem',
-                      cursor: 'pointer',
-                      borderBottom: '1px solid #f3f4f6',
-                      transition: 'background-color 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#f8fafc';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'white';
-                    }}
-                  >
-                    <div style={{fontWeight: '500', color: '#111827'}}>
-                      {retailer.name}
-                    </div>
-                    {retailer.address && (
-                      <div style={{fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem'}}>
-                        {retailer.address}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Quantity and Unit */}
-          <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
-            <div>
-              <label htmlFor="quantity" style={labelStyle}>
-                כמות <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
-              </label>
-              <input
-                type="number"
-                id="quantity"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                required
-                step="0.1"
-                min="0.1"
-                placeholder="1"
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <label htmlFor="unit" style={labelStyle}>
-                יחידה <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
-              </label>
-              <select
-                id="unit"
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                style={inputStyle}
-                required
-              >
-                <option value="kg">קילוגרם (ק״ג)</option>
-                <option value="100g">100 גרם</option>
-                <option value="g">גרם</option>
-                <option value="unit">יחידה</option>
-                <option value="package">חבילה</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="regularPrice" style={labelStyle}>
-              מחיר רגיל (₪) <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
-            </label>
-            <input
-              type="number"
-              id="regularPrice"
-              value={regularPrice}
-              onChange={(e) => setRegularPrice(e.target.value)}
-              required
-              step="0.01"
-              min="0.01"
-              placeholder="הזן מחיר במטבע ישראלי"
-              style={inputStyle}
-            />
-          </div>
-          
-          <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
-            <input
-              id="isOnSale"
-              type="checkbox"
-              checked={isOnSale}
-              onChange={(e) => {
-                setIsOnSale(e.target.checked);
-                if (!e.target.checked) {
-                  setSalePrice('');
-                }
-              }}
-              style={checkboxStyle}
-            />
-            <label htmlFor="isOnSale" style={{...labelStyle, marginBottom: 0}}>
-              מוצר זה במבצע?
-            </label>
-          </div>
-
-          {isOnSale && (
-            <div style={{animation: 'slideUp 0.4s ease-out'}}>
-              <label htmlFor="salePrice" style={labelStyle}>
-                מחיר מבצע (₪) <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
-              </label>
-              <input
-                type="number"
-                id="salePrice"
-                value={salePrice}
-                onChange={(e) => setSalePrice(e.target.value)}
-                required={isOnSale}
-                step="0.01"
-                min="0.01"
-                placeholder="הזן מחיר המבצע"
-                style={inputStyle}
-              />
-            </div>
-          )}
-
-          <div>
-            <label htmlFor="notes" style={labelStyle}>
-              הערות (אופציונלי)
-            </label>
-            <textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              placeholder="הוסף הערות נוספות כגון גודל מארז, תאריך תפוגה וכדומה..."
-              style={{
-                ...inputStyle,
-                resize: 'vertical' as const,
-                minHeight: '6rem',
-                fontFamily: 'inherit',
-              }}
-            />
+          <div style={headerStyle}>
+            <h1 style={titleStyle}>💰 דיווח מחיר</h1>
+            <p style={subtitleStyle}>
+              עזור לקהילה על ידי דיווח על מחירי בשר עדכניים
+            </p>
           </div>
 
           {message && (
-            <div style={alertStyle(message.includes('בהצלחה'))}>
+            <div style={{
+              padding: '1rem',
+              marginBottom: '1.5rem',
+              borderRadius: '0.75rem',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              textAlign: 'center',
+              backgroundColor: showSuccessMessage ? '#dcfce7' : '#fef2f2',
+              color: showSuccessMessage ? '#166534' : '#dc2626',
+              border: `1px solid ${showSuccessMessage ? '#bbf7d0' : '#fecaca'}`,
+            }}>
               {message}
             </div>
           )}
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            style={buttonStyle}
-          >
-            {isSubmitting ? (
-              <span style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'}}>
-                <div style={{
-                  width: '1.25rem',
-                  height: '1.25rem',
-                  border: '2px solid transparent',
-                  borderTop: '2px solid white',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite'
-                }}></div>
-                שולח דיווח...
-              </span>
-            ) : (
-              'שלח דיווח'
-            )}
-          </button>
-        </form>
-        </div>
-
-        {/* Side Lists */}
-        <div className="side-lists" style={{display: 'flex', flexDirection: 'column', gap: '1.5rem'}}>
-          {/* Meat Cuts List */}
-          <div style={sideListStyle}>
-            <div style={sideListHeaderStyle}>
-              <span>🥩</span>
-              <span>נתחי בשר</span>
-            </div>
-            
-            {/* Selected meat cut */}
-            {selectedMeatCut && (
-              <div style={selectedItemStyle}>
-                <span>{selectedMeatCut}</span>
-                <button
-                  onClick={clearMeatCutSelection}
-                  style={clearButtonStyle}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#dc2626';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#ef4444';
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-            )}
-            
-            {/* Available meat cuts */}
-            <div style={{maxHeight: '300px', overflowY: 'auto'}}>
-              {filteredMeatCuts
-                .filter(cut => cut !== selectedMeatCut)
-                .map((cut) => (
-                  <div
-                    key={cut}
-                    onClick={() => handleMeatCutSelect(cut)}
-                    style={sideListItemStyle}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#f1f5f9';
-                      e.currentTarget.style.borderColor = '#cbd5e1';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'white';
-                      e.currentTarget.style.borderColor = '#e5e7eb';
-                    }}
-                  >
-                    {cut}
-                  </div>
-                ))}
+        
+          <form onSubmit={handleSubmit} style={formStyle}>
+            {/* Product Autocomplete */}
+            <div ref={productDropdownRef} style={{position: 'relative'}}>
+              <label htmlFor="product" style={labelStyle}>
+                שם המוצר <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
+              </label>
+              <input
+                type="text"
+                id="product"
+                value={productInput}
+                onChange={(e) => handleProductInputChange(e.target.value)}
+                placeholder="התחל להקליד שם מוצר..."
+                style={{
+                  ...inputStyle,
+                  borderColor: selectedProduct ? '#10b981' : '#e5e7eb'
+                }}
+                required
+              />
               
-              {filteredMeatCuts.length === 0 && productInput && (
+              {showProductDropdown && productSuggestions.length > 0 && (
                 <div style={{
-                  padding: '1rem',
-                  textAlign: 'center',
-                  color: '#6b7280',
-                  fontSize: '0.875rem',
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  backgroundColor: 'white',
+                  border: '2px solid #e5e7eb',
+                  borderTop: 'none',
+                  borderRadius: '0 0 0.75rem 0.75rem',
+                  maxHeight: '200px',
+                  overflowY: 'auto',
+                  zIndex: 1000,
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                 }}>
-                  לא נמצאו נתחים תואמים
+                  {productSuggestions.map((product) => (
+                    <div
+                      key={product.id}
+                      onClick={() => handleProductSelect(product)}
+                      style={{
+                        padding: '0.75rem 1rem',
+                        cursor: 'pointer',
+                        borderBottom: '1px solid #f3f4f6',
+                        transition: 'background-color 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#f8fafc';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'white';
+                      }}
+                    >
+                      <div style={{fontWeight: '500', color: '#111827'}}>
+                        {product.name}
+                      </div>
+                      {product.brand && (
+                        <div style={{fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem'}}>
+                          {product.brand}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Retailers List */}
-          <div style={sideListStyle}>
-            <div style={sideListHeaderStyle}>
-              <span>🏪</span>
-              <span>קמעונאים</span>
-            </div>
-            
-            {/* Selected retailer */}
-            {selectedRetailerFromList && (
-              <div style={selectedItemStyle}>
-                <span>{selectedRetailerFromList.name}</span>
-                <button
-                  onClick={clearRetailerFromListSelection}
-                  style={clearButtonStyle}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#dc2626';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#ef4444';
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-            )}
-            
-            {/* Available retailers */}
-            <div style={{maxHeight: '300px', overflowY: 'auto'}}>
-              {filteredRetailers
-                .filter(retailer => !selectedRetailerFromList || retailer.id !== selectedRetailerFromList.id)
-                .map((retailer) => (
-                  <div
-                    key={retailer.id}
-                    onClick={() => handleRetailerFromListSelect(retailer)}
-                    style={sideListItemStyle}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#f1f5f9';
-                      e.currentTarget.style.borderColor = '#cbd5e1';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'white';
-                      e.currentTarget.style.borderColor = '#e5e7eb';
-                    }}
-                  >
-                    {retailer.name}
-                  </div>
-                ))}
+            {/* Retailer Autocomplete */}
+            <div ref={retailerDropdownRef} style={{position: 'relative'}}>
+              <label htmlFor="retailer" style={labelStyle}>
+                שם הקמעונאי <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
+              </label>
+              <input
+                type="text"
+                id="retailer"
+                value={retailerInput}
+                onChange={(e) => handleRetailerInputChange(e.target.value)}
+                placeholder="התחל להקליד שם קמעונאי..."
+                style={{
+                  ...inputStyle,
+                  borderColor: selectedRetailer ? '#10b981' : '#e5e7eb'
+                }}
+                required
+              />
               
-              {filteredRetailers.length === 0 && retailerInput && (
+              {showRetailerDropdown && retailerSuggestions.length > 0 && (
                 <div style={{
-                  padding: '1rem',
-                  textAlign: 'center',
-                  color: '#6b7280',
-                  fontSize: '0.875rem',
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  backgroundColor: 'white',
+                  border: '2px solid #e5e7eb',
+                  borderTop: 'none',
+                  borderRadius: '0 0 0.75rem 0.75rem',
+                  maxHeight: '200px',
+                  overflowY: 'auto',
+                  zIndex: 1000,
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                 }}>
-                  לא נמצאו קמעונאים תואמים
+                  {retailerSuggestions.map((retailer) => (
+                    <div
+                      key={retailer.id}
+                      onClick={() => handleRetailerSelect(retailer)}
+                      style={{
+                        padding: '0.75rem 1rem',
+                        cursor: 'pointer',
+                        borderBottom: '1px solid #f3f4f6',
+                        transition: 'background-color 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#f8fafc';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'white';
+                      }}
+                    >
+                      <div style={{fontWeight: '500', color: '#111827'}}>
+                        {retailer.name}
+                      </div>
+                      {retailer.address && (
+                        <div style={{fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem'}}>
+                          {retailer.address}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
-          </div>
+
+            {/* Quantity and Unit */}
+            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+              <div>
+                <label htmlFor="quantity" style={labelStyle}>
+                  כמות <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
+                </label>
+                <input
+                  type="number"
+                  id="quantity"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  required
+                  step="0.1"
+                  min="0.1"
+                  placeholder="1"
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label htmlFor="unit" style={labelStyle}>
+                  יחידה <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
+                </label>
+                <select
+                  id="unit"
+                  value={unit}
+                  onChange={(e) => setUnit(e.target.value)}
+                  style={inputStyle}
+                  required
+                >
+                  <option value="kg">קילוגרם (ק״ג)</option>
+                  <option value="100g">100 גרם</option>
+                  <option value="g">גרם</option>
+                  <option value="unit">יחידה</option>
+                  <option value="package">חבילה</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="regularPrice" style={labelStyle}>
+                מחיר רגיל (₪) <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
+              </label>
+              <input
+                type="number"
+                id="regularPrice"
+                value={regularPrice}
+                onChange={(e) => setRegularPrice(e.target.value)}
+                required
+                step="0.01"
+                min="0.01"
+                placeholder="הזן מחיר במטבע ישראלי"
+                style={inputStyle}
+              />
+            </div>
+            
+            <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+              <input
+                id="isOnSale"
+                type="checkbox"
+                checked={isOnSale}
+                onChange={(e) => {
+                  setIsOnSale(e.target.checked);
+                  if (!e.target.checked) {
+                    setSalePrice('');
+                  }
+                }}
+                style={checkboxStyle}
+              />
+              <label htmlFor="isOnSale" style={{...labelStyle, marginBottom: 0, cursor: 'pointer'}}>
+                המוצר במבצע
+              </label>
+            </div>
+
+            {isOnSale && (
+              <div>
+                <label htmlFor="salePrice" style={labelStyle}>
+                  מחיר מבצע (₪) <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
+                </label>
+                <input
+                  type="number"
+                  id="salePrice"
+                  value={salePrice}
+                  onChange={(e) => setSalePrice(e.target.value)}
+                  required={isOnSale}
+                  step="0.01"
+                  min="0.01"
+                  placeholder="הזן מחיר המבצע"
+                  style={inputStyle}
+                />
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="notes" style={labelStyle}>
+                הערות (אופציונלי)
+              </label>
+              <textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="הערות נוספות על המוצר או המחיר..."
+                rows={3}
+                style={{
+                  ...inputStyle,
+                  resize: 'vertical',
+                  minHeight: '80px',
+                }}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              style={isSubmitting ? disabledButtonStyle : buttonStyle}
+              onMouseEnter={(e) => {
+                if (!isSubmitting) {
+                  e.currentTarget.style.backgroundColor = '#2563eb';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 8px 25px 0 rgba(59, 130, 246, 0.35)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isSubmitting) {
+                  e.currentTarget.style.backgroundColor = '#3b82f6';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 14px 0 rgba(59, 130, 246, 0.25)';
+                }
+              }}
+            >
+              {isSubmitting ? '📤 שולח דיווח...' : '🚀 שלח דיווח'}
+            </button>
+          </form>
         </div>
       </div>
       
