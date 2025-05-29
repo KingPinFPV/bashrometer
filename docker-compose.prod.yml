@@ -66,6 +66,9 @@ services:
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      HOSTNAME: "0.0.0.0"
+    ports:
+      - "3001:3001"  # Expose frontend directly (for debugging)
     depends_on:
       - api
     networks:

@@ -48,6 +48,56 @@ docker-compose -f docker-compose.dev.yml down
 
 ## 🎯 Production Deployment
 
+### Option 1: Full Docker Stack (Recommended)
+
+```bash
+# Build and start production environment with nginx
+docker-compose -f docker-compose.prod.yml up -d
+
+# View logs
+docker-compose -f docker-compose.prod.yml logs -f
+
+# Stop services
+docker-compose -f docker-compose.prod.yml down
+```
+
+**Access URLs:**
+- Website: https://yourdomain.com (via nginx)
+- Direct Frontend: http://yourserver:3001 (for debugging)
+- Direct API: http://yourserver:3000 (for debugging)
+
+### Option 2: Standalone Deployment
+
+If deploying to platforms like Render, Vercel, or direct VPS:
+
+**Frontend:**
+```bash
+npm run build
+npm run start:standalone  # Uses HOSTNAME=0.0.0.0
+```
+
+**Start Commands by Platform:**
+- **Render**: `npm run start:standalone`
+- **Vercel**: Automatic (uses Next.js built-in)
+- **Docker**: `node .next/standalone/server.js` (with HOSTNAME=0.0.0.0)
+- **PM2**: `pm2 start .next/standalone/server.js --name frontend`
+
+### Environment Variables for Production
+
+```env
+# Frontend (.env.local)
+NODE_ENV=production
+NEXT_PUBLIC_API_URL=https://api.yourdomain.com
+HOSTNAME=0.0.0.0
+
+# API (.env)
+NODE_ENV=production
+PORT=3000
+DATABASE_URL=postgresql://user:pass@host:5432/db
+JWT_SECRET=your-64-char-secret
+ALLOWED_ORIGINS=https://yourdomain.com
+```
+
 1. **Prepare production environment:**
    ```bash
    # Set production environment variables
