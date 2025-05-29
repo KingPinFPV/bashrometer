@@ -1,8 +1,18 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
   // Enable standalone mode for Docker in production
   ...(process.env.NODE_ENV === 'production' && { output: 'standalone' }),
+  
+  // Configure webpack to handle @ path alias
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': path.resolve(__dirname, 'src'),
+    };
+    return config;
+  },
   
   // TypeScript and ESLint configuration for production builds
   typescript: {
