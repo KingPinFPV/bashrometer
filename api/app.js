@@ -21,7 +21,10 @@ const allowedOrigins = [
   'http://localhost:3002', // Frontend port for development
   'http://localhost:3001', // Alternative frontend port
   // הוסף כאן עוד Origins אם יש לך סביבות נוספות
-  // לדוגמה, אם הייתה לך כתובת Codespace:
+  // כתובות פרודקשן:
+  'https://basarometer.org',
+  'https://www.basarometer.org',
+  'https://bashrometer-frontend.onrender.com' 
   // 'https://your-codespace-name-random-string.app.github.dev' 
 ];
 
