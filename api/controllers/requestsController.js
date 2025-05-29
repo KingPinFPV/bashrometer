@@ -143,7 +143,7 @@ const getPendingProductRequests = async (req, res, next) => {
     const result = await pool.query(
       `SELECT 
         pr.*,
-        u.username as requested_by_username
+        u.name as requested_by_username
       FROM product_requests pr
       JOIN users u ON pr.requested_by = u.id
       WHERE pr.status = 'pending'
@@ -179,7 +179,7 @@ const getPendingRetailerRequests = async (req, res, next) => {
     const result = await pool.query(
       `SELECT 
         rr.*,
-        u.username as requested_by_username
+        u.name as requested_by_username
       FROM retailer_requests rr
       JOIN users u ON rr.requested_by = u.id
       WHERE rr.status = 'pending'
