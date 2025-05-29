@@ -20,4 +20,24 @@ router.post('/login', authRateLimit, authController.login);
 // @access  Private (requires token)
 router.get('/me', authenticateToken, authController.me);
 
+// @route   PUT /api/auth/change-password
+// @desc    Change user password
+// @access  Private (requires token, with rate limiting)
+router.put('/change-password', authRateLimit, authenticateToken, authController.changePassword);
+
+// @route   POST /api/auth/forgot-password
+// @desc    Send password reset email
+// @access  Public (with rate limiting)
+router.post('/forgot-password', authRateLimit, authController.forgotPassword);
+
+// @route   POST /api/auth/reset-password
+// @desc    Reset password using token
+// @access  Public (with rate limiting)
+router.post('/reset-password', authRateLimit, authController.resetPassword);
+
+// @route   PUT /api/auth/update-profile
+// @desc    Update user profile (name, email)
+// @access  Private (requires token, with rate limiting)
+router.put('/update-profile', authRateLimit, authenticateToken, authController.updateProfile);
+
 module.exports = router;

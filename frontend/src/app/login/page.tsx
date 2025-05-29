@@ -236,6 +236,17 @@ export default function LoginPage() {
             {isLoading ? '⏳ מתחבר...' : '🚀 התחבר'}
           </button>
         </form>
+        
+        <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+          <Link href="/forgot-password" style={{
+            ...linkTextStyle,
+            fontSize: '0.875rem',
+            textDecoration: 'underline',
+          }}>
+            שכחתי סיסמה
+          </Link>
+        </div>
+        
         <p style={linkStyle}>
           אין לך עדיין חשבון?{' '}
           <Link href="/register" style={linkTextStyle}>

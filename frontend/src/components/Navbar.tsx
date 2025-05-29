@@ -197,6 +197,21 @@ const Navbar = () => {
                 👋 שלום, {user.name || user.email}!
               </span>
               
+              <Link 
+                href="/settings" 
+                style={linkStyle}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                  e.currentTarget.style.color = '#fbbf24';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = '#e2e8f0';
+                }}
+              >
+                ⚙️ הגדרות
+              </Link>
+              
               <button
                 onClick={logout}
                 style={logoutButtonStyle}
