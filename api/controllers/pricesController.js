@@ -216,33 +216,96 @@ const getPriceById = async (req, res, next) => {
 
 const createPriceReport = async (req, res, next) => {
   const {
-    product_id, retailer_id, regular_price, sale_price, is_on_sale,
-    unit_for_price, quantity_for_price, notes, source = 'user_report',
-    report_type = 'community', price_valid_from, price_valid_to
+    // New format (from frontend)
+    product_name, retailer_name, price, sale_price, is_on_sale,
+    unit, quantity, notes,
+    // Legacy format (backward compatibility)
+    product_id, retailer_id, regular_price,
+    unit_for_price, quantity_for_price,
+    // Optional fields
+    source = 'user_report', report_type = 'community', 
+    price_valid_from, price_valid_to
   } = req.body;
-
-  // Validation
-  if (!product_id || !retailer_id || !regular_price || !unit_for_price || !quantity_for_price) {
-    return res.status(400).json({
-      error: 'Missing required fields: product_id, retailer_id, regular_price, unit_for_price, quantity_for_price'
-    });
-  }
 
   if (!req.user || !req.user.id) {
     return res.status(401).json({ error: 'User authentication required to submit price reports.' });
   }
 
   try {
-    // Verify product exists
-    const productCheck = await pool.query('SELECT id FROM products WHERE id = $1 AND is_active = TRUE', [product_id]);
-    if (productCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'Product not found or inactive.' });
+    let finalProductId, finalRetailerId;
+    let finalRegularPrice, finalUnit, finalQuantity;
+
+    // Handle new format (product_name + retailer_name)
+    if (product_name && retailer_name) {
+      // Find or create product
+      let productResult = await pool.query(
+        'SELECT id FROM products WHERE LOWER(name) = LOWER($1) AND is_active = TRUE', 
+        [product_name.trim()]
+      );
+      
+      if (productResult.rows.length === 0) {
+        // Create new product
+        const createProductResult = await pool.query(
+          'INSERT INTO products (name, is_active) VALUES ($1, TRUE) RETURNING id',
+          [product_name.trim()]
+        );
+        finalProductId = createProductResult.rows[0].id;
+      } else {
+        finalProductId = productResult.rows[0].id;
+      }
+
+      // Find or create retailer
+      let retailerResult = await pool.query(
+        'SELECT id FROM retailers WHERE LOWER(name) = LOWER($1) AND is_active = TRUE', 
+        [retailer_name.trim()]
+      );
+      
+      if (retailerResult.rows.length === 0) {
+        // Create new retailer
+        const createRetailerResult = await pool.query(
+          'INSERT INTO retailers (name, is_active) VALUES ($1, TRUE) RETURNING id',
+          [retailer_name.trim()]
+        );
+        finalRetailerId = createRetailerResult.rows[0].id;
+      } else {
+        finalRetailerId = retailerResult.rows[0].id;
+      }
+
+      // Use new format values with defaults
+      finalRegularPrice = price || regular_price;
+      finalUnit = unit || 'kg'; // Default unit
+      finalQuantity = quantity || 1; // Default quantity
+
+    } else if (product_id && retailer_id) {
+      // Handle legacy format
+      finalProductId = product_id;
+      finalRetailerId = retailer_id;
+      finalRegularPrice = regular_price;
+      finalUnit = unit_for_price;
+      finalQuantity = quantity_for_price;
+
+      // Verify product exists
+      const productCheck = await pool.query('SELECT id FROM products WHERE id = $1 AND is_active = TRUE', [product_id]);
+      if (productCheck.rows.length === 0) {
+        return res.status(404).json({ error: 'Product not found or inactive.' });
+      }
+
+      // Verify retailer exists
+      const retailerCheck = await pool.query('SELECT id FROM retailers WHERE id = $1 AND is_active = TRUE', [retailer_id]);
+      if (retailerCheck.rows.length === 0) {
+        return res.status(404).json({ error: 'Retailer not found or inactive.' });
+      }
+    } else {
+      return res.status(400).json({
+        error: 'Missing required fields. Provide either (product_name, retailer_name, price) or (product_id, retailer_id, regular_price, unit_for_price, quantity_for_price)'
+      });
     }
 
-    // Verify retailer exists
-    const retailerCheck = await pool.query('SELECT id FROM retailers WHERE id = $1 AND is_active = TRUE', [retailer_id]);
-    if (retailerCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'Retailer not found or inactive.' });
+    // Validation
+    if (!finalRegularPrice || !finalUnit || !finalQuantity) {
+      return res.status(400).json({
+        error: 'Missing required price information'
+      });
     }
 
     // User role-based status logic
@@ -261,10 +324,10 @@ const createPriceReport = async (req, res, next) => {
     `;
 
     const values = [
-      product_id, retailer_id, req.user.id, regular_price, 
+      finalProductId, finalRetailerId, req.user.id, finalRegularPrice, 
       is_on_sale && sale_price ? sale_price : null, 
       is_on_sale || false,
-      unit_for_price, quantity_for_price, notes || null, 
+      finalUnit, finalQuantity, notes || null, 
       source, report_type,
       price_valid_from || null, 
       price_valid_to || null,

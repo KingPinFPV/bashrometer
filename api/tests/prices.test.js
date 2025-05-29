@@ -272,6 +272,78 @@ describe('Prices API Endpoints', () => {
            expect(res.statusCode).toEqual(401);
        });
    });
+
+   // Test new format with product_name and retailer_name
+   describe('New format with product names', () => {
+       it('should create price report with product_name and retailer_name (new format)', async () => {
+           const res = await request(app)
+               .post('/api/prices')
+               .set('Authorization', `Bearer ${testUserToken}`)
+               .send({
+                   product_name: 'חזה עוף טרי',
+                   retailer_name: 'שופרסל דיזנגוף',
+                   price: 42.90,
+                   sale_price: 35.90,
+                   is_on_sale: true,
+                   unit: 'kg',
+                   quantity: 1,
+                   notes: 'מבצע שבועי'
+               });
+
+           expect(res.statusCode).toEqual(201);
+           expect(res.body.message).toEqual('Price report created successfully');
+           expect(res.body.price).toBeDefined();
+           expect(res.body.price.product_name).toEqual('חזה עוף טרי');
+           expect(res.body.price.retailer_name).toEqual('שופרסל דיזנגוף');
+           expect(res.body.price.regular_price).toEqual('42.90');
+           expect(res.body.price.sale_price).toEqual('35.90');
+           expect(res.body.price.is_on_sale).toBe(true);
+           expect(res.body.price.unit_for_price).toEqual('kg');
+           expect(parseFloat(res.body.price.quantity_for_price)).toEqual(1);
+       });
+
+       it('should create new product and retailer if they do not exist', async () => {
+           const uniqueProductName = `מוצר חדש ${Date.now()}`;
+           const uniqueRetailerName = `קמעונאי חדש ${Date.now()}`;
+
+           const res = await request(app)
+               .post('/api/prices')
+               .set('Authorization', `Bearer ${testUserToken}`)
+               .send({
+                   product_name: uniqueProductName,
+                   retailer_name: uniqueRetailerName,
+                   price: 25.50,
+                   unit: 'kg',
+                   quantity: 1
+               });
+
+           expect(res.statusCode).toEqual(201);
+           expect(res.body.price.product_name).toEqual(uniqueProductName);
+           expect(res.body.price.retailer_name).toEqual(uniqueRetailerName);
+
+           // Verify they were created in the database
+           const productCheck = await pool.query('SELECT id FROM products WHERE name = $1', [uniqueProductName]);
+           expect(productCheck.rows.length).toEqual(1);
+
+           const retailerCheck = await pool.query('SELECT id FROM retailers WHERE name = $1', [uniqueRetailerName]);
+           expect(retailerCheck.rows.length).toEqual(1);
+       });
+
+       it('should use defaults for unit and quantity when not provided', async () => {
+           const res = await request(app)
+               .post('/api/prices')
+               .set('Authorization', `Bearer ${testUserToken}`)
+               .send({
+                   product_name: 'בשר טחון',
+                   retailer_name: 'מגה',
+                   price: 38.90
+               });
+
+           expect(res.statusCode).toEqual(201);
+           expect(res.body.price.unit_for_price).toEqual('kg'); // Default unit
+           expect(parseFloat(res.body.price.quantity_for_price)).toEqual(1); // Default quantity
+       });
+   });
 }); 
 
 if (!expect.toBeOneOf) { 
