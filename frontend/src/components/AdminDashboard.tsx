@@ -7,13 +7,10 @@ import {
   Package, 
   Store, 
   FileText, 
-  Users,
   TrendingUp, 
   CheckCircle,
   Clock,
   XCircle,
-  Eye,
-  Heart,
   AlertCircle
 } from 'lucide-react';
 

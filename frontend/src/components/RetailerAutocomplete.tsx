@@ -251,7 +251,7 @@ export default function RetailerAutocomplete({
       {showSuggestions && !isLoading && !error && suggestions.length === 0 && inputValue.trim().length >= minLength && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
           <div className="px-3 py-2 text-gray-600 text-sm">
-            לא נמצאו קמעונאים עבור "{inputValue}"
+            לא נמצאו קמעונאים עבור &quot;{inputValue}&quot;
           </div>
           {allowNewRequests && onNewRetailerRequest && (
             <div className="border-t border-gray-300">
@@ -263,7 +263,7 @@ export default function RetailerAutocomplete({
                 }}
                 className="w-full px-3 py-2 text-left text-sm text-primary-600 hover:bg-primary-50 focus:outline-none focus:bg-primary-50"
               >
-                + בקש להוסיף קמעונאי חדש: "{inputValue.trim()}"
+                + בקש להוסיף קמעונאי חדש: &quot;{inputValue.trim()}&quot;
               </button>
             </div>
           )}
