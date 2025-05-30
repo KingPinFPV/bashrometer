@@ -94,13 +94,25 @@ export default function ProductDetailPage() {
     });
   };
 
-  // פונקציה לקבלת המחיר הטוב ביותר
+  // פונקציה לקבלת המחיר הטוב ביותר (הזול ביותר מהמחירים העדכניים)
   const getBestCurrentPrice = (prices: PriceExample[]) => {
     if (!prices.length) return null;
     
     const uniquePrices = getUniqueLatestPrices(prices);
     const sortedPrices = sortByEffectivePrice(uniquePrices);
-    return sortedPrices[0];
+    return sortedPrices[0]; // הזול ביותר
+  };
+
+  // פונקציה לקבלת המחיר האחרון שדווח (ללא תלות במחיר)
+  const getLatestReportedPrice = (prices: PriceExample[]) => {
+    if (!prices.length) return null;
+    
+    // מיון לפי תאריך דיווח - האחרון ראשון
+    const sortedByDate = [...prices].sort((a, b) => 
+      new Date(b.submission_date).getTime() - new Date(a.submission_date).getTime()
+    );
+    
+    return sortedByDate[0]; // המחיר שדווח הכי לאחרונה
   };
 
 
@@ -479,6 +491,7 @@ export default function ProductDetailPage() {
               const uniqueLatestPrices = getUniqueLatestPrices(product.price_examples);
               const sortedPrices = sortByEffectivePrice(uniqueLatestPrices);
               const bestPrice = getBestCurrentPrice(product.price_examples);
+              const latestPrice = getLatestReportedPrice(product.price_examples);
               
               return (
                 <div>
@@ -493,6 +506,61 @@ export default function ProductDetailPage() {
                       color: '#cbd5e1'
                     }}>
                       <strong>Debug:</strong> {product.price_examples.length} דיווחים כולל, {uniqueLatestPrices.length} ייחודיים עדכניים
+                      <br />
+                      <strong>Best Price:</strong> {bestPrice ? `₪${bestPrice.calculated_price_per_100g?.toFixed(2)} at ${bestPrice.retailer}` : 'None'}
+                      <br />
+                      <strong>Latest Price:</strong> {latestPrice ? `₪${latestPrice.calculated_price_per_100g?.toFixed(2)} at ${latestPrice.retailer} (${new Date(latestPrice.submission_date).toLocaleDateString()})` : 'None'}
+                    </div>
+                  )}
+
+                  {/* המחיר האחרון שדווח */}
+                  {latestPrice && (
+                    <div style={{
+                      background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(37, 99, 235, 0.1) 100%)',
+                      border: '2px solid rgba(59, 130, 246, 0.5)',
+                      borderRadius: '16px',
+                      padding: '1.5rem',
+                      marginBottom: '1.5rem',
+                      position: 'relative'
+                    }}>
+                      <div style={{
+                        position: 'absolute',
+                        top: '-12px',
+                        right: '20px',
+                        background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                        color: 'white',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '20px',
+                        fontSize: '0.75rem',
+                        fontWeight: 'bold',
+                        boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                      }}>
+                        🕐 המחיר האחרון שדווח
+                      </div>
+                      
+                      <div style={{display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem'}}>
+                        <span style={{fontSize: '2rem', fontWeight: 'bold', color: '#3b82f6'}}>
+                          ₪{latestPrice.calculated_price_per_100g ? latestPrice.calculated_price_per_100g.toFixed(2) : 'N/A'}
+                        </span>
+                        <span style={{color: '#ffffff', fontSize: '1.25rem'}}>
+                          ב{latestPrice.retailer}
+                        </span>
+                        <span style={{color: '#cbd5e1', fontSize: '0.875rem'}}>
+                          דווח ב-{new Date(latestPrice.submission_date).toLocaleDateString('he-IL')}
+                        </span>
+                        {latestPrice.sale_price && latestPrice.sale_price < latestPrice.regular_price && (
+                          <span style={{
+                            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                            color: 'white',
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: 'bold'
+                          }}>
+                            🏷️ מבצע!
+                          </span>
+                        )}
+                      </div>
                     </div>
                   )}
                   

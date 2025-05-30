@@ -46,6 +46,9 @@ export default function ComparePage() {
   const [serverStatus, setServerStatus] = useState<'checking' | 'awake' | 'sleeping'>('checking');
   const [showOfflineData, setShowOfflineData] = useState(false);
 
+  // API base URL - use environment variable
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
   // Cache helpers
   const getCachedData = (key: string) => {
     try {
@@ -74,7 +77,7 @@ export default function ComparePage() {
   // Server status check
   const checkServerStatus = async () => {
     try {
-      const response = await fetch('https://bashrometer-api.onrender.com/healthz', {
+      const response = await fetch(`${API_BASE}/healthz`, {
         method: 'HEAD',
         signal: AbortSignal.timeout(10000)
       });
@@ -90,9 +93,9 @@ export default function ComparePage() {
     console.log('🔄 מנסה להעיר את השרת...');
     
     const wakePromises = [
-      fetch('https://bashrometer-api.onrender.com/healthz').catch(() => null),
-      fetch('https://bashrometer-api.onrender.com/').catch(() => null),
-      fetch('https://bashrometer-api.onrender.com/api/products?limit=1').catch(() => null)
+      fetch(`${API_BASE}/healthz`).catch(() => null),
+      fetch(`${API_BASE}/`).catch(() => null),
+      fetch(`${API_BASE}/api/products?limit=1`).catch(() => null)
     ];
     
     await Promise.allSettled(wakePromises);
@@ -235,9 +238,9 @@ export default function ComparePage() {
 
       // Fetch all data - ensure prices are sorted by latest first
       const [productsRes, retailersRes, pricesRes] = await Promise.all([
-        fetch('https://bashrometer-api.onrender.com/api/products?limit=100', { headers }),
-        fetch('https://bashrometer-api.onrender.com/api/retailers?limit=100', { headers }),
-        fetch('https://bashrometer-api.onrender.com/api/prices?limit=500&status=approved&sort_by=reported_at&order=DESC', { headers })
+        fetch(`${API_BASE}/api/products?limit=100`, { headers }),
+        fetch(`${API_BASE}/api/retailers?limit=100`, { headers }),
+        fetch(`${API_BASE}/api/prices?limit=500&status=approved&sort_by=reported_at&order=DESC`, { headers })
       ]);
 
       if (!productsRes.ok || !retailersRes.ok) {
