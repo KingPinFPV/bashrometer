@@ -75,6 +75,9 @@ try {
   const productsRoutes = require('./routes/products');
   console.log('✅ Products routes module loaded');
   
+  const categoriesRoutes = require('./routes/categories');
+  console.log('✅ Categories routes module loaded');
+  
   console.log('🔗 Mounting routes to Express app...');
   
   // Mount routes to Express app
@@ -89,6 +92,9 @@ try {
   
   app.use('/api/products', productsRoutes);
   console.log('✅ /api/products mounted');
+  
+  app.use('/api/categories', categoriesRoutes);
+  console.log('✅ /api/categories mounted');
   
   console.log('🎯 All routes successfully mounted to Express app');
   
@@ -215,6 +221,7 @@ const server = app.listen(PORT, '0.0.0.0', async (err) => {
   console.log(`🔗 Debug routes: http://0.0.0.0:${PORT}/api/debug/routes`);
   console.log(`📦 Products API: http://0.0.0.0:${PORT}/api/products`);
   console.log(`🔪 Cuts API: http://0.0.0.0:${PORT}/api/cuts`);
+  console.log(`📂 Categories API: http://0.0.0.0:${PORT}/api/categories`);
   console.log(`🔐 Auth API: http://0.0.0.0:${PORT}/api/auth`);
   console.log('🚀 All API endpoints should be functional!');
   
