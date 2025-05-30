@@ -217,37 +217,43 @@ app.use('*', (req, res) => {
   });
 });
 
-console.log('🔄 Starting server...');
+console.log('🔄 Loading routes BEFORE starting server...');
 
-// **זה החלק הקריטי - שרת חייב להתחיל**
-const server = app.listen(PORT, '0.0.0.0', (err) => {
-  if (err) {
-    console.error('❌ Failed to start server:', err);
-    process.exit(1);
-  }
+// **קריטי: טען routes לפני שהשרת מתחיל להאזין**
+loadRoutes().then(() => {
+  console.log('🎯 Routes loading completed - starting server...');
   
-  console.log(`✅ Server running on port ${PORT}`);
-  console.log(`🌐 Server listening on 0.0.0.0:${PORT}`);
-  console.log(`🏥 Health check: http://0.0.0.0:${PORT}/health`);
-  console.log(`📊 Status: http://0.0.0.0:${PORT}/api/status`);
+  // **עכשיו התחל את השרת עם כל ה-routes**
+  const server = app.listen(PORT, '0.0.0.0', (err) => {
+    if (err) {
+      console.error('❌ Failed to start server:', err);
+      process.exit(1);
+    }
+    
+    console.log(`✅ Server running on port ${PORT}`);
+    console.log(`🌐 Server listening on 0.0.0.0:${PORT}`);
+    console.log(`🏥 Health check: http://0.0.0.0:${PORT}/health`);
+    console.log(`📊 Status: http://0.0.0.0:${PORT}/api/status`);
+    console.log(`🔗 Debug routes: http://0.0.0.0:${PORT}/api/debug/routes`);
+    console.log(`📦 Products API: http://0.0.0.0:${PORT}/api/products`);
+  });
   
-  // טען routes לאחר שהשרת עלה
-  setTimeout(() => {
-    loadRoutes().then(() => {
-      console.log('🎯 Routes loading completed');
-    }).catch(err => {
-      console.error('💥 Routes loading crashed:', err.message);
-    });
-  }, 1000);
+}).catch(err => {
+  console.error('💥 Routes loading failed - starting server anyway:', err.message);
+  
+  // **אם routes נכשלו, עדיין התחל את השרת**
+  const server = app.listen(PORT, '0.0.0.0', (err) => {
+    if (err) {
+      console.error('❌ Failed to start server:', err);
+      process.exit(1);
+    }
+    
+    console.log(`⚠️ Server running on port ${PORT} (routes may be incomplete)`);
+    console.log(`🏥 Health check: http://0.0.0.0:${PORT}/health`);
+  });
 });
 
-// Timeout fallback - אם השרת לא עולה תוך 10 שניות
-setTimeout(() => {
-  if (!server.listening) {
-    console.error('❌ Server startup timeout - forcing exit');
-    process.exit(1);
-  }
-}, 10000);
+// Remove timeout fallback since we now wait for routes before starting
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
