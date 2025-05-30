@@ -1,0 +1,17 @@
+name: Keep API Alive
+on:
+  schedule:
+    - cron: '*/10 * * * *'  # כל 10 דקות
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Bashrometer API
+        run: |
+          echo "Pinging API..."
+          curl -f https://bashrometer-api.onrender.com/healthz || echo "API is sleeping, trying to wake up..."
+          sleep 30
+          curl -f https://bashrometer-api.onrender.com/healthz || echo "Still warming up..."
+          echo "Keep-alive ping completed"

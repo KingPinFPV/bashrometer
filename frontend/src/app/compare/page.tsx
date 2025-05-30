@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { AlertTriangle, RefreshCw, Clock, Wifi, WifiOff } from 'lucide-react';
 
 interface PriceData {
   productId: number;
@@ -25,6 +26,8 @@ interface Product {
   category: string;
 }
 
+const API_BASE = 'https://bashrometer-api.onrender.com';
+
 export default function ComparePage() {
   const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
@@ -34,6 +37,63 @@ export default function ComparePage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'name' | 'avgPrice'>('name');
   const [isMobile, setIsMobile] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const [serverStatus, setServerStatus] = useState<'checking' | 'awake' | 'sleeping'>('checking');
+  const [error, setError] = useState<string | null>(null);
+
+  const checkServerStatus = async () => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const response = await fetch(`${API_BASE}/healthz`, { 
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      return response.ok;
+    } catch {
+      return false;
+    }
+  };
+
+  const wakeUpServer = async () => {
+    setServerStatus('checking');
+    console.log('🔄 מנסה להעיר את השרת...');
+    
+    let isAwake = await checkServerStatus();
+    if (isAwake) {
+      setServerStatus('awake');
+      return true;
+    }
+
+    setServerStatus('sleeping');
+    
+    const wakeUpPromises = [
+      fetch(`${API_BASE}/healthz`).catch(() => null),
+      fetch(`${API_BASE}/api/health`).catch(() => null),
+      fetch(`${API_BASE}/`).catch(() => null)
+    ];
+    
+    await Promise.allSettled(wakeUpPromises);
+    await new Promise(resolve => setTimeout(resolve, 15000));
+    
+    isAwake = await checkServerStatus();
+    if (isAwake) {
+      setServerStatus('awake');
+      return true;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 30000));
+    isAwake = await checkServerStatus();
+    
+    if (isAwake) {
+      setServerStatus('awake');
+      return true;
+    }
+
+    return false;
+  };
 
   useEffect(() => {
     const checkMobile = () => {
@@ -46,25 +106,40 @@ export default function ComparePage() {
   }, []);
 
   useEffect(() => {
-    loadComparisonData();
+    fetchData();
   }, []);
 
-  const loadComparisonData = async () => {
+  const fetchData = async (showRetrying = false) => {
     try {
       setLoading(true);
+      setError(null);
+      if (showRetrying) setRetrying(true);
       
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
+      // בדוק אם השרת ער
+      let isServerAwake = await checkServerStatus();
+      if (!isServerAwake) {
+        console.log('🔄 השרת נרדם, מנסה להעיר...');
+        isServerAwake = await wakeUpServer();
+        if (!isServerAwake) {
+          throw new Error('לא ניתן להתחבר לשרת. השרת עלול להיות עמוס או לא זמין כרגע.');
+        }
+      } else {
+        setServerStatus('awake');
+      }
       
       // טען מוצרים
-      const productsRes = await fetch(`${apiBase}/api/products?limit=100`);
+      const productsRes = await fetch(`${API_BASE}/api/products?limit=100`);
+      if (!productsRes.ok) throw new Error(`Products API error: ${productsRes.status}`);
       const productsData = await productsRes.json();
       
       // טען קמעונאים
-      const retailersRes = await fetch(`${apiBase}/api/retailers?limit=100`);
+      const retailersRes = await fetch(`${API_BASE}/api/retailers?limit=100`);
+      if (!retailersRes.ok) throw new Error(`Retailers API error: ${retailersRes.status}`);
       const retailersData = await retailersRes.json();
       
       // טען מחירים
-      const pricesRes = await fetch(`${apiBase}/api/prices?limit=1000&status=approved`);
+      const pricesRes = await fetch(`${API_BASE}/api/prices?limit=1000&status=approved`);
+      if (!pricesRes.ok) throw new Error(`Prices API error: ${pricesRes.status}`);
       const pricesData = await pricesRes.json();
       
       setProducts(productsData.products || productsData);
@@ -91,8 +166,10 @@ export default function ComparePage() {
       setPriceMatrix(matrix);
     } catch (error) {
       console.error('Error loading comparison data:', error);
+      setError(error instanceof Error ? error.message : 'שגיאה בטעינת נתוני השוואה');
     } finally {
       setLoading(false);
+      setRetrying(false);
     }
   };
 
@@ -130,10 +207,71 @@ export default function ComparePage() {
 
   const categories = [...new Set(products.map(p => p.category))].filter(Boolean);
 
+  const handleRetry = () => {
+    setLoading(true);
+    fetchData(true);
+  };
+
+  const ServerStatusIndicator = () => (
+    <div className="flex items-center gap-2 text-sm">
+      {serverStatus === 'checking' && (
+        <>
+          <Clock className="w-4 h-4 animate-spin text-yellow-500" />
+          <span className="text-yellow-600">בודק שרת...</span>
+        </>
+      )}
+      {serverStatus === 'sleeping' && (
+        <>
+          <WifiOff className="w-4 h-4 text-red-500" />
+          <span className="text-red-600">מעיר שרת...</span>
+        </>
+      )}
+      {serverStatus === 'awake' && (
+        <>
+          <Wifi className="w-4 h-4 text-green-500" />
+          <span className="text-green-600">שרת פעיל</span>
+        </>
+      )}
+    </div>
+  );
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="max-w-md mx-auto text-center p-6 bg-white rounded-lg shadow-lg">
+          <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-900 mb-2">שגיאה בטעינת נתונים</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <ServerStatusIndicator />
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
+            <strong>הסבר:</strong> השרת ב-Render Free Tier "נרדם" לאחר 15 דקות חוסר פעילות. 
+            המערכת מנסה להעיר אותו אוטומטית, אנא המתן או נסה שוב.
+          </div>
+          <button
+            onClick={handleRetry}
+            disabled={loading}
+            className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {loading ? <RefreshCw className="w-4 h-4 animate-spin inline mr-2" /> : null}
+            נסה שוב
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">טוען נתוני השוואה...</div>
+        <div className="text-center">
+          <div className="text-xl mb-4">טוען נתוני השוואה...</div>
+          <ServerStatusIndicator />
+          {retrying && (
+            <div className="mt-4 p-3 bg-yellow-50 rounded-lg text-sm text-yellow-800">
+              ⏳ מנסה להעיר את השרת... זה עלול לקחת עד דקה
+            </div>
+          )}
+        </div>
       </div>
     );
   }
@@ -165,7 +303,7 @@ export default function ComparePage() {
             </div>
             
             <button
-              onClick={loadComparisonData}
+              onClick={() => fetchData(true)}
               className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
             >
               רענן נתונים
@@ -278,7 +416,7 @@ export default function ComparePage() {
           </div>
           
           <button
-            onClick={loadComparisonData}
+            onClick={() => fetchData(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 mt-6"
           >
             רענן נתונים
