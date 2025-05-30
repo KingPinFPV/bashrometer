@@ -12,7 +12,26 @@ const getAllProducts = async (req, res) => {
       limit = 20, offset = 0, sort_by = 'name', order = 'ASC'
     } = req.query;
     
-    const validSortColumns = ['name', 'price', 'retailer', 'cut_type', 'created_at'];
+    // Check if price column exists
+    console.log('🔍 Checking table structure...');
+    const columnsQuery = `
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'products' AND table_schema = 'public'
+    `;
+    
+    const columnsResult = await pool.query(columnsQuery);
+    const columnNames = columnsResult.rows.map(row => row.column_name);
+    const hasPriceColumn = columnNames.includes('price');
+    
+    console.log('📋 Available columns:', columnNames);
+    console.log('💰 Has price column:', hasPriceColumn);
+    
+    const validSortColumns = ['name', 'created_at'];
+    if (hasPriceColumn) validSortColumns.push('price');
+    if (columnNames.includes('retailer')) validSortColumns.push('retailer');
+    if (columnNames.includes('cut_type')) validSortColumns.push('cut_type');
+    
     const sortColumn = validSortColumns.includes(sort_by) ? sort_by : 'name';
     const sortOrder = order.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
     
@@ -21,13 +40,26 @@ const getAllProducts = async (req, res) => {
     const countResult = await pool.query(countQuery);
     const total = parseInt(countResult.rows[0].count);
     
-    // Get products with pagination
+    // Build query based on available columns
+    let selectFields = 'id, name';
+    if (hasPriceColumn) {
+      selectFields += ', price';
+    } else {
+      selectFields += ', 0 as price';
+    }
+    if (columnNames.includes('retailer')) selectFields += ', retailer';
+    if (columnNames.includes('cut_type')) selectFields += ', cut_type';
+    if (columnNames.includes('weight')) selectFields += ', weight';
+    selectFields += ', created_at, updated_at';
+    
     const productsQuery = `
-      SELECT id, name, price, retailer, cut_type, weight, created_at, updated_at
+      SELECT ${selectFields}
       FROM products 
       ORDER BY ${sortColumn} ${sortOrder}
       LIMIT $1 OFFSET $2
     `;
+    
+    console.log('📝 Query:', productsQuery);
     
     const result = await pool.query(productsQuery, [parseInt(limit), parseInt(offset)]);
     
@@ -38,12 +70,20 @@ const getAllProducts = async (req, res) => {
       total: total,
       limit: parseInt(limit),
       offset: parseInt(offset),
-      count: result.rows.length
+      count: result.rows.length,
+      tableStructure: {
+        columns: columnNames,
+        hasPriceColumn: hasPriceColumn
+      }
     });
     
   } catch (error) {
     console.error('❌ Error getting products:', error);
-    res.status(500).json({ error: 'Failed to get products' });
+    console.error('Error details:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to get products',
+      details: error.message
+    });
   }
 };
 

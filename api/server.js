@@ -57,20 +57,19 @@ app.get('/health', (req, res) => {
 
 console.log('✅ Health endpoint configured');
 
-// טען routes בצורה defensive
+// Critical route loading and mounting
 let routesLoaded = false;
 
-async function loadRoutes() {
+async function loadAndMountRoutes() {
   try {
-    console.log('📁 Starting to load routes...');
+    console.log('🔄 Loading and mounting routes BEFORE server start...');
     
-    // בדוק חיבור למסד נתונים ראשית
+    // Database initialization first
     if (process.env.DATABASE_URL) {
       console.log('🔄 Testing database connection...');
       try {
         const db = require('./db');
         
-        // בדיקה פשוטה
         const client = await db.pool.connect();
         await client.query('SELECT 1');
         client.release();
@@ -80,75 +79,56 @@ async function loadRoutes() {
         try {
           const { initializeDatabase } = require('./scripts/init-database');
           await initializeDatabase();
+          console.log('✅ Database initialization completed');
         } catch (err) { 
           console.warn('⚠️ Database init warning:', err.message); 
         }
       } catch (dbError) {
         console.error('❌ Database connection failed:', dbError.message);
-        console.log('⚠️ Continuing without database-dependent routes');
+        console.log('⚠️ Continuing without database-dependent features');
       }
     }
     
-    console.log('📂 Loading route files...');
+    console.log('📂 Loading route modules...');
     
-    // נסה לטעון routes אחד אחד
-    try {
-      const cutsController = require('./controllers/cutsController');
-      console.log('✅ Cuts controller loaded');
-    } catch (e) {
-      console.error('❌ Cuts controller failed:', e.message);
-    }
+    // Load all route modules
+    const cutsRoutes = require('./routes/cuts');
+    console.log('✅ Cuts routes module loaded');
     
-    try {
-      const cutsRoutes = require('./routes/cuts');
-      app.use('/api/cuts', cutsRoutes);
-      console.log('✅ Cuts routes loaded');
-    } catch (e) {
-      console.error('❌ Cuts routes failed:', e.message);
-    }
+    const authRoutes = require('./routes/auth');
+    console.log('✅ Auth routes module loaded');
     
-    try {
-      const authRoutes = require('./routes/auth');
-      app.use('/api/auth', authRoutes);
-      console.log('✅ Auth routes loaded');
-    } catch (e) {
-      console.error('❌ Auth routes failed:', e.message);
-    }
+    const pricesRoutes = require('./routes/prices');
+    console.log('✅ Prices routes module loaded');
     
-    try {
-      const pricesRoutes = require('./routes/prices');
-      app.use('/api/prices', pricesRoutes);
-      console.log('✅ Prices routes loaded');
-    } catch (e) {
-      console.error('❌ Prices routes failed:', e.message);
-    }
+    const productsRoutes = require('./routes/products');
+    console.log('✅ Products routes module loaded');
+
+    console.log('🔗 Mounting routes to Express app...');
     
-    try {
-      const productsRoutes = require('./routes/products');
-      app.use('/api/products', productsRoutes);
-      console.log('✅ Products routes loaded');
-    } catch (e) {
-      console.error('❌ Products routes failed:', e.message);
-    }
+    // CRITICAL: Mount routes to Express app in correct order
+    app.use('/api/cuts', cutsRoutes);
+    console.log('✅ /api/cuts mounted');
     
-    console.log('✅ Route loading completed (some may have failed)');
+    app.use('/api/auth', authRoutes);
+    console.log('✅ /api/auth mounted');
+    
+    app.use('/api/prices', pricesRoutes);
+    console.log('✅ /api/prices mounted');
+    
+    app.use('/api/products', productsRoutes);
+    console.log('✅ /api/products mounted');
+    
     routesLoaded = true;
+    console.log('🎯 All routes successfully mounted to Express app');
+    
+    return true;
     
   } catch (error) {
     console.error('❌ Critical error in route loading:', error.message);
     console.error('📋 Stack:', error.stack);
-    
-    // הוסף basic endpoints אפילו אם Routes נכשלו
-    app.get('/api/status', (req, res) => {
-      res.json({ 
-        status: 'API partially available',
-        error: 'Routes loading failed',
-        timestamp: new Date().toISOString(),
-        routesLoaded: false
-      });
-    });
-    
-    console.log('⚠️ Added fallback endpoints');
+    routesLoaded = false;
+    return false;
   }
 }
 
@@ -217,13 +197,17 @@ app.use('*', (req, res) => {
   });
 });
 
-console.log('🔄 Loading routes BEFORE starting server...');
+console.log('🔄 Starting Basarometer API with route mounting...');
 
-// **קריטי: טען routes לפני שהשרת מתחיל להאזין**
-loadRoutes().then(() => {
-  console.log('🎯 Routes loading completed - starting server...');
+// **CRITICAL: Load and mount routes BEFORE server starts listening**
+loadAndMountRoutes().then(success => {
+  if (success) {
+    console.log('🎯 Routes mounted successfully - starting server...');
+  } else {
+    console.warn('⚠️ Some routes failed to mount - starting server with basic functionality...');
+  }
   
-  // **עכשיו התחל את השרת עם כל ה-routes**
+  // Start the server AFTER routes are mounted
   const server = app.listen(PORT, '0.0.0.0', (err) => {
     if (err) {
       console.error('❌ Failed to start server:', err);
@@ -236,20 +220,30 @@ loadRoutes().then(() => {
     console.log(`📊 Status: http://0.0.0.0:${PORT}/api/status`);
     console.log(`🔗 Debug routes: http://0.0.0.0:${PORT}/api/debug/routes`);
     console.log(`📦 Products API: http://0.0.0.0:${PORT}/api/products`);
+    console.log(`🔐 Auth API: http://0.0.0.0:${PORT}/api/auth`);
+    console.log(`🔪 Cuts API: http://0.0.0.0:${PORT}/api/cuts`);
+    
+    if (success) {
+      console.log('🚀 All API endpoints should be functional!');
+    } else {
+      console.log('⚠️ Some endpoints may not work due to route mounting failures');
+    }
   });
   
 }).catch(err => {
-  console.error('💥 Routes loading failed - starting server anyway:', err.message);
+  console.error('💥 Critical failure in route mounting:', err.message);
+  console.error('📋 Stack:', err.stack);
   
-  // **אם routes נכשלו, עדיין התחל את השרת**
+  // Start server anyway with basic functionality
   const server = app.listen(PORT, '0.0.0.0', (err) => {
     if (err) {
       console.error('❌ Failed to start server:', err);
       process.exit(1);
     }
     
-    console.log(`⚠️ Server running on port ${PORT} (routes may be incomplete)`);
+    console.log(`⚠️ Server running on port ${PORT} (limited functionality)`);
     console.log(`🏥 Health check: http://0.0.0.0:${PORT}/health`);
+    console.log(`📊 Status: http://0.0.0.0:${PORT}/api/status`);
   });
 });
 
