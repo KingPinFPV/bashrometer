@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import ApiHealthCheck from '@/components/ApiHealthCheck';
 
 export default function HomePage() {
   const containerStyle = {
@@ -98,6 +99,18 @@ export default function HomePage() {
   return (
     <main style={containerStyle}>
       <div style={overlayStyle}></div>
+      
+      {/* Debug Info */}
+      <div className="mb-4 p-4 bg-gray-900 bg-opacity-50 rounded-lg backdrop-blur-sm border border-gray-700">
+        <h3 className="font-semibold text-gray-200 mb-2">🔧 Debug Information</h3>
+        <div className="space-y-1 text-sm text-gray-300">
+          <div>Environment: {process.env.NODE_ENV}</div>
+          <div>API URL: {process.env.NEXT_PUBLIC_API_URL || 'Not set'}</div>
+          <div>API Base: {process.env.NEXT_PUBLIC_API_BASE_URL || 'Not set'}</div>
+          <ApiHealthCheck />
+        </div>
+      </div>
+      
       <div style={contentStyle}>
         <h1 
           style={titleStyle}

@@ -20,10 +20,27 @@ console.log('✅ Express loaded');
 
 const app = express();
 
-// Middleware בסיסי
-app.use(cors());
+// Enhanced CORS configuration
+app.use(cors({
+  origin: [
+    'https://basarometer.org',
+    'https://www.basarometer.org',
+    'https://bashrometer-fullstack.onrender.com',
+    'http://localhost:3000',
+    'http://localhost:3001'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
+// Pre-flight OPTIONS handler
+app.options('*', cors());
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+console.log('✅ CORS configured for basarometer.org');
 
 console.log('✅ Middleware configured');
 
