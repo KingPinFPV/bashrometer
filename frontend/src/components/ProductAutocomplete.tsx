@@ -85,7 +85,7 @@ export default function ProductAutocomplete({
       const data = await response.json();
       
       // Smart sorting by relevance
-      const products = data.data || [];
+      const products = data.products || [];
       const sortedProducts = products.sort((a: Product, b: Product) => {
         const queryLower = query.toLowerCase().trim();
         const aName = a.name.toLowerCase();

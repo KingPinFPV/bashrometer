@@ -70,10 +70,10 @@ const ProductsManagement: React.FC = () => {
         }
 
         const data = await response.json();
-        setProducts(data.data || []);
+        setProducts(data.products || []);
         
-        if (data.page_info) {
-          setTotalPages(Math.ceil(data.page_info.total_items / ITEMS_PER_PAGE));
+        if (data.total_items) {
+          setTotalPages(data.total_pages || Math.ceil(data.total_items / ITEMS_PER_PAGE));
         }
 
       } catch (err) {

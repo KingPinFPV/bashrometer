@@ -65,13 +65,13 @@ const AdminDashboard: React.FC = () => {
         ]);
 
         const [productsData, retailersData, pricesData] = await Promise.all([
-          productsRes.ok ? productsRes.json() : { data: [], page_info: { total_items: 0 } },
+          productsRes.ok ? productsRes.json() : { products: [], total_items: 0 },
           retailersRes.ok ? retailersRes.json() : { data: [], page_info: { total_items: 0 } },
           pricesRes.ok ? pricesRes.json() : { data: [] }
         ]);
 
         // Calculate stats
-        const totalProducts = productsData.page_info?.total_items || productsData.data?.length || 0;
+        const totalProducts = productsData.total_items || productsData.products?.length || 0;
         const totalRetailers = retailersData.page_info?.total_items || retailersData.data?.length || 0;
         const allPrices = pricesData.data || [];
         const pendingPrices = allPrices.filter((p: any) => p.status === 'pending_approval');
