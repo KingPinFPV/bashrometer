@@ -162,7 +162,16 @@ export default function ComparePage() {
       const existingDate = existing ? new Date(existing.reportedAt) : null;
       
       if (!existing || (existingDate && reportDate > existingDate) || !existingDate) {
-        const effectivePrice = sale_price && sale_price < regular_price ? sale_price : regular_price;
+        // Ensure prices are numeric
+        const regularPriceNum = parseFloat(regular_price);
+        const salePriceNum = sale_price ? parseFloat(sale_price) : null;
+        
+        if (isNaN(regularPriceNum)) {
+          console.warn(`⚠️ Invalid regular_price for product ${product_id}, retailer ${retailer_id}: ${regular_price}`);
+          return; // Skip this price report
+        }
+        
+        const effectivePrice = salePriceNum && salePriceNum < regularPriceNum ? salePriceNum : regularPriceNum;
         
         const reportDateStr = reportDate.toISOString();
         const existingDateStr = existingDate ? existingDate.toISOString() : 'No existing date';
@@ -171,9 +180,9 @@ export default function ComparePage() {
           existing ? `replacing ${existing.price} (${existingDateStr})` : 'new entry');
         
         matrix[product_id][retailer_id] = {
-          price: effectivePrice,
-          isOnSale: !!(sale_price && sale_price < regular_price),
-          originalPrice: sale_price && sale_price < regular_price ? regular_price : undefined,
+          price: effectivePrice, // Now guaranteed to be a number
+          isOnSale: !!(salePriceNum && salePriceNum < regularPriceNum),
+          originalPrice: salePriceNum && salePriceNum < regularPriceNum ? regularPriceNum : undefined,
           reportedAt: reportDate.toISOString() // Store as ISO string
         };
       } else {
@@ -213,6 +222,16 @@ export default function ComparePage() {
     return 'bg-yellow-50 text-yellow-700 border-yellow-200';
   };
 
+  // Helper function to safely format price
+  const formatPriceValue = (price: number | string | undefined): string => {
+    const numPrice = parseFloat(price);
+    if (isNaN(numPrice)) {
+      console.warn('Invalid price value:', price);
+      return 'N/A';
+    }
+    return numPrice.toFixed(0);
+  };
+
   // Format price display
   const formatPrice = (priceData: { price: number; isOnSale: boolean; originalPrice?: number; reportedAt: string }) => {
     const { price, isOnSale, originalPrice, reportedAt } = priceData;
@@ -222,8 +241,8 @@ export default function ComparePage() {
     if (isOnSale && originalPrice) {
       return (
         <div className="space-y-1">
-          <div className="font-bold">₪{price.toFixed(0)}</div>
-          <div className="text-xs line-through opacity-60">₪{originalPrice.toFixed(0)}</div>
+          <div className="font-bold">₪{formatPriceValue(price)}</div>
+          <div className="text-xs line-through opacity-60">₪{formatPriceValue(originalPrice)}</div>
           <div className="text-xs font-medium">מבצע!</div>
           <div className={`text-xs ${isRecent ? 'text-green-600' : 'text-gray-500'}`}>
             {reportDate.toLocaleDateString('he-IL')}
@@ -234,7 +253,7 @@ export default function ComparePage() {
     
     return (
       <div className="space-y-1">
-        <div className="font-bold">₪{price.toFixed(0)}</div>
+        <div className="font-bold">₪{formatPriceValue(price)}</div>
         <div className={`text-xs ${isRecent ? 'text-green-600' : 'text-gray-500'}`}>
           {reportDate.toLocaleDateString('he-IL')}
         </div>
