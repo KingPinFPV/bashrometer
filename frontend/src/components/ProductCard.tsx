@@ -5,12 +5,18 @@ import PriceDisplay from './PriceDisplay';
 interface Product {
   id: number;
   name: string;
-  brand: string | null;
-  short_description: string | null;
-  image_url: string | null;
-  category: string | null;
-  unit_of_measure: string;
-  min_price_per_100g: number | null;
+  brand?: string | null;
+  short_description?: string | null;
+  image_url?: string | null;
+  category?: string | null;
+  unit_of_measure?: string;
+  min_price_per_100g?: number | null;
+  price?: number | null;
+  retailer?: string | null;
+  cut_type?: string | null;
+  weight?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface ProductCardProps {
@@ -184,16 +190,47 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
           </div>
         )}
 
-        {product.min_price_per_100g !== null ? (
+        {product.cut_type && (
+          <div style={categoryStyle}>
+            🔪 {product.cut_type}
+          </div>
+        )}
+
+        {product.retailer && (
+          <div style={brandStyle}>
+            🏪 {product.retailer}
+          </div>
+        )}
+
+        {product.weight && (
+          <div style={brandStyle}>
+            ⚖️ {product.weight}
+          </div>
+        )}
+
+        {/* Display both regular price and normalized price if available */}
+        {(product.price != null || product.min_price_per_100g != null) ? (
           <div style={priceStyle}>
-            <PriceDisplay
-              price={product.min_price_per_100g}
-              normalizedPrice={product.min_price_per_100g}
-              unit="100g"
-              quantity={1}
-              displayMode="compact"
-              size="sm"
-            />
+            {product.price != null && (
+              <PriceDisplay
+                price={product.price}
+                normalizedPrice={product.min_price_per_100g}
+                unit={product.unit_of_measure || 'יחידה'}
+                quantity={1}
+                displayMode="compact"
+                size="sm"
+              />
+            )}
+            {product.price == null && product.min_price_per_100g != null && (
+              <PriceDisplay
+                price={product.min_price_per_100g}
+                normalizedPrice={product.min_price_per_100g}
+                unit="100g"
+                quantity={1}
+                displayMode="compact"
+                size="sm"
+              />
+            )}
           </div>
         ) : (
           <div style={noPriceStyle}>

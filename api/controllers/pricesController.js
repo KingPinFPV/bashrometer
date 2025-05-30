@@ -178,6 +178,14 @@ const getAllPrices = async (req, res, next) => {
     });
     
     res.json({ 
+        prices: pricesWithCalc,
+        total_items: totalItems,
+        total_pages: Math.ceil(totalItems / parseInt(limit)),
+        current_page: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+        items_per_page: parseInt(limit),
+        has_next: (parseInt(offset) + parseInt(limit)) < totalItems,
+        has_previous: parseInt(offset) > 0,
+        // Keep old format for backward compatibility
         data: pricesWithCalc, 
         page_info: { 
             total_items: totalItems,

@@ -7,12 +7,18 @@ import ProductCard from '@/components/ProductCard';
 interface Product {
   id: number;
   name: string;
-  brand: string | null;
-  short_description: string | null;
-  image_url: string | null;
-  category: string | null;
-  unit_of_measure: string;
-  min_price_per_100g: number | null;
+  brand?: string | null;
+  short_description?: string | null;
+  image_url?: string | null;
+  category?: string | null;
+  unit_of_measure?: string;
+  min_price_per_100g?: number | null;
+  price?: number | null;
+  retailer?: string | null;
+  cut_type?: string | null;
+  weight?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface ApiResponse {
@@ -84,6 +90,7 @@ export default function ProductsPage() {
 
       const data: ApiResponse = await response.json();
       console.log("ProductsPage fetched data:", data);
+      console.log("First product details:", data.products?.[0]);
       setProducts(data.products ?? []);
       setTotalPages(data.total_pages || Math.ceil((data.total_items || 0) / itemsPerPage));
       setCurrentPage(page);

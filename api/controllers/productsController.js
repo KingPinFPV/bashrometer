@@ -25,7 +25,7 @@ const getAllProducts = async (req, res) => {
     const productsQuery = `
       SELECT id, name, 
              COALESCE(price, 0) as price,
-             retailer, cut_type, weight, 
+             retailer, cut_type, weight, category,
              created_at, updated_at
       FROM products 
       ORDER BY ${sortColumn} ${sortOrder}
@@ -60,7 +60,7 @@ const getAllProducts = async (req, res) => {
       try {
         const fallbackQuery = `
           SELECT id, name, 0 as price,
-                 retailer, cut_type, weight, 
+                 retailer, cut_type, weight, category,
                  created_at, updated_at
           FROM products 
           ORDER BY name ASC

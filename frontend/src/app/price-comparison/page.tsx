@@ -72,7 +72,8 @@ export default function PriceComparisonPage() {
       });
       if (response.ok) {
         const data = await response.json();
-        setProductSuggestions(data.data || []);
+        console.log("Product search data:", data);
+        setProductSuggestions(data.products || data.data || []);
       }
     } catch (error) {
       console.error('Error searching products:', error);
@@ -109,7 +110,8 @@ export default function PriceComparisonPage() {
         
         if (response.ok) {
           const priceData = await response.json();
-          const prices = priceData.data || [];
+          console.log("Price comparison data for product", product.id, ":", priceData);
+          const prices = priceData.prices || priceData.data || [];
           
           if (prices.length > 0) {
             // Calculate price statistics
