@@ -243,6 +243,12 @@ export default function ComparePage() {
         fetch(`${API_BASE}/api/prices?limit=500&sort_by=reported_at&order=DESC`, { headers })
       ]);
 
+      console.log('🔍 API Response Status Codes:', {
+        products: productsRes.status,
+        retailers: retailersRes.status,
+        prices: pricesRes.status
+      });
+
       if (!productsRes.ok || !retailersRes.ok) {
         throw new Error('שגיאה בטעינת נתונים בסיסיים');
       }
@@ -252,14 +258,31 @@ export default function ComparePage() {
         retailersRes.json()
       ]);
 
+      console.log('🔍 Raw Products API Response:', productsData);
+      console.log('🔍 Raw Retailers API Response:', retailersData);
+
       let pricesData = { prices: [] };
       if (pricesRes.ok) {
         pricesData = await pricesRes.json();
+        console.log('🔍 Raw Prices API Response:', pricesData);
+      } else {
+        console.error('❌ Prices API failed with status:', pricesRes.status);
       }
 
-      const fetchedProducts = productsData.products || [];
-      const fetchedRetailers = retailersData.retailers || [];
-      const fetchedPrices = pricesData.prices || [];
+      // Try multiple parsing approaches for products
+      const fetchedProducts = Array.isArray(productsData) ? productsData : 
+                             (productsData.products || productsData.data || []);
+      console.log('🔍 Parsed Products Array:', fetchedProducts);
+      
+      // Try multiple parsing approaches for retailers
+      const fetchedRetailers = Array.isArray(retailersData) ? retailersData : 
+                              (retailersData.retailers || retailersData.data || []);
+      console.log('🔍 Parsed Retailers Array:', fetchedRetailers);
+      
+      // Try multiple parsing approaches for prices
+      const fetchedPrices = Array.isArray(pricesData) ? pricesData : 
+                           (pricesData.prices || pricesData.data || []);
+      console.log('🔍 Parsed Prices Array:', fetchedPrices);
 
       console.log('Data loaded:', {
         products: fetchedProducts.length,
