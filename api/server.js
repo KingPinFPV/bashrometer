@@ -163,6 +163,42 @@ app.get('/api/status', (req, res) => {
   });
 });
 
+// Debug endpoint to list all routes
+app.get('/api/debug/routes', (req, res) => {
+  const routes = [];
+  
+  // Get all routes from Express app
+  app._router.stack.forEach((middleware) => {
+    if (middleware.route) { // Routes registered directly on the app
+      routes.push({
+        method: Object.keys(middleware.route.methods)[0].toUpperCase(),
+        path: middleware.route.path
+      });
+    } else if (middleware.name === 'router') { // Router middleware
+      const routerRoutes = [];
+      middleware.handle.stack.forEach((handler) => {
+        if (handler.route) {
+          routerRoutes.push({
+            method: Object.keys(handler.route.methods)[0].toUpperCase(),
+            path: handler.route.path
+          });
+        }
+      });
+      routes.push({
+        baseUrl: middleware.regexp.source.replace(/\\\//g, '/').replace(/\$|\^/g, '').replace(/\?\?\*/g, ''),
+        routes: routerRoutes
+      });
+    }
+  });
+  
+  res.json({
+    message: 'Registered routes',
+    timestamp: new Date().toISOString(),
+    routes: routes,
+    routesLoaded: routesLoaded
+  });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('❌ Express Error:', err.message);
