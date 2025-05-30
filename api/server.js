@@ -14,15 +14,25 @@ const PORT = process.env.PORT || 3000; // השתמש בפורט מהגדרות �
 // אם אתה משתמש ב-db.checkConnection(), אתה יכול לקרוא לה כאן:
 const startServer = async () => {
   try {
-    if (db.checkConnection) { // בדוק אם הפונקציה קיימת לפני קריאה
-      await db.checkConnection(); // ודא שבסיס הנתונים מחובר
-    }
+    // Start server first
     app.listen(PORT, () => {
       console.log(`Bashrometer API running on port ${PORT}`);
     });
+    
+    // Check DB connection after server starts (non-blocking)
+    if (db.checkConnection) {
+      setTimeout(async () => {
+        try {
+          await db.checkConnection();
+          console.log('Database connection verified');
+        } catch (error) {
+          console.error('Database connection check failed:', error.message);
+        }
+      }, 1000);
+    }
   } catch (error) {
-    console.error('Failed to start server or connect to DB:', error);
-    process.exit(1); // צא אם השרת לא יכול לעלות בגלל בעיית DB
+    console.error('Failed to start server:', error);
+    process.exit(1);
   }
 };
 
