@@ -85,6 +85,93 @@ router.get('/:id', getNormalizedCutById);
  */
 router.post('/analyze', analyzeNewCut);
 
+/**
+ * @route GET /api/cuts/test-mapping
+ * @desc Test meat name mapping functionality
+ * @access Public
+ * @query {string} name - Name to test mapping for
+ */
+router.get('/test-mapping', async (req, res) => {
+  try {
+    const { name } = req.query;
+    
+    if (!name) {
+      return res.status(400).json({ error: 'Name parameter required' });
+    }
+    
+    const { normalizeMeatNameWithMapping, cleanHebrewText } = require('../utils/cutNormalizer');
+    
+    const mappingResult = normalizeMeatNameWithMapping(name);
+    const cleanedName = cleanHebrewText(name);
+    
+    res.json({
+      input: name,
+      cleanedInput: cleanedName,
+      mappingResult,
+      usedMapping: !!mappingResult,
+      mappingSource: mappingResult ? mappingResult.source : null,
+      confidence: mappingResult ? mappingResult.confidence : 0
+    });
+  } catch (error) {
+    console.error('Error testing mapping:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * @route GET /api/cuts/mapping-stats
+ * @desc Get statistics about mapping usage
+ * @access Public
+ */
+router.get('/mapping-stats', async (req, res) => {
+  try {
+    const { meatNamesMapping, reverseMeatNamesMapping } = require('../utils/cutNormalizer');
+    const pool = require('../db');
+    
+    // Count how many cuts used mapping vs other sources
+    const sourceStatsQuery = `
+      SELECT 
+        source,
+        COUNT(*) as count
+      FROM cut_variations
+      WHERE source IN ('mapping', 'mapping_fuzzy', 'manual', 'automatic')
+      GROUP BY source
+      ORDER BY count DESC
+    `;
+    
+    const sourceStats = await pool.query(sourceStatsQuery);
+    
+    // Total cuts and variations
+    const totalQuery = `
+      SELECT 
+        (SELECT COUNT(*) FROM normalized_cuts) as total_cuts,
+        (SELECT COUNT(*) FROM cut_variations) as total_variations,
+        (SELECT COUNT(*) FROM cut_variations WHERE source LIKE 'mapping%') as mapping_variations
+    `;
+    
+    const totals = await pool.query(totalQuery);
+    const { total_cuts, total_variations, mapping_variations } = totals.rows[0];
+    
+    const mappingCoverage = total_variations > 0 ? 
+      Math.round((parseInt(mapping_variations) / parseInt(total_variations)) * 100) : 0;
+    
+    res.json({
+      totalMappingEntries: Object.keys(meatNamesMapping).length,
+      totalMappingVariations: Object.keys(reverseMeatNamesMapping).length,
+      databaseStats: {
+        totalCuts: parseInt(total_cuts),
+        totalVariations: parseInt(total_variations),
+        mappingVariations: parseInt(mapping_variations),
+        mappingCoverage
+      },
+      sourceBreakdown: sourceStats.rows
+    });
+  } catch (error) {
+    console.error('Error getting mapping stats:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Routes requiring authentication
 
 /**

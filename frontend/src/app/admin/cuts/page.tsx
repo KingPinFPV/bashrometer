@@ -9,11 +9,27 @@ import CutSearchAutocomplete from '@/components/cuts/CutSearchAutocomplete';
 
 type TabType = 'cuts' | 'variations' | 'stats';
 
+interface MappingStats {
+  totalMappingEntries: number;
+  totalMappingVariations: number;
+  databaseStats: {
+    totalCuts: number;
+    totalVariations: number;
+    mappingVariations: number;
+    mappingCoverage: number;
+  };
+  sourceBreakdown: Array<{
+    source: string;
+    count: number;
+  }>;
+}
+
 export default function CutsManagementPage() {
   const [activeTab, setActiveTab] = useState<TabType>('cuts');
   const [cuts, setCuts] = useState<NormalizedCut[]>([]);
   const [variations, setVariations] = useState<CutVariation[]>([]);
   const [stats, setStats] = useState<CutNormalizationStats[]>([]);
+  const [mappingStats, setMappingStats] = useState<MappingStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,8 +90,25 @@ export default function CutsManagementPage() {
   };
 
   const loadStats = async () => {
-    const statsData = await CutsApiClient.getStats();
+    const [statsData, mappingData] = await Promise.all([
+      CutsApiClient.getStats(),
+      loadMappingStats()
+    ]);
     setStats(statsData);
+    setMappingStats(mappingData);
+  };
+
+  const loadMappingStats = async (): Promise<MappingStats> => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/cuts/mapping-stats`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch mapping stats');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error loading mapping stats:', error);
+      throw error;
+    }
   };
 
   const handleCutSelect = (cut: NormalizedCut) => {
@@ -254,7 +287,78 @@ export default function CutsManagementPage() {
 
   const renderStatsTab = () => (
     <div className="space-y-6">
-      {/* Stats Overview */}
+      {/* Mapping Stats Overview */}
+      {mappingStats && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+            <h3 className="text-lg font-semibold text-purple-800 mb-2">
+              🗂️ מיפוי חיצוני
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-purple-600">נתחים במיפוי:</span>
+                <span className="font-medium">{mappingStats.totalMappingEntries}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-purple-600">וריאציות במיפוי:</span>
+                <span className="font-medium">{mappingStats.totalMappingVariations}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+            <h3 className="text-lg font-semibold text-green-800 mb-2">
+              📊 כיסוי מיפוי
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-green-600">כיסוי מיפוי:</span>
+                <span className="font-medium text-2xl text-green-700">
+                  {mappingStats.databaseStats.mappingCoverage}%
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-green-600">וריאציות ממיפוי:</span>
+                <span className="font-medium">
+                  {mappingStats.databaseStats.mappingVariations}/{mappingStats.databaseStats.totalVariations}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <h3 className="text-lg font-semibold text-blue-800 mb-2">
+              🎯 דיוק מיפוי
+            </h3>
+            <div className="space-y-2 text-sm">
+              {mappingStats.sourceBreakdown.map((source) => (
+                <div key={source.source} className="flex justify-between">
+                  <span className="text-blue-600 capitalize">{source.source}:</span>
+                  <span className="font-medium">{source.count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">
+              📈 סה"כ נתונים
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">נתחים מנורמלים:</span>
+                <span className="font-medium">{mappingStats.databaseStats.totalCuts}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">סה"כ וריאציות:</span>
+                <span className="font-medium">{mappingStats.databaseStats.totalVariations}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Category Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (
           <div key={stat.category} className="bg-white p-4 rounded-lg border border-gray-200">

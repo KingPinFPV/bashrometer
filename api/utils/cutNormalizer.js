@@ -2,6 +2,34 @@
 // Hebrew meat cuts normalization utilities
 
 const pool = require('../db');
+const fs = require('fs');
+const path = require('path');
+
+// Load external meat names mapping
+let meatNamesMapping = {};
+let reverseMeatNamesMapping = {}; // For faster reverse lookup
+try {
+  const mappingData = fs.readFileSync(
+    path.join(__dirname, '../data/meat_names_mapping.json'), 
+    'utf8'
+  );
+  meatNamesMapping = JSON.parse(mappingData);
+  
+  // Create reverse mapping for faster lookups
+  Object.entries(meatNamesMapping).forEach(([normalizedName, variations]) => {
+    variations.forEach(variation => {
+      const cleanVariation = variation.trim().toLowerCase();
+      reverseMeatNamesMapping[cleanVariation] = normalizedName;
+    });
+    // Also map the normalized name to itself
+    reverseMeatNamesMapping[normalizedName.toLowerCase()] = normalizedName;
+  });
+  
+  console.log(`✅ Loaded ${Object.keys(meatNamesMapping).length} meat name mappings with ${Object.keys(reverseMeatNamesMapping).length} total variations`);
+} catch (error) {
+  console.warn('⚠️ Could not load meat names mapping:', error.message);
+  console.warn('Falling back to built-in mappings only');
+}
 
 /**
  * Mapping tables for Hebrew meat cut normalization
@@ -120,6 +148,77 @@ const hebrewCorrections = {
   'thigh': 'שוק',
   'wings': 'כנפיים'
 };
+
+/**
+ * Normalize meat name using external mapping file
+ * This has priority over built-in mappings
+ */
+function normalizeMeatNameWithMapping(meatName) {
+  if (!meatName || typeof meatName !== 'string') return null;
+  
+  const cleaned = cleanHebrewText(meatName);
+  
+  // Check direct mapping in reverse lookup
+  if (reverseMeatNamesMapping[cleaned]) {
+    return {
+      normalizedName: reverseMeatNamesMapping[cleaned],
+      source: 'mapping',
+      confidence: 1.0,
+      originalVariation: meatName.trim()
+    };
+  }
+  
+  // Check partial matches for more complex variations
+  for (const [variation, normalizedName] of Object.entries(reverseMeatNamesMapping)) {
+    // Skip exact matches (already checked above)
+    if (variation === cleaned) continue;
+    
+    const similarity = calculateSimilarity(cleaned, variation);
+    if (similarity > 0.85) {
+      return {
+        normalizedName,
+        source: 'mapping_fuzzy',
+        confidence: similarity,
+        originalVariation: meatName.trim(),
+        matchedVariation: variation
+      };
+    }
+  }
+  
+  return null; // No mapping found
+}
+
+/**
+ * Enhanced clean Hebrew text that also handles mapping-specific patterns
+ */
+function cleanHebrewTextForMapping(text) {
+  if (!text || typeof text !== 'string') return '';
+  
+  let cleaned = text.trim().toLowerCase();
+  
+  // Remove common noise words that appear in mapping variations
+  const noiseWords = [
+    'טרי', 'קפוא', 'מיובא', 'מקומי', 'פרמיום', 'איכות',
+    'מס\'', 'מס', 'לפי משקל', 'מוכשר', 'צרכני', 'חלק',
+    'אדום', 'על עצם', 'ללא עצם', 'עם עצם', 'מקוצבות',
+    'קוביות', 'פרוס', 'מיושן', 'לבישול', 'טחין'
+  ];
+  
+  noiseWords.forEach(word => {
+    const regex = new RegExp(`\\b${word}\\b`, 'gi');
+    cleaned = cleaned.replace(regex, '').trim();
+  });
+  
+  // Remove special characters and normalize spaces
+  cleaned = cleaned
+    .replace(/[^\u0590-\u05FF\u0020-\u007E\s]/g, '') // Keep Hebrew, English, and basic punctuation
+    .replace(/\s+/g, ' ') // Normalize whitespace
+    .replace(/["\']/g, '') // Remove quotes
+    .replace(/[\\\/]/g, ' ') // Replace slashes with spaces
+    .trim();
+  
+  return cleaned;
+}
 
 // Category detection keywords
 const categoryKeywords = {
@@ -443,6 +542,96 @@ async function normalizeCut(inputName, options = {}) {
   } = options;
   
   try {
+    // First, try external mapping (highest priority)
+    const mappingResult = normalizeMeatNameWithMapping(inputName);
+    
+    if (mappingResult && !forceCreate) {
+      // Found in external mapping - check if normalized cut exists in DB
+      const existingCutQuery = 'SELECT * FROM normalized_cuts WHERE LOWER(name) = LOWER($1)';
+      const existingCutResult = await pool.query(existingCutQuery, [mappingResult.normalizedName]);
+      
+      if (existingCutResult.rows.length > 0) {
+        // Use existing normalized cut
+        const normalizedCut = existingCutResult.rows[0];
+        
+        // Create/update variation record with mapping source
+        const variationQuery = `
+          INSERT INTO cut_variations (original_name, normalized_cut_id, confidence_score, source, created_by)
+          VALUES ($1, $2, $3, $4, $5)
+          ON CONFLICT (original_name, normalized_cut_id) DO UPDATE SET
+            confidence_score = EXCLUDED.confidence_score,
+            source = EXCLUDED.source,
+            updated_at = CURRENT_TIMESTAMP
+          RETURNING *
+        `;
+        
+        const variationResult = await pool.query(variationQuery, [
+          inputName,
+          normalizedCut.id,
+          mappingResult.confidence,
+          mappingResult.source,
+          userId
+        ]);
+        
+        return {
+          success: true,
+          normalizedCut,
+          variation: variationResult.rows[0],
+          isNewCut: false,
+          confidence: mappingResult.confidence,
+          source: mappingResult.source,
+          usedMapping: true,
+          mappingInfo: mappingResult
+        };
+      } else {
+        // Create new normalized cut based on mapping
+        const detectedCategory = category || detectCategory(mappingResult.normalizedName) || 'אחר';
+        const detectedCutType = cutType || detectCutType(mappingResult.normalizedName);
+        
+        const createCutQuery = `
+          INSERT INTO normalized_cuts (name, category, cut_type, is_premium)
+          VALUES ($1, $2, $3, $4)
+          RETURNING *
+        `;
+        
+        const cutResult = await pool.query(createCutQuery, [
+          mappingResult.normalizedName,
+          detectedCategory,
+          detectedCutType,
+          isPremiumCut(mappingResult.normalizedName)
+        ]);
+        
+        const normalizedCut = cutResult.rows[0];
+        
+        // Create variation record
+        const variationQuery = `
+          INSERT INTO cut_variations (original_name, normalized_cut_id, confidence_score, source, created_by)
+          VALUES ($1, $2, $3, $4, $5)
+          RETURNING *
+        `;
+        
+        const variationResult = await pool.query(variationQuery, [
+          inputName,
+          normalizedCut.id,
+          mappingResult.confidence,
+          mappingResult.source,
+          userId
+        ]);
+        
+        return {
+          success: true,
+          normalizedCut,
+          variation: variationResult.rows[0],
+          isNewCut: true,
+          confidence: mappingResult.confidence,
+          source: mappingResult.source,
+          usedMapping: true,
+          mappingInfo: mappingResult
+        };
+      }
+    }
+    
+    // Fall back to existing analysis logic if no mapping found
     const analysis = await analyzeCut(inputName);
     let normalizedCut = null;
     let variation = null;
@@ -557,6 +746,7 @@ async function getNormalizationStats() {
 
 module.exports = {
   cleanHebrewText,
+  cleanHebrewTextForMapping,
   detectCategory,
   detectCutType,
   isPremiumCut,
@@ -564,8 +754,11 @@ module.exports = {
   findBestMatch,
   analyzeCut,
   normalizeCut,
+  normalizeMeatNameWithMapping,
   getNormalizationStats,
   cutMappings,
+  meatNamesMapping,
+  reverseMeatNamesMapping,
   categoryKeywords,
   cutTypeKeywords,
   premiumKeywords
