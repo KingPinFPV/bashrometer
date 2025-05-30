@@ -5,30 +5,100 @@ const pool = require('../db');
 const fs = require('fs');
 const path = require('path');
 
-// Load external meat names mapping
+// Load external meat names mapping with improved error handling
 let meatNamesMapping = {};
 let reverseMeatNamesMapping = {}; // For faster reverse lookup
-try {
-  const mappingData = fs.readFileSync(
-    path.join(__dirname, '../data/meat_names_mapping.json'), 
-    'utf8'
-  );
-  meatNamesMapping = JSON.parse(mappingData);
-  
-  // Create reverse mapping for faster lookups
-  Object.entries(meatNamesMapping).forEach(([normalizedName, variations]) => {
-    variations.forEach(variation => {
-      const cleanVariation = variation.trim().toLowerCase();
-      reverseMeatNamesMapping[cleanVariation] = normalizedName;
+
+function loadMeatNamesMapping() {
+  try {
+    console.log('🔄 Loading meat names mapping...');
+    
+    const mappingPath = path.join(__dirname, '../data/meat_names_mapping.json');
+    console.log('📁 Mapping file path:', mappingPath);
+    
+    // Check if file exists
+    if (!fs.existsSync(mappingPath)) {
+      console.warn('⚠️ Mapping file not found at:', mappingPath);
+      console.warn('   Continuing without external mapping - using built-in mappings only');
+      return false;
+    }
+    
+    // Check file permissions and size
+    const stats = fs.statSync(mappingPath);
+    console.log('📊 Mapping file size:', stats.size, 'bytes');
+    
+    if (stats.size === 0) {
+      console.warn('⚠️ Mapping file is empty');
+      return false;
+    }
+    
+    const mappingData = fs.readFileSync(mappingPath, 'utf8');
+    console.log('📖 Read mapping file successfully');
+    
+    // Parse and validate JSON
+    let parsedMapping;
+    try {
+      parsedMapping = JSON.parse(mappingData);
+    } catch (parseError) {
+      console.error('❌ JSON parsing failed:', parseError.message);
+      return false;
+    }
+    
+    // Validate structure
+    if (typeof parsedMapping !== 'object' || parsedMapping === null) {
+      console.error('❌ Invalid mapping file structure - expected object');
+      return false;
+    }
+    
+    if (Object.keys(parsedMapping).length === 0) {
+      console.warn('⚠️ Mapping file is empty object');
+      return false;
+    }
+    
+    meatNamesMapping = parsedMapping;
+    
+    // Create reverse mapping for faster lookups
+    reverseMeatNamesMapping = {};
+    let totalVariations = 0;
+    
+    Object.entries(meatNamesMapping).forEach(([normalizedName, variations]) => {
+      if (Array.isArray(variations)) {
+        variations.forEach(variation => {
+          if (typeof variation === 'string' && variation.trim()) {
+            const cleanVariation = variation.trim().toLowerCase();
+            reverseMeatNamesMapping[cleanVariation] = normalizedName;
+            totalVariations++;
+          }
+        });
+      }
+      // Also map the normalized name to itself
+      const cleanNormalized = normalizedName.toLowerCase();
+      reverseMeatNamesMapping[cleanNormalized] = normalizedName;
     });
-    // Also map the normalized name to itself
-    reverseMeatNamesMapping[normalizedName.toLowerCase()] = normalizedName;
-  });
-  
-  console.log(`✅ Loaded ${Object.keys(meatNamesMapping).length} meat name mappings with ${Object.keys(reverseMeatNamesMapping).length} total variations`);
-} catch (error) {
-  console.warn('⚠️ Could not load meat names mapping:', error.message);
-  console.warn('Falling back to built-in mappings only');
+    
+    console.log(`✅ Loaded ${Object.keys(meatNamesMapping).length} meat name mappings`);
+    console.log(`🔄 Created ${totalVariations} variation mappings`);
+    console.log(`📊 Total reverse lookup entries: ${Object.keys(reverseMeatNamesMapping).length}`);
+    
+    return true;
+    
+  } catch (error) {
+    console.error('❌ Critical error loading meat names mapping:', error.message);
+    console.error('📋 Stack trace:', error.stack);
+    console.error('   Server will continue with built-in mappings only');
+    
+    // Reset to empty objects to ensure clean state
+    meatNamesMapping = {};
+    reverseMeatNamesMapping = {};
+    
+    return false;
+  }
+}
+
+// Load mapping on startup
+const mappingLoaded = loadMeatNamesMapping();
+if (!mappingLoaded) {
+  console.log('ℹ️ Using built-in cut mappings only');
 }
 
 /**

@@ -1,6 +1,22 @@
 // routes/cuts.js
 const express = require('express');
 const router = express.Router();
+
+// Add logging for route loading
+console.log('🔄 Loading cuts routes...');
+
+try {
+  // Test imports
+  const cutsController = require('../controllers/cutsController');
+  console.log('✅ Cuts controller loaded successfully');
+  
+  const cutNormalizer = require('../utils/cutNormalizer');
+  console.log('✅ Cut normalizer loaded successfully');
+  
+} catch (error) {
+  console.error('❌ Error loading cuts route dependencies:', error);
+  throw error;
+}
 const {
   getAllNormalizedCuts,
   getNormalizedCutById,

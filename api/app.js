@@ -75,6 +75,17 @@ if (process.env.NODE_ENV !== 'test') {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Simple health check endpoint (no DB dependency)
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    port: process.env.PORT || 'unknown',
+    uptime: process.uptime(),
+    version: '2.0.0'
+  });
+});
+
 // Health check endpoint for Render (must match /healthz in Render dashboard)
 app.get('/healthz', async (req, res) => {
   try {
@@ -87,7 +98,8 @@ app.get('/healthz', async (req, res) => {
       database: dbResult.rows.length > 0 ? 'connected' : 'disconnected',
       port: process.env.PORT || 10000,
       environment: process.env.NODE_ENV || 'production',
-      version: '1.0.0'
+      version: '2.0.0',
+      uptime: process.uptime()
     };
 
     res.status(200).json(healthStatus);
@@ -98,7 +110,8 @@ app.get('/healthz', async (req, res) => {
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
       error: error.message,
-      database: 'disconnected'
+      database: 'disconnected',
+      port: process.env.PORT || 'unknown'
     });
   }
 });
