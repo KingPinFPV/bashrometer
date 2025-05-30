@@ -107,6 +107,8 @@ export default function ComparePage() {
   const buildPriceMatrix = (priceReports: PriceReport[]): PriceMatrix => {
     const matrix: PriceMatrix = {};
     
+    console.log('🔍 Building price matrix from', priceReports.length, 'price reports');
+    
     // Group by product and retailer, keep only latest price
     priceReports.forEach(report => {
       const { product_id, retailer_id, regular_price, sale_price, reported_at } = report;
@@ -117,8 +119,14 @@ export default function ComparePage() {
       
       // Check if this is newer than existing price for this product-retailer combination
       const existing = matrix[product_id][retailer_id];
-      if (!existing || new Date(reported_at) > new Date(existing.reportedAt)) {
+      const reportDate = new Date(reported_at);
+      const existingDate = existing ? new Date(existing.reportedAt) : null;
+      
+      if (!existing || reportDate > existingDate!) {
         const effectivePrice = sale_price && sale_price < regular_price ? sale_price : regular_price;
+        
+        console.log(`📊 Product ${product_id}, Retailer ${retailer_id}: Setting price ${effectivePrice} (${reportDate.toISOString()})`, 
+          existing ? `replacing ${existing.price} (${existingDate!.toISOString()})` : 'new entry');
         
         matrix[product_id][retailer_id] = {
           price: effectivePrice,
@@ -126,8 +134,15 @@ export default function ComparePage() {
           originalPrice: sale_price && sale_price < regular_price ? regular_price : undefined,
           reportedAt: reported_at
         };
+      } else {
+        console.log(`⏭️ Product ${product_id}, Retailer ${retailer_id}: Skipping older price ${regular_price} (${reportDate.toISOString()}) - keeping ${existing.price} (${existingDate!.toISOString()})`);
       }
     });
+    
+    const totalEntries = Object.values(matrix).reduce((total, productPrices) => 
+      total + Object.keys(productPrices).length, 0
+    );
+    console.log('✅ Price matrix built with', totalEntries, 'price entries across', Object.keys(matrix).length, 'products');
     
     return matrix;
   };
@@ -155,8 +170,10 @@ export default function ComparePage() {
   };
 
   // Format price display
-  const formatPrice = (priceData: { price: number; isOnSale: boolean; originalPrice?: number }) => {
-    const { price, isOnSale, originalPrice } = priceData;
+  const formatPrice = (priceData: { price: number; isOnSale: boolean; originalPrice?: number; reportedAt: string }) => {
+    const { price, isOnSale, originalPrice, reportedAt } = priceData;
+    const reportDate = new Date(reportedAt);
+    const isRecent = (Date.now() - reportDate.getTime()) < (7 * 24 * 60 * 60 * 1000); // Within 7 days
     
     if (isOnSale && originalPrice) {
       return (
@@ -164,11 +181,21 @@ export default function ComparePage() {
           <div className="font-bold">₪{price.toFixed(0)}</div>
           <div className="text-xs line-through opacity-60">₪{originalPrice.toFixed(0)}</div>
           <div className="text-xs font-medium">מבצע!</div>
+          <div className={`text-xs ${isRecent ? 'text-green-600' : 'text-gray-500'}`}>
+            {reportDate.toLocaleDateString('he-IL')}
+          </div>
         </div>
       );
     }
     
-    return <div className="font-bold">₪{price.toFixed(0)}</div>;
+    return (
+      <div className="space-y-1">
+        <div className="font-bold">₪{price.toFixed(0)}</div>
+        <div className={`text-xs ${isRecent ? 'text-green-600' : 'text-gray-500'}`}>
+          {reportDate.toLocaleDateString('he-IL')}
+        </div>
+      </div>
+    );
   };
 
   // Fetch data
@@ -206,11 +233,11 @@ export default function ComparePage() {
         ...(token && { 'Authorization': `Bearer ${token}` })
       };
 
-      // Fetch all data
+      // Fetch all data - ensure prices are sorted by latest first
       const [productsRes, retailersRes, pricesRes] = await Promise.all([
         fetch('https://bashrometer-api.onrender.com/api/products?limit=100', { headers }),
         fetch('https://bashrometer-api.onrender.com/api/retailers?limit=100', { headers }),
-        fetch('https://bashrometer-api.onrender.com/api/prices?limit=500&status=approved', { headers })
+        fetch('https://bashrometer-api.onrender.com/api/prices?limit=500&status=approved&sort_by=reported_at&order=DESC', { headers })
       ]);
 
       if (!productsRes.ok || !retailersRes.ok) {
@@ -236,6 +263,36 @@ export default function ComparePage() {
         retailers: fetchedRetailers.length,
         prices: fetchedPrices.length
       });
+
+      // Debug: Show sample of price data
+      if (fetchedPrices.length > 0) {
+        console.log('🔍 Sample price reports:', fetchedPrices.slice(0, 5).map(p => ({
+          id: p.id,
+          product_id: p.product_id,
+          retailer_id: p.retailer_id,
+          regular_price: p.regular_price,
+          sale_price: p.sale_price,
+          reported_at: p.reported_at,
+          status: p.status
+        })));
+      }
+
+      // Debug: Show sample products
+      if (fetchedProducts.length > 0) {
+        console.log('🏷️ Sample products:', fetchedProducts.slice(0, 5).map(p => ({
+          id: p.id,
+          name: p.name,
+          category: p.category
+        })));
+      }
+
+      // Debug: Show retailers
+      if (fetchedRetailers.length > 0) {
+        console.log('🏪 Retailers:', fetchedRetailers.map(r => ({
+          id: r.id,
+          name: r.name
+        })));
+      }
 
       // Build matrix
       const matrix = buildPriceMatrix(fetchedPrices);
@@ -339,10 +396,44 @@ export default function ComparePage() {
     );
   }
 
+  // Helper function to normalize product names for grouping
+  const normalizeProductName = (name: string): string => {
+    return name
+      .toLowerCase()
+      .replace(/[״'']/g, '') // Remove Hebrew quotation marks
+      .replace(/\s+/g, ' ') // Normalize spaces
+      .replace(/[\(\)]/g, '') // Remove parentheses
+      .trim();
+  };
+
   // Get products that have at least one price
-  const productsWithPrices = products.filter(product => 
+  const productsWithPricesRaw = products.filter(product => 
     priceMatrix[product.id] && Object.keys(priceMatrix[product.id]).length > 0
   );
+
+  // Group similar products and pick the one with most price data
+  const groupedProducts = new Map<string, Product[]>();
+  productsWithPricesRaw.forEach(product => {
+    const normalizedName = normalizeProductName(product.name);
+    if (!groupedProducts.has(normalizedName)) {
+      groupedProducts.set(normalizedName, []);
+    }
+    groupedProducts.get(normalizedName)!.push(product);
+  });
+
+  // Pick the best representative from each group
+  const productsWithPrices = Array.from(groupedProducts.values()).map(group => {
+    if (group.length === 1) return group[0];
+    
+    // Pick the product with most price data points
+    return group.reduce((best, current) => {
+      const bestPriceCount = Object.keys(priceMatrix[best.id] || {}).length;
+      const currentPriceCount = Object.keys(priceMatrix[current.id] || {}).length;
+      return currentPriceCount > bestPriceCount ? current : best;
+    });
+  });
+
+  console.log('📊 Products after grouping:', productsWithPricesRaw.length, '→', productsWithPrices.length);
 
   return (
     <div className="container mx-auto px-4 py-8">
