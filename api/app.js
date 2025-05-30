@@ -14,8 +14,9 @@ const pricesRoutes = require('./routes/prices');
 const autocompleteRoutes = require('./routes/autocomplete');
 const requestsRoutes = require('./routes/requests');
 const analyticsRoutes = require('./routes/analytics');
-const normalizeRoutes = require('./routes/normalize');
-const cutsRoutes = require('./routes/cuts');
+const categoriesRoutes = require('./routes/categories');
+// const normalizeRoutes = require('./routes/normalize');
+// const cutsRoutes = require('./routes/cuts');
 
 const app = express();
 
@@ -138,12 +139,32 @@ app.use('/api/prices', pricesRoutes);
 app.use('/api/autocomplete', autocompleteRoutes);
 app.use('/api/requests', requestsRoutes);
 app.use('/api/analytics', analyticsRoutes);
-app.use('/api/normalize', normalizeRoutes);
-app.use('/api/cuts', cutsRoutes);
+app.use('/api/categories', categoriesRoutes);
+console.log('✅ /api/categories mounted');
+// app.use('/api/normalize', normalizeRoutes);
+// app.use('/api/cuts', cutsRoutes);
 
-// Simple root route for health check or basic info
+// ========== ROOT & HEALTH ROUTES ==========
+// Root route - חשוב להוסיף לפני כל הroutes האחרים
 app.get('/', (req, res) => {
-  res.send('Bashrometer API is running!');
+  res.json({
+    status: 'OK',
+    message: 'Basarometer API Server is running! 🥩',
+    version: '2.0.0',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/health',
+      healthz: '/healthz',
+      products: '/api/products',
+      categories: '/api/categories',
+      auth: '/api/auth',
+      prices: '/api/prices',
+      retailers: '/api/retailers',
+      autocomplete: '/api/autocomplete',
+      requests: '/api/requests',
+      analytics: '/api/analytics'
+    }
+  });
 });
 
 // Health check endpoint for CI/CD and monitoring

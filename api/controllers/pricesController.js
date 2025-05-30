@@ -178,14 +178,6 @@ const getAllPrices = async (req, res, next) => {
     });
     
     res.json({ 
-        prices: pricesWithCalc,
-        total_items: totalItems,
-        total_pages: Math.ceil(totalItems / parseInt(limit)),
-        current_page: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
-        items_per_page: parseInt(limit),
-        has_next: (parseInt(offset) + parseInt(limit)) < totalItems,
-        has_previous: parseInt(offset) > 0,
-        // Keep old format for backward compatibility
         data: pricesWithCalc, 
         page_info: { 
             total_items: totalItems,
@@ -316,24 +308,6 @@ const createPriceReport = async (req, res, next) => {
       });
     }
 
-    // Auto-normalize product for new reports
-    let normalizedProductId = null;
-    try {
-      // Get the product name for normalization
-      const productNameQuery = 'SELECT name FROM products WHERE id = $1';
-      const productNameResult = await pool.query(productNameQuery, [finalProductId]);
-      
-      if (productNameResult.rows.length > 0) {
-        const productName = productNameResult.rows[0].name;
-        const { normalizeProduct } = require('../utils/productNormalizer');
-        const normalizedProduct = await normalizeProduct(productName, finalRetailerId);
-        normalizedProductId = normalizedProduct.id;
-      }
-    } catch (normalizationError) {
-      console.warn('Product normalization failed:', normalizationError.message);
-      // Continue without normalization if it fails
-    }
-
     // User role-based status logic
     const userRole = req.user.role || 'user';
     const initialStatus = userRole === 'admin' ? 'approved' : 'pending_approval';
@@ -343,9 +317,9 @@ const createPriceReport = async (req, res, next) => {
       INSERT INTO prices (
         product_id, retailer_id, user_id, regular_price, sale_price, is_on_sale,
         unit_for_price, quantity_for_price, notes, source, report_type,
-        price_valid_from, price_valid_to, price_submission_date, status, normalized_product_id
+        price_valid_from, price_valid_to, price_submission_date, status
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_DATE, $14, $15
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_DATE, $14
       ) RETURNING id
     `;
 
@@ -357,8 +331,7 @@ const createPriceReport = async (req, res, next) => {
       source, report_type,
       price_valid_from || null, 
       price_valid_to || null,
-      initialStatus,
-      normalizedProductId
+      initialStatus
     ];
 
     const result = await pool.query(insertQuery, values);
@@ -586,184 +559,6 @@ const updatePriceReportStatus = async (req, res, next) => {
   }
 };
 
-// השוואת מחירים למוצר מנורמל
-const compareNormalizedProductPrices = async (req, res, next) => {
-  try {
-    const { normalizedProductId } = req.params;
-    const numericProductId = parseInt(normalizedProductId, 10);
-    
-    if (isNaN(numericProductId)) {
-      return res.status(400).json({ error: 'Invalid normalized product ID format.' });
-    }
-
-    const query = `
-      SELECT 
-        p.id,
-        p.regular_price,
-        p.sale_price,
-        p.reported_at,
-        p.price_valid_to,
-        p.notes,
-        p.likes_count,
-        r.name as retailer_name,
-        r.id as retailer_id,
-        np.name as normalized_product_name,
-        pa.alias_name as original_product_name,
-        u.name as reporter_name,
-        CASE 
-          WHEN p.sale_price IS NOT NULL AND p.sale_price < p.regular_price 
-          THEN p.sale_price 
-          ELSE p.regular_price 
-        END as effective_price,
-        CASE 
-          WHEN p.sale_price IS NOT NULL AND p.sale_price < p.regular_price 
-          THEN true 
-          ELSE false 
-        END as is_on_sale
-      FROM prices p
-      JOIN retailers r ON p.retailer_id = r.id
-      JOIN normalized_products np ON p.normalized_product_id = np.id
-      LEFT JOIN product_aliases pa ON np.id = pa.normalized_product_id 
-        AND pa.source = 'original'
-        AND pa.alias_name = (
-          SELECT prod.name FROM products prod WHERE prod.id = p.product_id
-        )
-      LEFT JOIN users u ON p.user_id = u.id
-      WHERE p.normalized_product_id = $1
-        AND (p.price_valid_to IS NULL OR p.price_valid_to > CURRENT_DATE)
-      ORDER BY effective_price ASC, p.reported_at DESC
-    `;
-    
-    const result = await pool.query(query, [numericProductId]);
-    
-    res.json({
-      success: true,
-      normalizedProductId: numericProductId,
-      comparisons: result.rows
-    });
-    
-  } catch (error) {
-    console.error('Error comparing normalized product prices:', error);
-    next(error);
-  }
-};
-
-// קבלת כל המחירים למוצר מנורמל
-const getPricesForNormalizedProduct = async (req, res, next) => {
-  try {
-    const { normalizedProductId } = req.params;
-    const { 
-      page = 1, 
-      limit = 50, 
-      sort_by = 'reported_at', 
-      order = 'DESC',
-      retailer_id 
-    } = req.query;
-    
-    const numericProductId = parseInt(normalizedProductId, 10);
-    
-    if (isNaN(numericProductId)) {
-      return res.status(400).json({ error: 'Invalid normalized product ID format.' });
-    }
-
-    const offset = (page - 1) * limit;
-    let whereClause = 'WHERE p.normalized_product_id = $1';
-    const queryParams = [numericProductId];
-    let paramIndex = 2;
-    
-    if (retailer_id) {
-      whereClause += ` AND p.retailer_id = $${paramIndex}`;
-      queryParams.push(parseInt(retailer_id));
-      paramIndex++;
-    }
-    
-    // Add pagination parameters
-    queryParams.push(limit, offset);
-    
-    const query = `
-      SELECT 
-        p.id,
-        p.product_id,
-        p.retailer_id,
-        p.user_id,
-        p.regular_price,
-        p.sale_price,
-        p.unit_for_price,
-        p.quantity_for_price,
-        p.price_valid_to,
-        p.notes,
-        p.status,
-        p.reported_at,
-        p.created_at,
-        p.updated_at,
-        p.likes_count,
-        r.name as retailer_name,
-        np.name as normalized_product_name,
-        np.category,
-        np.meat_type,
-        np.cut_type,
-        u.name as reporter_name,
-        CASE 
-          WHEN p.sale_price IS NOT NULL AND p.sale_price < p.regular_price 
-          THEN p.sale_price 
-          ELSE p.regular_price 
-        END as effective_price,
-        CASE 
-          WHEN p.sale_price IS NOT NULL AND p.sale_price < p.regular_price 
-          THEN true 
-          ELSE false 
-        END as is_on_sale,
-        CASE 
-          WHEN $${paramIndex + 2} IS NOT NULL THEN (
-            SELECT COUNT(*) > 0 
-            FROM price_report_likes prl 
-            WHERE prl.price_id = p.id AND prl.user_id = $${paramIndex + 2}
-          )
-          ELSE false
-        END as current_user_liked
-      FROM prices p
-      JOIN retailers r ON p.retailer_id = r.id
-      JOIN normalized_products np ON p.normalized_product_id = np.id
-      LEFT JOIN users u ON p.user_id = u.id
-      ${whereClause}
-      ORDER BY ${sort_by} ${order}
-      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-    `;
-    
-    // Add user ID for like checking (if authenticated)
-    const userId = req.user ? req.user.id : null;
-    queryParams.push(userId);
-    
-    const result = await pool.query(query, queryParams);
-    
-    // Get total count for pagination
-    const countQuery = `
-      SELECT COUNT(*) as total
-      FROM prices p
-      ${whereClause}
-    `;
-    
-    const countResult = await pool.query(countQuery, [numericProductId, ...(retailer_id ? [parseInt(retailer_id)] : [])]);
-    const total = parseInt(countResult.rows[0].total);
-    
-    res.json({
-      success: true,
-      normalizedProductId: numericProductId,
-      prices: result.rows,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        totalPages: Math.ceil(total / limit)
-      }
-    });
-    
-  } catch (error) {
-    console.error('Error fetching prices for normalized product:', error);
-    next(error);
-  }
-};
-
 module.exports = { 
   getAllPrices, 
   getPriceById, 
@@ -772,7 +567,5 @@ module.exports = {
   deletePrice, 
   likePriceReport, 
   unlikePriceReport,
-  updatePriceReportStatus,
-  compareNormalizedProductPrices,
-  getPricesForNormalizedProduct
+  updatePriceReportStatus 
 };
