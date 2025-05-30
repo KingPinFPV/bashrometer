@@ -488,6 +488,25 @@ export default function ComparePage() {
     );
   }
 
+  // Helper function to get short retailer name for display
+  const getShortRetailerName = (name: string): string => {
+    const shortNames: Record<string, string> = {
+      'רמי לוי': 'רמי לוי',
+      'שופרסל': 'שופרסל', 
+      'מעדני בשר': 'מעדני',
+      'סופר פארם': 'פארם',
+      'חצי חינם': 'חצי חינם',
+      'יוחננוף': 'יוחננוף',
+      'מחסני השוק': 'מחסני',
+      'קינג סטור': 'קינג',
+      'בי.אס.אס': 'בי.אס.אס',
+      'אדמונד דה רוטשילד': 'רוטשילד'
+    };
+    
+    // If we have a short name, use it, otherwise truncate to 8 characters
+    return shortNames[name] || (name.length > 8 ? name.substring(0, 8) + '..' : name);
+  };
+
   // Helper function to normalize product names for grouping
   const normalizeProductName = (name: string): string => {
     return name
@@ -606,9 +625,9 @@ export default function ComparePage() {
                     נתח הבשר
                   </th>
                   {retailers.map(retailer => (
-                    <th key={retailer.id} className="px-3 py-3 text-center font-semibold min-w-[120px] border-l border-gray-300">
-                      <div className="transform -rotate-45 origin-center whitespace-nowrap">
-                        {retailer.name}
+                    <th key={retailer.id} className="px-2 py-3 text-center font-semibold min-w-[100px] border-l border-gray-300">
+                      <div className="whitespace-nowrap overflow-hidden text-ellipsis max-w-[90px]" title={retailer.name}>
+                        {getShortRetailerName(retailer.name)}
                       </div>
                     </th>
                   ))}
