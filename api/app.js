@@ -5,6 +5,8 @@ const express = require('express');
 const cors = require('cors');
 const { logger, httpLogger } = require('./utils/logger');
 
+const db = require('./db'); // וודא שה-path נכון לקובץ db.js
+
 const authRoutes = require('./routes/auth');
 const productsRoutes = require('./routes/products');
 const retailersRoutes = require('./routes/retailers');
@@ -70,6 +72,48 @@ if (process.env.NODE_ENV !== 'test') {
 // 3. Body Parsers - אחרי CORS ו-Logging
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Health check endpoint for Render (must match /healthz in Render dashboard)
+app.get('/healthz', async (req, res) => {
+  try {
+    // בדיקת חיבור לבסיס נתונים
+    const dbResult = await db.query('SELECT 1 as test');
+    
+    const healthStatus = {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      database: dbResult.rows.length > 0 ? 'connected' : 'disconnected',
+      port: process.env.PORT || 10000,
+      environment: process.env.NODE_ENV || 'production',
+      version: '1.0.0'
+    };
+
+    res.status(200).json(healthStatus);
+  } catch (error) {
+    console.error('Health check failed:', error);
+    
+    res.status(503).json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      error: error.message,
+      database: 'disconnected'
+    });
+  }
+});
+
+// Simple ping endpoint for basic connectivity test
+app.get('/ping', (req, res) => {
+  res.status(200).json({ 
+    status: 'pong', 
+    timestamp: new Date().toISOString() 
+  });
+});
+
+// Enhanced logging for production debugging
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
 
 // 3. API Routes - אחרי CORS ו-Body Parsers
 app.use('/api/auth', authRoutes);

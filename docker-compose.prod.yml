@@ -12,7 +12,7 @@ services:
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
-      - ./api/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - ./api/init-database.sql:/docker-entrypoint-initdb.d/init-database.sql
       - ./backups:/backups
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-bashrometer} -d ${DB_NAME:-bashrometer}"]
