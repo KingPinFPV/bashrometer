@@ -22,21 +22,22 @@ interface Product {
 
 interface CurrentPrice {
   id: number;
-  regular_price: number;
+  regular_price: number | string;
   retailer_name: string;
   is_currently_on_sale: boolean;
-  current_price: number;
-  display_original_price: number;
-  savings_amount: number;
+  current_price: number | string;
+  display_original_price: number | string;
+  savings_amount: number | string;
   sale_end_date?: string;
-  calculated_price_per_100g: number;
+  calculated_price_per_100g: number | string;
   likes_count: number;
   created_at: string;
 }
 
 interface PricesResponse {
   success: boolean;
-  prices: CurrentPrice[];
+  prices?: CurrentPrice[];
+  data?: CurrentPrice[];
   total_items: number;
   product_id: number;
 }
@@ -66,8 +67,35 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
       
       if (response.ok) {
         const data: PricesResponse = await response.json();
-        setCurrentPrices(data.prices || []);
+        
+        console.log(`Prices response for product ${product.id}:`, data);
+        
+        if (data.success) {
+          // המרת strings למספרים עם טיפול בשגיאות
+          const rawPrices = data.prices || data.data || [];
+          console.log(`Raw prices data:`, rawPrices);
+          
+          const processedPrices = rawPrices.map((price: any) => {
+            const processed = {
+              ...price,
+              current_price: parseFloat(price.current_price?.toString() || '0') || 0,
+              regular_price: parseFloat(price.regular_price?.toString() || '0') || 0,
+              display_original_price: parseFloat(price.display_original_price?.toString() || price.regular_price?.toString() || '0') || 0,
+              savings_amount: parseFloat(price.savings_amount?.toString() || '0') || 0,
+              calculated_price_per_100g: parseFloat(price.calculated_price_per_100g?.toString() || '0') || 0,
+              likes_count: parseInt(price.likes_count?.toString() || '0') || 0
+            };
+            console.log(`Processed price:`, processed);
+            return processed;
+          });
+          
+          setCurrentPrices(processedPrices);
+        } else {
+          console.error('API returned success: false', data);
+          setPricesError('שגיאה בטעינת מחירים');
+        }
       } else {
+        console.error(`HTTP error: ${response.status}`);
         setPricesError('שגיאה בטעינת מחירים');
       }
     } catch (error) {
@@ -86,11 +114,31 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
   // Calculate days until sale ends
   const getDaysUntilSaleEnds = (saleEndDate?: string): number | null => {
     if (!saleEndDate) return null;
-    const endDate = new Date(saleEndDate);
-    const now = new Date();
-    const diffTime = endDate.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays > 0 ? diffDays : null;
+    try {
+      const endDate = new Date(saleEndDate);
+      const now = new Date();
+      const diffTime = endDate.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays > 0 ? diffDays : null;
+    } catch (error) {
+      return null;
+    }
+  };
+
+  // Helper function to safely format prices
+  const formatPrice = (price: number | string | null | undefined): string => {
+    if (price === null || price === undefined) return '0.00';
+    const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+    return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2);
+  };
+
+  // Helper function to format date
+  const formatDate = (dateString: string): string => {
+    try {
+      return new Date(dateString).toLocaleDateString('he-IL');
+    } catch (error) {
+      return dateString;
+    }
   };
   const cardStyle = {
     background: 'rgba(255, 255, 255, 0.1)',
@@ -338,14 +386,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
                       fontWeight: 'bold',
                       color: '#dc2626'
                     }}>
-                      ₪{bestSale.current_price.toFixed(2)}
+                      ₪{formatPrice(bestSale.current_price)}
                     </span>
                     <span style={{
                       fontSize: '0.875rem',
                       color: '#6b7280',
                       textDecoration: 'line-through'
                     }}>
-                      ₪{bestSale.display_original_price.toFixed(2)}
+                      ₪{formatPrice(bestSale.display_original_price)}
                     </span>
                     <span style={{
                       fontSize: '0.75rem',
@@ -355,14 +403,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
                       borderRadius: '0.75rem',
                       fontWeight: '600'
                     }}>
-                      חיסכון ₪{bestSale.savings_amount.toFixed(2)}
+                      חיסכון ₪{formatPrice(bestSale.savings_amount)}
                     </span>
                   </div>
                   <div style={{
                     fontSize: '0.75rem',
                     color: '#94a3b8'
                   }}>
-                    ב{bestSale.retailer_name} • ₪{bestSale.calculated_price_per_100g.toFixed(2)}/100g
+                    ב{bestSale.retailer_name} • ₪{formatPrice(bestSale.calculated_price_per_100g)}/100g
                   </div>
                 </div>
               ) : (
@@ -371,13 +419,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
                     fontSize: viewMode === 'list' ? '1.125rem' : '1.25rem',
                     fontWeight: 'bold'
                   }}>
-                    ₪{bestPrice?.current_price.toFixed(2)}
+                    ₪{formatPrice(bestPrice?.current_price)}
                   </span>
                   <div style={{
                     fontSize: '0.75rem',
                     color: '#94a3b8'
                   }}>
-                    ב{bestPrice?.retailer_name} • ₪{bestPrice?.calculated_price_per_100g.toFixed(2)}/100g
+                    ב{bestPrice?.retailer_name} • ₪{formatPrice(bestPrice?.calculated_price_per_100g)}/100g
                   </div>
                 </div>
               )}
