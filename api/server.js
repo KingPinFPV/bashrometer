@@ -115,6 +115,14 @@ async function loadRoutes() {
       console.error('❌ Prices routes failed:', e.message);
     }
     
+    try {
+      const productsRoutes = require('./routes/products');
+      app.use('/api/products', productsRoutes);
+      console.log('✅ Products routes loaded');
+    } catch (e) {
+      console.error('❌ Products routes failed:', e.message);
+    }
+    
     console.log('✅ Route loading completed (some may have failed)');
     routesLoaded = true;
     
