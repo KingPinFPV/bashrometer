@@ -1,4 +1,5 @@
 // src/components/ProductCard.tsx
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import PriceDisplay from './PriceDisplay';
 
@@ -19,12 +20,77 @@ interface Product {
   updated_at?: string;
 }
 
+interface CurrentPrice {
+  id: number;
+  regular_price: number;
+  retailer_name: string;
+  is_currently_on_sale: boolean;
+  current_price: number;
+  savings_amount: number;
+  sale_end_date?: string;
+  calculated_price_per_100g: number;
+  likes_count: number;
+  created_at: string;
+}
+
+interface PricesResponse {
+  success: boolean;
+  prices: CurrentPrice[];
+  total_items: number;
+  product_id: number;
+}
+
 interface ProductCardProps {
   product: Product;
   viewMode?: 'grid' | 'list';
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' }) => {
+  const [currentPrices, setCurrentPrices] = useState<CurrentPrice[]>([]);
+  const [pricesLoading, setPricesLoading] = useState(false);
+  const [pricesError, setPricesError] = useState<string>('');
+  
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
+
+  useEffect(() => {
+    fetchCurrentPrices();
+  }, [product.id]);
+
+  const fetchCurrentPrices = async () => {
+    try {
+      setPricesLoading(true);
+      setPricesError('');
+      
+      const response = await fetch(`${apiBase}/api/prices/current/${product.id}`);
+      
+      if (response.ok) {
+        const data: PricesResponse = await response.json();
+        setCurrentPrices(data.prices || []);
+      } else {
+        setPricesError('שגיאה בטעינת מחירים');
+      }
+    } catch (error) {
+      console.error('Error fetching current prices:', error);
+      setPricesError('שגיאת רשת בטעינת מחירים');
+    } finally {
+      setPricesLoading(false);
+    }
+  };
+
+  // Find best price and sale info
+  const bestPrice = currentPrices.length > 0 ? currentPrices[0] : null;
+  const hasSales = currentPrices.some(price => price.is_currently_on_sale);
+  const bestSale = currentPrices.find(price => price.is_currently_on_sale);
+
+  // Calculate days until sale ends
+  const getDaysUntilSaleEnds = (saleEndDate?: string): number | null => {
+    if (!saleEndDate) return null;
+    const endDate = new Date(saleEndDate);
+    const now = new Date();
+    const diffTime = endDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : null;
+  };
   const cardStyle = {
     background: 'rgba(255, 255, 255, 0.1)',
     backdropFilter: 'blur(20px)',
@@ -208,8 +274,127 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
           </div>
         )}
 
-        {/* Display both regular price and normalized price if available */}
-        {(product.price != null || product.min_price_per_100g != null) ? (
+        {/* Enhanced Price Display with Sale Information */}
+        {pricesLoading ? (
+          <div style={{
+            ...noPriceStyle,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}>
+            <div style={{
+              width: '12px',
+              height: '12px',
+              border: '2px solid #6b7280',
+              borderTop: '2px solid transparent',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite'
+            }}></div>
+            טוען מחירים...
+          </div>
+        ) : pricesError ? (
+          <div style={noPriceStyle}>
+            ❌ {pricesError}
+          </div>
+        ) : currentPrices.length > 0 ? (
+          <div style={{ marginTop: '0.75rem' }}>
+            {/* Sale Badge */}
+            {hasSales && (
+              <div style={{
+                backgroundColor: '#dc2626',
+                color: 'white',
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                padding: '0.25rem 0.75rem',
+                borderRadius: '1rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                marginBottom: '0.5rem',
+                animation: 'pulse 2s infinite'
+              }}>
+                🔥 מבצע!
+                {bestSale?.sale_end_date && (
+                  <span style={{ opacity: 0.9 }}>
+                    נותרו {getDaysUntilSaleEnds(bestSale.sale_end_date)} ימים
+                  </span>
+                )}
+              </div>
+            )}
+            
+            {/* Best Price Display */}
+            <div style={priceStyle}>
+              {bestSale ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    flexWrap: 'wrap'
+                  }}>
+                    <span style={{
+                      fontSize: viewMode === 'list' ? '1.25rem' : '1.5rem',
+                      fontWeight: 'bold',
+                      color: '#dc2626'
+                    }}>
+                      ₪{bestSale.current_price.toFixed(2)}
+                    </span>
+                    <span style={{
+                      fontSize: '0.875rem',
+                      color: '#6b7280',
+                      textDecoration: 'line-through'
+                    }}>
+                      ₪{bestSale.regular_price.toFixed(2)}
+                    </span>
+                    <span style={{
+                      fontSize: '0.75rem',
+                      backgroundColor: '#dcfce7',
+                      color: '#166534',
+                      padding: '0.125rem 0.5rem',
+                      borderRadius: '0.75rem',
+                      fontWeight: '600'
+                    }}>
+                      חיסכון ₪{bestSale.savings_amount.toFixed(2)}
+                    </span>
+                  </div>
+                  <div style={{
+                    fontSize: '0.75rem',
+                    color: '#94a3b8'
+                  }}>
+                    ב{bestSale.retailer_name} • ₪{bestSale.calculated_price_per_100g.toFixed(2)}/100g
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <span style={{
+                    fontSize: viewMode === 'list' ? '1.125rem' : '1.25rem',
+                    fontWeight: 'bold'
+                  }}>
+                    ₪{bestPrice?.current_price.toFixed(2)}
+                  </span>
+                  <div style={{
+                    fontSize: '0.75rem',
+                    color: '#94a3b8'
+                  }}>
+                    ב{bestPrice?.retailer_name} • ₪{bestPrice?.calculated_price_per_100g.toFixed(2)}/100g
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Multiple Prices Indicator */}
+            {currentPrices.length > 1 && (
+              <div style={{
+                fontSize: '0.75rem',
+                color: '#60a5fa',
+                marginTop: '0.5rem',
+                fontWeight: '500'
+              }}>
+                📊 +{currentPrices.length - 1} מחירים נוספים
+              </div>
+            )}
+          </div>
+        ) : (product.price != null || product.min_price_per_100g != null) ? (
           <div style={priceStyle}>
             {product.price != null && (
               <PriceDisplay
@@ -263,6 +448,17 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
           </Link>
         </div>
       </div>
+      
+      <style jsx>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.8; }
+        }
+      `}</style>
     </div>
   );
 };

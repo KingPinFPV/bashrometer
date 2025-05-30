@@ -20,6 +20,14 @@ interface Retailer {
   address?: string;
 }
 
+interface Cut {
+  id: number;
+  hebrew_name: string;
+  english_name?: string;
+  category: string;
+  description?: string;
+}
+
 export default function ReportPricePage() {
   return (
     <Suspense fallback={
@@ -74,6 +82,17 @@ function ReportPriceContent() {
   const [quantity, setQuantity] = useState<string>('1');
   const [unit, setUnit] = useState<string>('kg');
   
+  // Enhanced sale price states
+  const [isSale, setIsSale] = useState<boolean>(false);
+  const [saleEndDate, setSaleEndDate] = useState<string>('');
+  const [originalPrice, setOriginalPrice] = useState<string>('');
+  
+  // Product creation states
+  const [showProductCreation, setShowProductCreation] = useState<boolean>(false);
+  const [cuts, setCuts] = useState<Cut[]>([]);
+  const [selectedCut, setSelectedCut] = useState<Cut | null>(null);
+  const [newProductBrand, setNewProductBrand] = useState<string>('');
+  
   // UI states
   const [message, setMessage] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -84,6 +103,8 @@ function ReportPriceContent() {
   const [retailerSuggestions, setRetailerSuggestions] = useState<Retailer[]>([]);
   const [showProductDropdown, setShowProductDropdown] = useState<boolean>(false);
   const [showRetailerDropdown, setShowRetailerDropdown] = useState<boolean>(false);
+  const [cutSuggestions, setCutSuggestions] = useState<Cut[]>([]);
+  const [showCutDropdown, setShowCutDropdown] = useState<boolean>(false);
 
   // New: Authentication state
   const [authValidated, setAuthValidated] = useState<boolean>(false);
@@ -95,6 +116,7 @@ function ReportPriceContent() {
   // Refs for handling clicks outside dropdowns
   const productDropdownRef = useRef<HTMLDivElement>(null);
   const retailerDropdownRef = useRef<HTMLDivElement>(null);
+  const cutDropdownRef = useRef<HTMLDivElement>(null);
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -128,6 +150,22 @@ function ReportPriceContent() {
       }
     }
   }, [selectedProduct, selectedRetailer]);
+
+  // Load cuts data
+  useEffect(() => {
+    const fetchCuts = async () => {
+      try {
+        const response = await fetch(`${apiBase}/api/cuts`);
+        if (response.ok) {
+          const cutsData = await response.json();
+          setCuts(cutsData);
+        }
+      } catch (error) {
+        console.error('Error fetching cuts:', error);
+      }
+    };
+    fetchCuts();
+  }, [apiBase]);
 
   // Enhanced auth check
   useEffect(() => {
@@ -163,6 +201,9 @@ function ReportPriceContent() {
       }
       if (retailerDropdownRef.current && !retailerDropdownRef.current.contains(event.target as Node)) {
         setShowRetailerDropdown(false);
+      }
+      if (cutDropdownRef.current && !cutDropdownRef.current.contains(event.target as Node)) {
+        setShowCutDropdown(false);
       }
     };
 
@@ -234,6 +275,9 @@ function ReportPriceContent() {
       setProductSuggestions([]);
       setShowProductDropdown(false);
     }
+    
+    // Check if we need to show product creation form
+    setShowProductCreation(value.trim().length > 0 && !localSelectedProduct);
   };
 
   // Handle retailer input change
@@ -275,6 +319,40 @@ function ReportPriceContent() {
     setShowAddRetailerModal(false);
   };
 
+  // Handle cut search
+  const handleCutSearch = (query: string) => {
+    if (query.trim().length < 1) {
+      setCutSuggestions([]);
+      setShowCutDropdown(false);
+      return;
+    }
+
+    const filtered = cuts.filter(cut => 
+      cut.hebrew_name.includes(query) || 
+      (cut.english_name && cut.english_name.toLowerCase().includes(query.toLowerCase()))
+    );
+    setCutSuggestions(filtered.slice(0, 8));
+    setShowCutDropdown(true);
+  };
+
+  // Handle cut selection
+  const handleCutSelect = (cut: Cut) => {
+    setSelectedCut(cut);
+    setShowCutDropdown(false);
+  };
+
+  // Calculate savings
+  const calculateSavings = () => {
+    if (!isSale || !originalPrice || !regularPrice) return { amount: 0, percentage: 0 };
+    
+    const original = parseFloat(originalPrice);
+    const current = parseFloat(regularPrice);
+    const amount = original - current;
+    const percentage = ((amount / original) * 100);
+    
+    return { amount, percentage };
+  };
+
   // Reset form function
   const resetForm = () => {
     setProductInput('');
@@ -288,6 +366,17 @@ function ReportPriceContent() {
     setQuantity('1');
     setUnit('kg');
     setMessage('');
+    
+    // Reset enhanced sale price states
+    setIsSale(false);
+    setSaleEndDate('');
+    setOriginalPrice('');
+    
+    // Reset product creation states
+    setShowProductCreation(false);
+    setSelectedCut(null);
+    setNewProductBrand('');
+    
     clearSelection(); // Clear ReportContext as well
   };
 
@@ -309,6 +398,17 @@ function ReportPriceContent() {
         quantity: parseFloat(quantity),
         unit: unit,
         notes: notes.trim() || null,
+        
+        // Enhanced sale price fields
+        is_sale: isSale,
+        sale_end_date: saleEndDate || null,
+        original_price: originalPrice ? parseFloat(originalPrice) : null,
+        
+        // Product creation data
+        ...(showProductCreation && selectedCut && {
+          cut_id: selectedCut.id,
+          brand: newProductBrand.trim() || null
+        })
       };
 
       const response = await fetch(`${apiBase}/api/prices`, {
@@ -749,6 +849,118 @@ function ReportPriceContent() {
               )}
             </div>
 
+            {/* Product Creation Form */}
+            {showProductCreation && !localSelectedProduct && (
+              <div style={{
+                border: '2px dashed #e5e7eb',
+                borderRadius: '0.75rem',
+                padding: '1.5rem',
+                backgroundColor: '#f8fafc',
+                marginTop: '1rem'
+              }}>
+                <h3 style={{
+                  fontSize: '1.125rem',
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  ➕ יצירת מוצר חדש: {productInput}
+                </h3>
+                
+                {/* Cut Selection */}
+                <div ref={cutDropdownRef} style={{position: 'relative', marginBottom: '1rem'}}>
+                  <label style={labelStyle}>
+                    בחר נתח <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="חפש נתח (אנטריקוט, פילה, כתף...)"
+                    onChange={(e) => handleCutSearch(e.target.value)}
+                    style={inputStyle}
+                  />
+                  
+                  {showCutDropdown && cutSuggestions.length > 0 && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      backgroundColor: 'white',
+                      border: '2px solid #e5e7eb',
+                      borderTop: 'none',
+                      borderRadius: '0 0 0.75rem 0.75rem',
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                      zIndex: 1000,
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                    }}>
+                      {cutSuggestions.map((cut) => (
+                        <div
+                          key={cut.id}
+                          onClick={() => handleCutSelect(cut)}
+                          style={{
+                            padding: '0.75rem 1rem',
+                            cursor: 'pointer',
+                            borderBottom: '1px solid #f3f4f6',
+                            transition: 'background-color 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#f8fafc';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'white';
+                          }}
+                        >
+                          <div style={{fontWeight: '500', color: '#111827'}}>
+                            {cut.hebrew_name}
+                          </div>
+                          {cut.english_name && (
+                            <div style={{fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem'}}>
+                              {cut.english_name}
+                            </div>
+                          )}
+                          <div style={{fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.25rem'}}>
+                            קטגוריה: {cut.category}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {selectedCut && (
+                    <div style={{
+                      marginTop: '0.5rem',
+                      padding: '0.5rem',
+                      backgroundColor: '#dcfce7',
+                      borderRadius: '0.5rem',
+                      fontSize: '0.875rem',
+                      color: '#166534'
+                    }}>
+                      ✅ נבחר: {selectedCut.hebrew_name} ({selectedCut.category})
+                    </div>
+                  )}
+                </div>
+                
+                {/* Brand Field */}
+                <div>
+                  <label htmlFor="newProductBrand" style={labelStyle}>
+                    מותג (אופציונלי)
+                  </label>
+                  <input
+                    type="text"
+                    id="newProductBrand"
+                    value={newProductBrand}
+                    onChange={(e) => setNewProductBrand(e.target.value)}
+                    placeholder="הזן מותג המוצר..."
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Quantity and Unit */}
             <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
               <div>
@@ -804,42 +1016,138 @@ function ReportPriceContent() {
               />
             </div>
             
-            <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
-              <input
-                id="isOnSale"
-                type="checkbox"
-                checked={isOnSale}
-                onChange={(e) => {
-                  setIsOnSale(e.target.checked);
-                  if (!e.target.checked) {
-                    setSalePrice('');
-                  }
-                }}
-                style={checkboxStyle}
-              />
-              <label htmlFor="isOnSale" style={{...labelStyle, marginBottom: 0, cursor: 'pointer'}}>
-                המוצר במבצע
-              </label>
-            </div>
-
-            {isOnSale && (
-              <div>
-                <label htmlFor="salePrice" style={labelStyle}>
-                  מחיר מבצע (₪) <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
-                </label>
+            {/* Enhanced Sale Price Section */}
+            <div style={{
+              border: '2px solid #f3f4f6',
+              borderRadius: '0.75rem',
+              padding: '1.5rem',
+              backgroundColor: '#fafafa'
+            }}>
+              <h3 style={{
+                fontSize: '1.125rem',
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '1rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                🏷️ פרטי מחיר ומבצעים
+              </h3>
+              
+              {/* Legacy Sale Checkbox */}
+              <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem'}}>
                 <input
-                  type="number"
-                  id="salePrice"
-                  value={salePrice}
-                  onChange={(e) => setSalePrice(e.target.value)}
-                  required={isOnSale}
-                  step="0.01"
-                  min="0.01"
-                  placeholder="הזן מחיר המבצע"
-                  style={inputStyle}
+                  id="isOnSale"
+                  type="checkbox"
+                  checked={isOnSale}
+                  onChange={(e) => {
+                    setIsOnSale(e.target.checked);
+                    if (!e.target.checked) {
+                      setSalePrice('');
+                    }
+                  }}
+                  style={checkboxStyle}
                 />
+                <label htmlFor="isOnSale" style={{...labelStyle, marginBottom: 0, cursor: 'pointer'}}>
+                  המוצר במבצע (מחיר מוזל זמנית)
+                </label>
               </div>
-            )}
+
+              {isOnSale && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <label htmlFor="salePrice" style={labelStyle}>
+                    מחיר מבצע (₪) <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
+                  </label>
+                  <input
+                    type="number"
+                    id="salePrice"
+                    value={salePrice}
+                    onChange={(e) => setSalePrice(e.target.value)}
+                    required={isOnSale}
+                    step="0.01"
+                    min="0.01"
+                    placeholder="הזן מחיר המבצע"
+                    style={inputStyle}
+                  />
+                </div>
+              )}
+              
+              {/* Enhanced Sale Checkbox */}
+              <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem'}}>
+                <input
+                  id="isSale"
+                  type="checkbox"
+                  checked={isSale}
+                  onChange={(e) => {
+                    setIsSale(e.target.checked);
+                    if (!e.target.checked) {
+                      setSaleEndDate('');
+                      setOriginalPrice('');
+                    }
+                  }}
+                  style={checkboxStyle}
+                />
+                <label htmlFor="isSale" style={{...labelStyle, marginBottom: 0, cursor: 'pointer'}}>
+                  המוצר הוזל ממחירו המקורי
+                </label>
+              </div>
+              
+              {isSale && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label htmlFor="originalPrice" style={labelStyle}>
+                      מחיר מקורי (₪) <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
+                    </label>
+                    <input
+                      type="number"
+                      id="originalPrice"
+                      value={originalPrice}
+                      onChange={(e) => setOriginalPrice(e.target.value)}
+                      required={isSale}
+                      step="0.01"
+                      min="0.01"
+                      placeholder="מחיר לפני ההנחה"
+                      style={inputStyle}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="saleEndDate" style={labelStyle}>
+                      תאריך סיום מבצע (אופציונלי)
+                    </label>
+                    <input
+                      type="date"
+                      id="saleEndDate"
+                      value={saleEndDate}
+                      onChange={(e) => setSaleEndDate(e.target.value)}
+                      style={inputStyle}
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {/* Savings Display */}
+              {isSale && originalPrice && regularPrice && (
+                <div style={{
+                  marginTop: '1rem',
+                  padding: '1rem',
+                  backgroundColor: '#dcfce7',
+                  borderRadius: '0.5rem',
+                  border: '1px solid #bbf7d0'
+                }}>
+                  <div style={{ color: '#166534', fontWeight: '600', fontSize: '0.875rem' }}>
+                    💰 חיסכון: {calculateSavings().amount.toFixed(2)}₪ 
+                    ({calculateSavings().percentage.toFixed(1)}% הנחה)
+                  </div>
+                  {saleEndDate && (
+                    <div style={{ color: '#166534', fontSize: '0.75rem', marginTop: '0.25rem' }}>
+                      ⏰ מבצע עד: {new Date(saleEndDate).toLocaleDateString('he-IL')}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div>
               <label htmlFor="notes" style={labelStyle}>
