@@ -398,7 +398,7 @@ export default function PriceComparisonPage() {
                       מחיר הזול ביותר
                     </div>
                     <div style={{color: '#ffffff', fontSize: '1.5rem', fontWeight: 'bold'}}>
-                      ₪{result.cheapest_price.toFixed(2)}
+                      ₪{(result.cheapest_price || 0).toFixed(2)}
                     </div>
                   </div>
                   
@@ -412,7 +412,7 @@ export default function PriceComparisonPage() {
                       מחיר הגבוה ביותר
                     </div>
                     <div style={{color: '#ffffff', fontSize: '1.5rem', fontWeight: 'bold'}}>
-                      ₪{result.most_expensive_price.toFixed(2)}
+                      ₪{(result.most_expensive_price || 0).toFixed(2)}
                     </div>
                   </div>
                   
@@ -426,7 +426,7 @@ export default function PriceComparisonPage() {
                       חיסכון פוטנציאלי
                     </div>
                     <div style={{color: '#ffffff', fontSize: '1.5rem', fontWeight: 'bold'}}>
-                      {result.savings_percentage.toFixed(1)}%
+                      {(result.savings_percentage || 0).toFixed(1)}%
                     </div>
                   </div>
                 </div>
@@ -468,7 +468,7 @@ export default function PriceComparisonPage() {
                         color: price.calculated_price_per_100g === result.cheapest_price ? '#10b981' : '#ffffff',
                         fontWeight: 'bold'
                       }}>
-                        ₪{price.calculated_price_per_100g.toFixed(2)}
+                        ₪{(price.calculated_price_per_100g || 0).toFixed(2)}
                       </div>
                     </div>
                   ))}
@@ -541,7 +541,7 @@ export default function PriceComparisonPage() {
                   🏆 החנות הזולה ביותר לסל שלך
                 </h3>
                 <div style={{color: '#ffffff', fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem'}}>
-                  {bestCombination.retailer} - ₪{bestCombination.total.toFixed(2)}
+                  {bestCombination.retailer} - ₪{(bestCombination.total || 0).toFixed(2)}
                 </div>
                 <div style={{
                   display: 'grid',
@@ -556,7 +556,7 @@ export default function PriceComparisonPage() {
                       fontSize: '0.875rem',
                       color: '#e2e8f0'
                     }}>
-                      {item.product}: {item.quantity} × ₪{item.unitPrice.toFixed(2)} = ₪{item.totalPrice.toFixed(2)}
+                      {item.product}: {item.quantity} × ₪{(item.unitPrice || 0).toFixed(2)} = ₪{(item.totalPrice || 0).toFixed(2)}
                     </div>
                   ))}
                 </div>

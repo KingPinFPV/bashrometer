@@ -5,7 +5,7 @@ import React from 'react';
 
 interface PriceDisplayProps {
   /** המחיר המקורי */
-  price: number;
+  price: number | null | undefined;
   /** המחיר המנורמל ל-100 גרם */
   normalizedPrice?: number | null;
   /** יחידת המידה */
@@ -32,8 +32,10 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
   displayMode = 'detailed',
   size = 'md'
 }) => {
-  // קביעת המחיר הפעיל (מבצע או רגיל)
-  const activePrice = (isOnSale && salePrice && salePrice > 0) ? salePrice : price;
+  // קביעת המחיר הפעיל (מבצע או רגיל) עם הגנה על undefined
+  const safePrice = price != null ? Number(price) : 0;
+  const safeSalePrice = salePrice != null ? Number(salePrice) : 0;
+  const activePrice = (isOnSale && safeSalePrice > 0) ? safeSalePrice : safePrice;
   
   // סגנונות לפי גודל
   const sizeClasses = {
@@ -77,9 +79,9 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
         <span className={`font-bold text-blue-600 ${classes.main}`}>
           ₪{activePrice.toFixed(2)}
         </span>
-        {normalizedPrice && (
+        {normalizedPrice != null && (
           <span className={`text-gray-500 ${classes.secondary}`}>
-            (₪{normalizedPrice.toFixed(2)}/100גר&apos;)
+            (₪{Number(normalizedPrice).toFixed(2)}/100גר&apos;)
           </span>
         )}
         {isOnSale && (
@@ -105,10 +107,10 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
             </div>
           </div>
           
-          {normalizedPrice && (
+          {normalizedPrice != null && (
             <div className="text-left">
               <div className={`font-semibold text-green-600 ${classes.main}`}>
-                ₪{normalizedPrice.toFixed(2)}
+                ₪{Number(normalizedPrice).toFixed(2)}
               </div>
               <div className={`text-gray-500 ${classes.secondary}`}>
                 ל-100 גרם
@@ -117,16 +119,16 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
           )}
         </div>
         
-        {isOnSale && salePrice && (
+        {isOnSale && safeSalePrice > 0 && (
           <div className="mt-3 flex items-center gap-2">
             <span className="bg-red-500 text-white rounded-full px-3 py-1 text-sm font-medium">
               🔥 מבצע
             </span>
             <span className="text-gray-500 line-through text-sm">
-              ₪{price.toFixed(2)}
+              ₪{safePrice.toFixed(2)}
             </span>
             <span className="text-green-600 font-semibold">
-              חיסכון: ₪{(price - salePrice).toFixed(2)}
+              חיסכון: ₪{(safePrice - safeSalePrice).toFixed(2)}
             </span>
           </div>
         )}
@@ -153,18 +155,18 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
       </div>
 
       {/* מחיר מנורמל */}
-      {normalizedPrice && (
+      {normalizedPrice != null && (
         <div className={`text-green-600 font-medium ${classes.secondary}`}>
-          ₪{normalizedPrice.toFixed(2)} ל-100 גרם
+          ₪{Number(normalizedPrice).toFixed(2)} ל-100 גרם
         </div>
       )}
 
       {/* מחיר מקורי אם יש מבצע */}
-      {isOnSale && salePrice && (
+      {isOnSale && safeSalePrice > 0 && (
         <div className={`text-gray-500 ${classes.secondary}`}>
-          <span className="line-through">מחיר רגיל: ₪{price.toFixed(2)}</span>
+          <span className="line-through">מחיר רגיל: ₪{safePrice.toFixed(2)}</span>
           <span className="text-green-600 font-medium mr-2">
-            (חיסכון: ₪{(price - salePrice).toFixed(2)})
+            (חיסכון: ₪{(safePrice - safeSalePrice).toFixed(2)})
           </span>
         </div>
       )}

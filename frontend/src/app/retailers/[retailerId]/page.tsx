@@ -223,7 +223,7 @@ export default function RetailerDetailPage() {
                     }}>
                       <div style={{color: '#10b981', fontSize: '0.875rem', marginBottom: '0.25rem'}}>⭐ דירוג</div>
                       <div style={{color: '#ffffff', fontWeight: '600'}}>
-                        {retailer.user_rating.toFixed(1)} ({retailer.rating_count} דירוגים)
+                        {(retailer.user_rating || 0).toFixed(1)} ({retailer.rating_count || 0} דירוגים)
                       </div>
                     </div>
                   )}
@@ -420,7 +420,7 @@ export default function RetailerDetailPage() {
                         color: '#ffffff',
                         marginBottom: '0.25rem'
                       }}>
-                        ₪{price.calculated_price_per_100g.toFixed(2)}
+                        ₪{(price.calculated_price_per_100g || 0).toFixed(2)}
                       </div>
                       <div style={{color: '#cbd5e1', fontSize: '0.875rem', marginBottom: '0.5rem'}}>
                         למאה גרם
@@ -430,16 +430,16 @@ export default function RetailerDetailPage() {
                         {price.is_on_sale && price.sale_price ? (
                           <>
                             <span style={{textDecoration: 'line-through', marginLeft: '0.5rem'}}>
-                              ₪{Number(price.regular_price).toFixed(2)}
+                              ₪{(Number(price.regular_price) || 0).toFixed(2)}
                             </span>
                             <span style={{color: '#ef4444', fontWeight: 'bold'}}>
-                              ₪{Number(price.sale_price).toFixed(2)}
+                              ₪{(Number(price.sale_price) || 0).toFixed(2)}
                             </span>
                           </>
                         ) : (
-                          `₪${Number(price.regular_price).toFixed(2)}`
+                          `₪${(Number(price.regular_price) || 0).toFixed(2)}`
                         )}
-                        <div>({Number(price.quantity_for_price)} {price.unit_for_price})</div>
+                        <div>({(Number(price.quantity_for_price) || 0)} {price.unit_for_price})</div>
                       </div>
                     </div>
 

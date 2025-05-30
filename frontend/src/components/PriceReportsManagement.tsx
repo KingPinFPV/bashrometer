@@ -156,7 +156,7 @@ const PriceReportsManagement: React.FC = () => {
 
   const formatPrice = (price: number | string) => {
     const numPrice = safeParseNumber(price);
-    return `₪${numPrice.toFixed(2)}`;
+    return `₪${(numPrice || 0).toFixed(2)}`;
   };
 
   const getStatusBadge = (status: string) => {

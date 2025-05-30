@@ -229,7 +229,7 @@ export default function ComparePage() {
       console.warn('Invalid price value:', price);
       return 'N/A';
     }
-    return numPrice.toFixed(0);
+    return (numPrice || 0).toFixed(0);
   };
 
   // Format price display

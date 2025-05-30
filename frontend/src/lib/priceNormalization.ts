@@ -38,8 +38,8 @@ export function normalizePrice(priceData: PriceData): NormalizedPrice {
   };
 }
 
-export function formatNormalizedPrice(price: number): string {
-  return `₪${price.toFixed(2)}`;
+export function formatNormalizedPrice(price: number | null | undefined): string {
+  return price != null ? `₪${Number(price).toFixed(2)}` : '₪0.00';
 }
 
 export function calculateBestPrice(prices: PriceData[]): PriceData | null {

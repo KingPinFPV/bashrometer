@@ -40,7 +40,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
             <TrendingDown className="w-4 h-4 text-red-500 ml-1" />
           )}
           <span className={`text-sm font-medium ${change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {change >= 0 ? '+' : ''}{change.toFixed(1)}%
+            {change >= 0 ? '+' : ''}{Number(change).toFixed(1)}%
           </span>
           <span className="text-sm text-gray-500 mr-2">{changeLabel}</span>
         </div>

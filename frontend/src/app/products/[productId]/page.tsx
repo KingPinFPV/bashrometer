@@ -579,9 +579,9 @@ export default function ProductDetailPage() {
                     }}>
                       <strong>Debug:</strong> {prices.length} דיווחים כולל, {uniqueLatestPrices.length} ייחודיים עדכניים
                       <br />
-                      <strong>Best Price:</strong> {bestPrice ? `₪${bestPrice.calculated_price_per_100g?.toFixed(2)} at ${bestPrice.retailer}` : 'None'}
+                      <strong>Best Price:</strong> {bestPrice ? `₪${(bestPrice.calculated_price_per_100g != null ? Number(bestPrice.calculated_price_per_100g).toFixed(2) : '0.00')} at ${bestPrice.retailer}` : 'None'}
                       <br />
-                      <strong>Latest Price:</strong> {latestPrice ? `₪${latestPrice.calculated_price_per_100g?.toFixed(2)} at ${latestPrice.retailer} (${new Date(latestPrice.submission_date).toLocaleDateString()})` : 'None'}
+                      <strong>Latest Price:</strong> {latestPrice ? `₪${(latestPrice.calculated_price_per_100g != null ? Number(latestPrice.calculated_price_per_100g).toFixed(2) : '0.00')} at ${latestPrice.retailer} (${new Date(latestPrice.submission_date).toLocaleDateString()})` : 'None'}
                     </div>
                   )}
 
@@ -612,7 +612,7 @@ export default function ProductDetailPage() {
                       
                       <div style={{display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem'}}>
                         <span style={{fontSize: '2rem', fontWeight: 'bold', color: '#3b82f6'}}>
-                          ₪{latestPrice.calculated_price_per_100g ? latestPrice.calculated_price_per_100g.toFixed(2) : 'N/A'}
+                          ₪{(latestPrice.calculated_price_per_100g != null ? Number(latestPrice.calculated_price_per_100g).toFixed(2) : '0.00')}
                         </span>
                         <span style={{color: '#ffffff', fontSize: '1.25rem'}}>
                           ב{latestPrice.retailer}
@@ -663,7 +663,7 @@ export default function ProductDetailPage() {
                       
                       <div style={{display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem'}}>
                         <span style={{fontSize: '2rem', fontWeight: 'bold', color: '#10b981'}}>
-                          ₪{bestPrice.calculated_price_per_100g ? bestPrice.calculated_price_per_100g.toFixed(2) : 'N/A'}
+                          ₪{(bestPrice.calculated_price_per_100g != null ? Number(bestPrice.calculated_price_per_100g).toFixed(2) : '0.00')}
                         </span>
                         <span style={{color: '#ffffff', fontSize: '1.25rem'}}>
                           ב{bestPrice.retailer}
@@ -799,7 +799,7 @@ export default function ProductDetailPage() {
                           color: isLowest ? '#10b981' : '#ffffff',
                           marginBottom: '0.25rem'
                         }}>
-                          ₪{price.calculated_price_per_100g ? price.calculated_price_per_100g.toFixed(2) : 'N/A'}
+                          ₪{(price.calculated_price_per_100g != null ? Number(price.calculated_price_per_100g).toFixed(2) : '0.00')}
                         </div>
                         <div style={{color: '#cbd5e1', fontSize: '0.875rem', marginBottom: '0.5rem'}}>
                           למאה גרם
@@ -1043,7 +1043,7 @@ export default function ProductDetailPage() {
                       fontWeight: 'bold',
                       color: index === 0 ? '#10b981' : '#ffffff'
                     }}>
-                      ₪{price.calculated_price_per_100g ? price.calculated_price_per_100g.toFixed(2) : 'N/A'}
+                      ₪{(price.calculated_price_per_100g != null ? Number(price.calculated_price_per_100g).toFixed(2) : '0.00')}
                     </div>
 
                     {/* Sale status */}
