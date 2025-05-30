@@ -109,8 +109,8 @@ const getAllPrices = async (req, res, next) => {
   
   let mainQuerySelect = `
     SELECT 
-      pr.id, pr.product_id, p.name as product_name, 
-      pr.retailer_id, r.name as retailer_name,
+      pr.id, pr.product_id, p.name as product_name, p.category as product_category,
+      pr.retailer_id, r.name as retailer_name, r.location as retailer_location,
       pr.user_id, u.name as reporting_user_name, u.email as reporting_user_email, 
       pr.price_submission_date, pr.price_valid_from, pr.price_valid_to,
       pr.unit_for_price, pr.quantity_for_price, 

@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { useReport } from '@/contexts/ReportContext';
 import PriceDisplay from '@/components/PriceDisplay';
 
 // Interfaces (כפי שהיו אצלך)
@@ -58,7 +59,8 @@ export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const productId = params.productId as string;
-  const { user, token, isLoading: authLoading } = useAuth(); //
+  const { user, token, isLoading: authLoading } = useAuth();
+  const { navigateToReport } = useReport();
 
   const [product, setProduct] = useState<ProductDetailed | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -117,6 +119,20 @@ export default function ProductDetailPage() {
         fetchProductDetails();
     }
   }, [productId, fetchProductDetails]); // Include fetchProductDetails in dependency array
+
+  const handleReportPrice = () => {
+    if (!product) return;
+    
+    const productForReport = {
+      id: product.id,
+      name: product.name,
+      category: product.category || '',
+      cut: product.cut_type || undefined,
+      brand: product.brand || undefined
+    };
+    
+    navigateToReport(productForReport, undefined, `/products/${productId}`);
+  };
 
   const handleLikeToggle = async (priceId: number, currentlyLiked: boolean) => {
     if (!user || !token) { ///page.tsx]
@@ -349,15 +365,16 @@ export default function ProductDetailPage() {
 
               {/* Action Buttons */}
               <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1.5rem'}}>
-                <Link
-                  href={`/report-price?productId=${product.id}&productName=${encodeURIComponent(product.name)}`}
+                <button
+                  onClick={handleReportPrice}
                   style={{
                     background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                     color: 'white',
                     padding: '0.875rem 1.5rem',
                     borderRadius: '12px',
                     fontWeight: '600',
-                    textDecoration: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '0.5rem',
@@ -374,7 +391,7 @@ export default function ProductDetailPage() {
                   }}
                 >
                   💰 דווח מחיר למוצר זה
-                </Link>
+                </button>
                 
                 <Link
                   href="/price-comparison"
@@ -546,8 +563,9 @@ export default function ProductDetailPage() {
                         </div>
                       </div>
 
-                      {/* Like Button */}
-                      <div style={{textAlign: 'center'}}>
+                      {/* Action Buttons */}
+                      <div style={{textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
+                        {/* Like Button */}
                         <button
                           onClick={() => handleLikeToggle(price.price_id, price.current_user_liked)}
                           disabled={likeActionLoading[price.price_id] || !user}
@@ -575,9 +593,50 @@ export default function ProductDetailPage() {
                         >
                           {likeActionLoading[price.price_id] ? '⏳' : (price.current_user_liked ? '❤️' : '🤍')}
                         </button>
-                        <div style={{color: '#cbd5e1', fontSize: '0.75rem', marginTop: '0.25rem'}}>
+                        <div style={{color: '#cbd5e1', fontSize: '0.75rem', marginBottom: '0.5rem'}}>
                           {price.likes_count} לייקים
                         </div>
+                        
+                        {/* Update Price Button */}
+                        {user && (
+                          <button
+                            onClick={() => {
+                              const productForReport = {
+                                id: product.id,
+                                name: product.name,
+                                category: product.category || '',
+                                cut: product.cut_type || undefined,
+                                brand: product.brand || undefined
+                              };
+                              const retailerForReport = {
+                                id: price.retailer_id,
+                                name: price.retailer
+                              };
+                              navigateToReport(productForReport, retailerForReport, `/products/${productId}`);
+                            }}
+                            style={{
+                              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '8px',
+                              padding: '0.5rem 0.75rem',
+                              cursor: 'pointer',
+                              transition: 'all 0.3s ease',
+                              fontSize: '0.75rem',
+                              fontWeight: '600'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'translateY(-1px)';
+                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(245, 158, 11, 0.3)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'translateY(0)';
+                              e.currentTarget.style.boxShadow = 'none';
+                            }}
+                          >
+                            📝 עדכן מחיר
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -600,22 +659,23 @@ export default function ProductDetailPage() {
               <p style={{marginBottom: '1.5rem'}}>
                 היה הראשון לדווח על מחיר למוצר זה ועזור לקהילה!
               </p>
-              <Link
-                href={`/report-price?productId=${product.id}&productName=${encodeURIComponent(product.name)}`}
+              <button
+                onClick={handleReportPrice}
                 style={{
                   background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                   color: 'white',
                   padding: '1rem 2rem',
                   borderRadius: '12px',
                   fontWeight: '600',
-                  textDecoration: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
                   display: 'inline-block',
                   boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.25)',
                   transition: 'all 0.3s ease'
                 }}
               >
                 💰 דווח מחיר ראשון
-              </Link>
+              </button>
             </div>
           )}
         </div>

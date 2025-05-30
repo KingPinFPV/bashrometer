@@ -162,7 +162,7 @@ const Navbar = () => {
           </Link>
 
           <Link 
-            href="/price-comparison" 
+            href="/compare" 
             style={linkStyle}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';

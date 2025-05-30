@@ -4,7 +4,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar"; 
 import Footer from "@/components/Footer"; 
-import { AuthProvider } from "@/contexts/AuthContext"; // <-- ייבוא חדש
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ReportProvider } from "@/contexts/ReportContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,13 +32,15 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-background-light`}
       >
-        <AuthProvider> {/* <--- עוטפים כאן */}
-          <Navbar /> 
-          <main className="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
-            {children}
-          </main>
-          <Footer /> 
-        </AuthProvider> {/* <--- סוגרים כאן */}
+        <AuthProvider>
+          <ReportProvider>
+            <Navbar /> 
+            <main className="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
+              {children}
+            </main>
+            <Footer /> 
+          </ReportProvider>
+        </AuthProvider>
       </body>
     </html>
   );

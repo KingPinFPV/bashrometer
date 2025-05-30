@@ -3,7 +3,9 @@
 
 import { useState, FormEvent, useEffect, useRef, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useReport } from '@/contexts/ReportContext';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { AddRetailerModal } from '@/components/AddRetailerModal';
 
 interface Product {
   id: number;
@@ -49,6 +51,7 @@ export default function ReportPricePage() {
 
 function ReportPriceContent() {
   const { user, token, authError, checkAuthStatus, clearAuthError } = useAuth();
+  const { selectedProduct, selectedRetailer, returnPath, navigateBack, clearSelection } = useReport();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -61,9 +64,9 @@ function ReportPriceContent() {
   
   // Form states
   const [productInput, setProductInput] = useState<string>('');
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [localSelectedProduct, setLocalSelectedProduct] = useState<Product | null>(null);
   const [retailerInput, setRetailerInput] = useState<string>('');
-  const [selectedRetailer, setSelectedRetailer] = useState<Retailer | null>(null);
+  const [localSelectedRetailer, setLocalSelectedRetailer] = useState<Retailer | null>(null);
   const [regularPrice, setRegularPrice] = useState<string>('');
   const [salePrice, setSalePrice] = useState<string>('');
   const [isOnSale, setIsOnSale] = useState<boolean>(false);
@@ -86,18 +89,32 @@ function ReportPriceContent() {
   const [authValidated, setAuthValidated] = useState<boolean>(false);
   const [showAuthError, setShowAuthError] = useState<boolean>(false);
   
+  // Modal state
+  const [showAddRetailerModal, setShowAddRetailerModal] = useState<boolean>(false);
+  
   // Refs for handling clicks outside dropdowns
   const productDropdownRef = useRef<HTMLDivElement>(null);
   const retailerDropdownRef = useRef<HTMLDivElement>(null);
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
 
-  // Initialize from URL params
+  // Initialize from ReportContext or URL params
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    // Priority 1: ReportContext data (smart navigation)
+    if (selectedProduct) {
+      setLocalSelectedProduct(selectedProduct);
+      setProductInput(selectedProduct.name);
+    }
+    
+    if (selectedRetailer) {
+      setLocalSelectedRetailer(selectedRetailer);
+      setRetailerInput(selectedRetailer.name);
+    }
+    
+    // Priority 2: URL params (fallback for legacy links)
+    if (!selectedProduct && typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       
-      // Pre-fill product if provided
       const productId = params.get('productId');
       const productName = params.get('productName');
       
@@ -106,11 +123,11 @@ function ReportPriceContent() {
           id: parseInt(productId),
           name: decodeURIComponent(productName),
         };
-        setSelectedProduct(product);
+        setLocalSelectedProduct(product);
         setProductInput(product.name);
       }
     }
-  }, []);
+  }, [selectedProduct, selectedRetailer]);
 
   // Enhanced auth check
   useEffect(() => {
@@ -209,7 +226,7 @@ function ReportPriceContent() {
   // Handle product input change
   const handleProductInputChange = (value: string) => {
     setProductInput(value);
-    setSelectedProduct(null);
+    setLocalSelectedProduct(null);
     
     if (value.trim().length >= 2) {
       fetchProductSuggestions(value);
@@ -222,7 +239,7 @@ function ReportPriceContent() {
   // Handle retailer input change
   const handleRetailerInputChange = (value: string) => {
     setRetailerInput(value);
-    setSelectedRetailer(null);
+    setLocalSelectedRetailer(null);
     
     if (value.trim().length >= 2) {
       fetchRetailerSuggestions(value);
@@ -234,24 +251,36 @@ function ReportPriceContent() {
 
   // Handle product selection
   const handleProductSelect = (product: Product) => {
-    setSelectedProduct(product);
+    setLocalSelectedProduct(product);
     setProductInput(product.name);
     setShowProductDropdown(false);
   };
 
   // Handle retailer selection
   const handleRetailerSelect = (retailer: Retailer) => {
-    setSelectedRetailer(retailer);
+    setLocalSelectedRetailer(retailer);
     setRetailerInput(retailer.name);
     setShowRetailerDropdown(false);
+  };
+
+  // Handle new retailer added from modal
+  const handleRetailerAdded = (retailer: { id: number; name: string; address?: string }) => {
+    const newRetailer: Retailer = {
+      id: retailer.id,
+      name: retailer.name,
+      address: retailer.address
+    };
+    setLocalSelectedRetailer(newRetailer);
+    setRetailerInput(newRetailer.name);
+    setShowAddRetailerModal(false);
   };
 
   // Reset form function
   const resetForm = () => {
     setProductInput('');
-    setSelectedProduct(null);
+    setLocalSelectedProduct(null);
     setRetailerInput('');
-    setSelectedRetailer(null);
+    setLocalSelectedRetailer(null);
     setRegularPrice('');
     setSalePrice('');
     setIsOnSale(false);
@@ -259,6 +288,7 @@ function ReportPriceContent() {
     setQuantity('1');
     setUnit('kg');
     setMessage('');
+    clearSelection(); // Clear ReportContext as well
   };
 
   // Handle form submission
@@ -269,10 +299,10 @@ function ReportPriceContent() {
 
     try {
       const priceData = {
-        product_id: selectedProduct?.id,
-        product_name: selectedProduct?.name || productInput,
-        retailer_id: selectedRetailer?.id,
-        retailer_name: selectedRetailer?.name || retailerInput,
+        product_id: localSelectedProduct?.id,
+        product_name: localSelectedProduct?.name || productInput,
+        retailer_id: localSelectedRetailer?.id,
+        retailer_name: localSelectedRetailer?.name || retailerInput,
         regular_price: parseFloat(regularPrice),
         sale_price: isOnSale && salePrice ? parseFloat(salePrice) : null,
         is_on_sale: isOnSale,
@@ -295,21 +325,31 @@ function ReportPriceContent() {
         const result = await response.json();
         setShowSuccessMessage(true);
 
-        // Smart navigation logic
-        const fromProduct = searchParams.get('from') === 'product' || 
-                           (typeof window !== 'undefined' && document.referrer.includes('/products/'));
+        // Smart navigation logic based on ReportContext
+        const hasReturnPath = returnPath && returnPath !== '/';
         
-        if (fromProduct) {
-          setMessage("הדיווח נשלח בהצלחה! ✅");
+        if (hasReturnPath) {
+          setMessage("הדיווח נשלח בהצלחה! ✅ חוזר לדף הקודם...");
           setTimeout(() => {
-            router.back();
+            navigateBack();
           }, 2000);
         } else {
-          setMessage("הדיווח נשלח בהצלחה! ✅ אפשר לדווח על מוצר נוסף");
-          setTimeout(() => {
-            resetForm();
-            setShowSuccessMessage(false);
-          }, 3000);
+          // Legacy fallback for URL-based navigation
+          const fromProduct = searchParams.get('from') === 'product' || 
+                             (typeof window !== 'undefined' && document.referrer.includes('/products/'));
+          
+          if (fromProduct) {
+            setMessage("הדיווח נשלח בהצלחה! ✅");
+            setTimeout(() => {
+              router.back();
+            }, 2000);
+          } else {
+            setMessage("הדיווח נשלח בהצלחה! ✅ אפשר לדווח על מוצר נוסף");
+            setTimeout(() => {
+              resetForm();
+              setShowSuccessMessage(false);
+            }, 3000);
+          }
         }
       } else {
         const errorData = await response.json();
@@ -498,6 +538,36 @@ function ReportPriceContent() {
       <div style={mainLayoutStyle}>
         <div style={cardStyle}>
           <div style={headerStyle}>
+            {returnPath && returnPath !== '/' && (
+              <div style={{ marginBottom: '1rem' }}>
+                <button
+                  onClick={navigateBack}
+                  style={{
+                    background: 'none',
+                    border: '2px solid #e5e7eb',
+                    color: '#6b7280',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#3b82f6';
+                    e.currentTarget.style.color = '#3b82f6';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.color = '#6b7280';
+                  }}
+                >
+                  ← חזור
+                </button>
+              </div>
+            )}
             <h1 style={titleStyle}>💰 דיווח מחיר</h1>
             <p style={subtitleStyle}>
               עזור לקהילה על ידי דיווח על מחירי בשר עדכניים
@@ -534,7 +604,7 @@ function ReportPriceContent() {
                 placeholder="התחל להקליד שם מוצר..."
                 style={{
                   ...inputStyle,
-                  borderColor: selectedProduct ? '#10b981' : '#e5e7eb'
+                  borderColor: localSelectedProduct ? '#10b981' : '#e5e7eb'
                 }}
                 required
               />
@@ -587,9 +657,39 @@ function ReportPriceContent() {
 
             {/* Retailer Autocomplete */}
             <div ref={retailerDropdownRef} style={{position: 'relative'}}>
-              <label htmlFor="retailer" style={labelStyle}>
-                שם הקמעונאי <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
-              </label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <label htmlFor="retailer" style={labelStyle}>
+                  שם הקמעונאי <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowAddRetailerModal(true)}
+                  style={{
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    padding: '0.5rem 0.75rem',
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.25rem'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  ➕ הוסף קמעונאי
+                </button>
+              </div>
               <input
                 type="text"
                 id="retailer"
@@ -598,7 +698,7 @@ function ReportPriceContent() {
                 placeholder="התחל להקליד שם קמעונאי..."
                 style={{
                   ...inputStyle,
-                  borderColor: selectedRetailer ? '#10b981' : '#e5e7eb'
+                  borderColor: localSelectedRetailer ? '#10b981' : '#e5e7eb'
                 }}
                 required
               />
@@ -783,6 +883,13 @@ function ReportPriceContent() {
           </form>
         </div>
       </div>
+      
+      {/* Add Retailer Modal */}
+      <AddRetailerModal
+        isOpen={showAddRetailerModal}
+        onClose={() => setShowAddRetailerModal(false)}
+        onRetailerAdded={handleRetailerAdded}
+      />
       
       <style jsx>{`
         @keyframes spin {
