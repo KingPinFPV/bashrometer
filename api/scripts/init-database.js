@@ -21,6 +21,7 @@ async function createProductsTable() {
     console.log('🔄 Checking and adding missing columns...');
     
     const missingColumns = [
+      { name: 'price', type: 'DECIMAL(10,2) DEFAULT 0' },
       { name: 'retailer', type: 'VARCHAR(255)' },
       { name: 'cut_type', type: 'VARCHAR(100)' },
       { name: 'weight', type: 'VARCHAR(50)' }
@@ -122,10 +123,41 @@ async function addSampleData() {
       console.log('✅ Sample data added');
     } else {
       console.log(`ℹ️ Products table already has ${productCount} items, skipping sample data`);
+      
+      // But still update prices for existing products that don't have them
+      await updateMissingPrices();
     }
   } catch (error) {
     console.error('❌ Error adding sample data:', error);
     // Don't throw - sample data is optional
+  }
+}
+
+async function updateMissingPrices() {
+  try {
+    console.log('🔄 Updating existing products with missing prices...');
+    
+    // Update products that have price = 0 or NULL
+    const updateQuery = `
+      UPDATE products 
+      SET price = CASE 
+        WHEN name ILIKE '%אנטריקוט%' THEN 89.90
+        WHEN name ILIKE '%חזה עוף%' OR name ILIKE '%חזה%' THEN 24.90  
+        WHEN name ILIKE '%כתף כבש%' OR name ILIKE '%כתף%' THEN 65.00
+        WHEN name ILIKE '%פילה%' THEN 119.90
+        WHEN name ILIKE '%שוק%' THEN 19.90
+        WHEN name ILIKE '%קציצות%' THEN 45.90
+        ELSE 50.00
+      END
+      WHERE price = 0 OR price IS NULL;
+    `;
+    
+    const result = await pool.query(updateQuery);
+    console.log(`✅ Updated ${result.rowCount} products with sample prices`);
+    
+  } catch (error) {
+    console.error('❌ Error updating prices:', error);
+    // Don't throw - price updates are optional
   }
 }
 
@@ -145,5 +177,6 @@ module.exports = {
   createProductsTable,
   createIndexes,
   addSampleData,
+  updateMissingPrices,
   initializeDatabase
 };
