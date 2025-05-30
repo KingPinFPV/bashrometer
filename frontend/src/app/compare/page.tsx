@@ -130,19 +130,29 @@ export default function ComparePage() {
 
   // Price helper functions
   const getLatestPricePerRetailer = (productId: number) => {
-    const productPrices = priceReports.filter(price => price.product_id === productId);
+    const productPrices = priceReports.filter(price => 
+      price.product_id === productId && 
+      (price.status === 'approved' || !price.status) // מחירים מאושרים בלבד
+    );
     
-    // Group by retailer and get the latest from each
-    const latestByRetailer = new Map();
+    if (productPrices.length === 0) {
+      console.log(`No prices found for product ${productId}`);
+      return [];
+    }
     
-    productPrices.forEach(price => {
-      const current = latestByRetailer.get(price.retailer_id);
-      if (!current || new Date(price.reported_at) > new Date(current.reported_at)) {
-        latestByRetailer.set(price.retailer_id, price);
+    // קבץ לפי retailer_id עם reduce במקום Map
+    const groupedByRetailer = productPrices.reduce((acc, price) => {
+      const retailerId = price.retailer_id;
+      if (!acc[retailerId] || new Date(price.reported_at) > new Date(acc[retailerId].reported_at)) {
+        acc[retailerId] = price;
       }
-    });
+      return acc;
+    }, {} as Record<number, PriceReport>);
     
-    return Array.from(latestByRetailer.values());
+    const result = Object.values(groupedByRetailer);
+    console.log(`Product ${productId}: Found ${result.length} latest prices from ${Object.keys(groupedByRetailer).length} retailers`);
+    
+    return result;
   };
 
   const sortPricesByPrice = (prices: PriceReport[]) => {
@@ -212,21 +222,30 @@ export default function ComparePage() {
         ...(token && { 'Authorization': `Bearer ${token}` })
       };
 
-      // טען נתונים במקביל
+      console.log('Fetching data with token:', token ? 'Present' : 'Missing');
+
+      // טען נתונים במקביל - אופטימיזציה עם limits קטנים יותר
       const [productsRes, retailersRes, pricesRes] = await Promise.all([
-        fetch(`${API_BASE}/api/products?limit=100`, { 
+        fetch(`${API_BASE}/api/products?limit=50`, { 
           headers,
-          signal: AbortSignal.timeout(30000)
+          signal: AbortSignal.timeout(15000)
         }),
-        fetch(`${API_BASE}/api/retailers?limit=100`, { 
+        fetch(`${API_BASE}/api/retailers?limit=50`, { 
           headers,
-          signal: AbortSignal.timeout(30000)
+          signal: AbortSignal.timeout(15000)
         }),
-        fetch(`${API_BASE}/api/prices?limit=500`, { 
+        fetch(`${API_BASE}/api/prices?limit=200&status=approved`, { 
           headers,
-          signal: AbortSignal.timeout(30000)
+          signal: AbortSignal.timeout(15000)
         })
       ]);
+
+      // Debug responses
+      console.log('API Responses:', {
+        products: productsRes.status,
+        retailers: retailersRes.status,
+        prices: pricesRes.status
+      });
 
       // בדוק תגובות
       if (!productsRes.ok) {
@@ -235,22 +254,35 @@ export default function ComparePage() {
       if (!retailersRes.ok) {
         throw new Error(`שגיאה בטעינת קמעונאים: ${retailersRes.status}`);
       }
-      if (!pricesRes.ok) {
-        // אם המחירים נכשלו, נמשיך בלי מחירים
-        console.warn('Failed to fetch prices:', pricesRes.status);
-      }
 
-      const [productsData, retailersData, pricesData] = await Promise.all([
+      const [productsData, retailersData] = await Promise.all([
         productsRes.json(),
-        retailersRes.json(),
-        pricesRes.ok ? pricesRes.json() : { prices: [] }
+        retailersRes.json()
       ]);
 
+      // טפל במחירים בנפרד - אם נכשל, המשך בלי מחירים
+      let pricesData = { prices: [] };
+      if (pricesRes.ok) {
+        try {
+          pricesData = await pricesRes.json();
+        } catch (error) {
+          console.warn('Failed to parse prices response:', error);
+        }
+      } else {
+        console.warn('Prices API failed with status:', pricesRes.status);
+      }
+
       const finalData = {
-        products: productsData.products || productsData.data || [],
-        retailers: retailersData.retailers || retailersData.data || [],
-        prices: pricesData.prices || pricesData.data || []
+        products: productsData.products || [],
+        retailers: retailersData.retailers || [],
+        prices: pricesData.prices || []
       };
+
+      console.log('Final data counts:', {
+        products: finalData.products.length,
+        retailers: finalData.retailers.length,
+        prices: finalData.prices.length
+      });
 
       setProducts(finalData.products);
       setRetailers(finalData.retailers);
@@ -411,6 +443,13 @@ export default function ComparePage() {
               רענן נתונים
             </button>
           </div>
+
+          {/* Debug info - הסר בפרודקשן */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mb-4 p-3 bg-gray-100 rounded text-sm">
+              <strong>Debug Info:</strong> {products.length} מוצרים, {retailers.length} קמעונאים, {priceReports.length} מחירים
+            </div>
+          )}
 
           {/* מקרא צבעים */}
           <div className="grid grid-cols-2 gap-2 mb-6 text-sm">
@@ -579,6 +618,13 @@ export default function ComparePage() {
             רענן נתונים
           </button>
         </div>
+
+        {/* Debug info - הסר בפרודקשן */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mb-4 p-3 bg-gray-100 rounded text-sm">
+            <strong>Debug Info:</strong> {products.length} מוצרים, {retailers.length} קמעונאים, {priceReports.length} מחירים
+          </div>
+        )}
 
         {showOfflineData && (
           <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">

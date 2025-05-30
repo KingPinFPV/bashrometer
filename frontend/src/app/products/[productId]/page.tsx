@@ -68,6 +68,41 @@ export default function ProductDetailPage() {
   // State to track loading state for individual like buttons
   const [likeActionLoading, setLikeActionLoading] = useState<Record<number, boolean>>({});
 
+  // פונקציה לקבלת מחיר אחרון מכל קמעונאי (ללא כפילויות)
+  const getUniqueLatestPrices = (prices: PriceExample[]) => {
+    // מיפוי לפי retailer_id לקבלת המחיר העדכני ביותר
+    const latestByRetailer = new Map();
+    
+    prices.forEach(price => {
+      const retailerId = price.retailer_id;
+      const current = latestByRetailer.get(retailerId);
+      
+      if (!current || new Date(price.submission_date) > new Date(current.submission_date)) {
+        latestByRetailer.set(retailerId, price);
+      }
+    });
+    
+    return Array.from(latestByRetailer.values());
+  };
+
+  // פונקציה למיון לפי מחיר (כולל מבצעים)
+  const sortByEffectivePrice = (prices: PriceExample[]) => {
+    return prices.sort((a, b) => {
+      const priceA = (a.sale_price && a.sale_price < a.regular_price) ? a.sale_price : a.regular_price;
+      const priceB = (b.sale_price && b.sale_price < b.regular_price) ? b.sale_price : b.regular_price;
+      return priceA - priceB;
+    });
+  };
+
+  // פונקציה לקבלת המחיר הטוב ביותר
+  const getBestCurrentPrice = (prices: PriceExample[]) => {
+    if (!prices.length) return null;
+    
+    const uniquePrices = getUniqueLatestPrices(prices);
+    const sortedPrices = sortByEffectivePrice(uniquePrices);
+    return sortedPrices[0];
+  };
+
 
   const fetchProductDetails = useCallback(async () => {
     console.log(`ProductDetailPage: fetchProductDetails called for productId: ${productId}`);
@@ -440,10 +475,91 @@ export default function ProductDetailPage() {
           </h2>
 
           {product.price_examples && product.price_examples.length > 0 ? (
-            <div style={{display: 'grid', gap: '1rem'}}>
-              {product.price_examples.slice(0, 5).map((price, index) => {
-                const isLowest = index === 0; // הנחה שהמחירים ממוינים
-                const isSale = price.is_on_sale && price.sale_price;
+            (() => {
+              const uniqueLatestPrices = getUniqueLatestPrices(product.price_examples);
+              const sortedPrices = sortByEffectivePrice(uniqueLatestPrices);
+              const bestPrice = getBestCurrentPrice(product.price_examples);
+              
+              return (
+                <div>
+                  {/* Debug info */}
+                  {process.env.NODE_ENV === 'development' && (
+                    <div style={{
+                      marginBottom: '1rem',
+                      padding: '0.75rem',
+                      background: 'rgba(255, 255, 255, 0.1)',
+                      borderRadius: '8px',
+                      fontSize: '0.875rem',
+                      color: '#cbd5e1'
+                    }}>
+                      <strong>Debug:</strong> {product.price_examples.length} דיווחים כולל, {uniqueLatestPrices.length} ייחודיים עדכניים
+                    </div>
+                  )}
+                  
+                  {/* המחיר הטוב ביותר */}
+                  {bestPrice && (
+                    <div style={{
+                      background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.1) 100%)',
+                      border: '2px solid rgba(16, 185, 129, 0.5)',
+                      borderRadius: '16px',
+                      padding: '1.5rem',
+                      marginBottom: '1.5rem',
+                      position: 'relative'
+                    }}>
+                      <div style={{
+                        position: 'absolute',
+                        top: '-12px',
+                        right: '20px',
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        color: 'white',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '20px',
+                        fontSize: '0.75rem',
+                        fontWeight: 'bold',
+                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+                      }}>
+                        💰 המחיר הטוב ביותר כרגע
+                      </div>
+                      
+                      <div style={{display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem'}}>
+                        <span style={{fontSize: '2rem', fontWeight: 'bold', color: '#10b981'}}>
+                          ₪{bestPrice.calculated_price_per_100g ? bestPrice.calculated_price_per_100g.toFixed(2) : 'N/A'}
+                        </span>
+                        <span style={{color: '#ffffff', fontSize: '1.25rem'}}>
+                          ב{bestPrice.retailer}
+                        </span>
+                        <span style={{color: '#cbd5e1', fontSize: '0.875rem'}}>
+                          עודכן ב-{new Date(bestPrice.submission_date).toLocaleDateString('he-IL')}
+                        </span>
+                        {bestPrice.sale_price && bestPrice.sale_price < bestPrice.regular_price && (
+                          <span style={{
+                            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                            color: 'white',
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: 'bold'
+                          }}>
+                            🏷️ מבצע!
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <h3 style={{
+                    fontSize: '1.5rem',
+                    fontWeight: 'bold',
+                    color: '#ffffff',
+                    marginBottom: '1rem'
+                  }}>
+                    מחירים עדכניים מכל הקמעונאים ({uniqueLatestPrices.length})
+                  </h3>
+                  
+                  <div style={{display: 'grid', gap: '1rem'}}>
+                    {sortedPrices.slice(0, 5).map((price, index) => {
+                      const isLowest = index === 0;
+                      const isSale = price.is_on_sale && price.sale_price;
                 
                 return (
                   <div
@@ -640,9 +756,12 @@ export default function ProductDetailPage() {
                       </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()
           ) : (
             <div style={{
               textAlign: 'center',
