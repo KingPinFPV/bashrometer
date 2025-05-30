@@ -12,26 +12,7 @@ const getAllProducts = async (req, res) => {
       limit = 20, offset = 0, sort_by = 'name', order = 'ASC'
     } = req.query;
     
-    // Check if price column exists
-    console.log('🔍 Checking table structure...');
-    const columnsQuery = `
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_name = 'products' AND table_schema = 'public'
-    `;
-    
-    const columnsResult = await pool.query(columnsQuery);
-    const columnNames = columnsResult.rows.map(row => row.column_name);
-    const hasPriceColumn = columnNames.includes('price');
-    
-    console.log('📋 Available columns:', columnNames);
-    console.log('💰 Has price column:', hasPriceColumn);
-    
-    const validSortColumns = ['name', 'created_at'];
-    if (hasPriceColumn) validSortColumns.push('price');
-    if (columnNames.includes('retailer')) validSortColumns.push('retailer');
-    if (columnNames.includes('cut_type')) validSortColumns.push('cut_type');
-    
+    const validSortColumns = ['name', 'price', 'retailer', 'cut_type', 'created_at'];
     const sortColumn = validSortColumns.includes(sort_by) ? sort_by : 'name';
     const sortOrder = order.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
     
@@ -40,20 +21,12 @@ const getAllProducts = async (req, res) => {
     const countResult = await pool.query(countQuery);
     const total = parseInt(countResult.rows[0].count);
     
-    // Build query based on available columns
-    let selectFields = 'id, name';
-    if (hasPriceColumn) {
-      selectFields += ', price';
-    } else {
-      selectFields += ', 0 as price';
-    }
-    if (columnNames.includes('retailer')) selectFields += ', retailer';
-    if (columnNames.includes('cut_type')) selectFields += ', cut_type';
-    if (columnNames.includes('weight')) selectFields += ', weight';
-    selectFields += ', created_at, updated_at';
-    
+    // Get products with all expected columns
     const productsQuery = `
-      SELECT ${selectFields}
+      SELECT id, name, 
+             COALESCE(price, 0) as price,
+             retailer, cut_type, weight, 
+             created_at, updated_at
       FROM products 
       ORDER BY ${sortColumn} ${sortOrder}
       LIMIT $1 OFFSET $2
@@ -70,16 +43,42 @@ const getAllProducts = async (req, res) => {
       total: total,
       limit: parseInt(limit),
       offset: parseInt(offset),
-      count: result.rows.length,
-      tableStructure: {
-        columns: columnNames,
-        hasPriceColumn: hasPriceColumn
-      }
+      count: result.rows.length
     });
     
   } catch (error) {
     console.error('❌ Error getting products:', error);
     console.error('Error details:', error.message);
+    
+    // If the error is about missing price column, try without it
+    if (error.message.includes('column "price" does not exist')) {
+      console.log('🔄 Retrying without price column...');
+      try {
+        const fallbackQuery = `
+          SELECT id, name, 0 as price,
+                 retailer, cut_type, weight, 
+                 created_at, updated_at
+          FROM products 
+          ORDER BY name ASC
+          LIMIT $1 OFFSET $2
+        `;
+        
+        const result = await pool.query(fallbackQuery, [parseInt(limit), parseInt(offset)]);
+        const countResult = await pool.query('SELECT COUNT(*) FROM products');
+        
+        return res.json({
+          products: result.rows,
+          total: parseInt(countResult.rows[0].count),
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+          count: result.rows.length,
+          warning: 'Price column missing - showing default prices'
+        });
+      } catch (fallbackError) {
+        console.error('❌ Fallback query also failed:', fallbackError);
+      }
+    }
+    
     res.status(500).json({ 
       error: 'Failed to get products',
       details: error.message

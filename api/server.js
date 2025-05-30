@@ -7,10 +7,10 @@ console.log('📍 Environment:', process.env.NODE_ENV || 'development');
 const PORT = process.env.PORT || 3001;
 console.log('🔌 Requested Port:', PORT);
 
-// בדיקת משתני סביבה קריטיים
+// Check critical environment variables
 if (!process.env.DATABASE_URL) {
   console.error('❌ DATABASE_URL is not set');
-  console.log('ℹ️ Server will start but database operations will fail');
+  console.log('ℹ️ Server will start but database operations may fail');
 }
 
 const express = require('express');
@@ -41,10 +41,9 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 console.log('✅ CORS configured for basarometer.org');
-
 console.log('✅ Middleware configured');
 
-// Health check פשוט - בלי תלות במסד נתונים
+// Health check endpoint (simple - no database dependency)
 app.get('/health', (req, res) => {
   console.log('🏥 Health check requested');
   res.json({ 
@@ -57,127 +56,108 @@ app.get('/health', (req, res) => {
 
 console.log('✅ Health endpoint configured');
 
-// Critical route loading and mounting
-let routesLoaded = false;
+// CRITICAL: Load and mount routes SYNCHRONOUSLY
+console.log('🔄 Loading and mounting routes...');
 
-async function loadAndMountRoutes() {
-  try {
-    console.log('🔄 Loading and mounting routes BEFORE server start...');
-    
-    // Database initialization first
-    if (process.env.DATABASE_URL) {
-      console.log('🔄 Testing database connection...');
-      try {
-        const db = require('./db');
-        
-        const client = await db.pool.connect();
-        await client.query('SELECT 1');
-        client.release();
-        console.log('✅ Database connection successful');
-        
-        // Initialize database tables
-        try {
-          const { initializeDatabase } = require('./scripts/init-database');
-          await initializeDatabase();
-          console.log('✅ Database initialization completed');
-        } catch (err) { 
-          console.warn('⚠️ Database init warning:', err.message); 
-        }
-      } catch (dbError) {
-        console.error('❌ Database connection failed:', dbError.message);
-        console.log('⚠️ Continuing without database-dependent features');
-      }
-    }
-    
-    console.log('📂 Loading route modules...');
-    
-    // Load all route modules
-    const cutsRoutes = require('./routes/cuts');
-    console.log('✅ Cuts routes module loaded');
-    
-    const authRoutes = require('./routes/auth');
-    console.log('✅ Auth routes module loaded');
-    
-    const pricesRoutes = require('./routes/prices');
-    console.log('✅ Prices routes module loaded');
-    
-    const productsRoutes = require('./routes/products');
-    console.log('✅ Products routes module loaded');
-
-    console.log('🔗 Mounting routes to Express app...');
-    
-    // CRITICAL: Mount routes to Express app in correct order
-    app.use('/api/cuts', cutsRoutes);
-    console.log('✅ /api/cuts mounted');
-    
-    app.use('/api/auth', authRoutes);
-    console.log('✅ /api/auth mounted');
-    
-    app.use('/api/prices', pricesRoutes);
-    console.log('✅ /api/prices mounted');
-    
-    app.use('/api/products', productsRoutes);
-    console.log('✅ /api/products mounted');
-    
-    routesLoaded = true;
-    console.log('🎯 All routes successfully mounted to Express app');
-    
-    return true;
-    
-  } catch (error) {
-    console.error('❌ Critical error in route loading:', error.message);
-    console.error('📋 Stack:', error.stack);
-    routesLoaded = false;
-    return false;
-  }
+try {
+  // Load route modules
+  console.log('📂 Loading route modules...');
+  
+  const cutsRoutes = require('./routes/cuts');
+  console.log('✅ Cuts routes module loaded');
+  
+  const authRoutes = require('./routes/auth');
+  console.log('✅ Auth routes module loaded');
+  
+  const pricesRoutes = require('./routes/prices');
+  console.log('✅ Prices routes module loaded');
+  
+  const productsRoutes = require('./routes/products');
+  console.log('✅ Products routes module loaded');
+  
+  console.log('🔗 Mounting routes to Express app...');
+  
+  // Mount routes to Express app
+  app.use('/api/cuts', cutsRoutes);
+  console.log('✅ /api/cuts mounted');
+  
+  app.use('/api/auth', authRoutes);
+  console.log('✅ /api/auth mounted');
+  
+  app.use('/api/prices', pricesRoutes);
+  console.log('✅ /api/prices mounted');
+  
+  app.use('/api/products', productsRoutes);
+  console.log('✅ /api/products mounted');
+  
+  console.log('🎯 All routes successfully mounted to Express app');
+  
+} catch (routeError) {
+  console.error('❌ CRITICAL: Failed to load/mount routes:', routeError);
+  console.error('📋 Stack:', routeError.stack);
+  
+  // Add basic fallback routes
+  app.get('/api/status', (req, res) => {
+    res.json({ 
+      status: 'API partially available',
+      error: 'Route loading failed',
+      timestamp: new Date().toISOString(),
+      routesLoaded: false
+    });
+  });
 }
 
 // API status endpoint
 app.get('/api/status', (req, res) => {
-  res.json({ 
-    status: 'API available',
-    routesLoaded: routesLoaded,
+  res.json({
+    status: 'OK',
+    service: 'Basarometer API',
     timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    routesLoaded: true,
     port: PORT,
     environment: process.env.NODE_ENV || 'development'
   });
 });
 
-// Debug endpoint to list all routes
+// Debug routes endpoint
 app.get('/api/debug/routes', (req, res) => {
   const routes = [];
   
-  // Get all routes from Express app
-  app._router.stack.forEach((middleware) => {
-    if (middleware.route) { // Routes registered directly on the app
-      routes.push({
-        method: Object.keys(middleware.route.methods)[0].toUpperCase(),
-        path: middleware.route.path
-      });
-    } else if (middleware.name === 'router') { // Router middleware
-      const routerRoutes = [];
-      middleware.handle.stack.forEach((handler) => {
-        if (handler.route) {
-          routerRoutes.push({
-            method: Object.keys(handler.route.methods)[0].toUpperCase(),
-            path: handler.route.path
-          });
-        }
-      });
-      routes.push({
-        baseUrl: middleware.regexp.source.replace(/\\\//g, '/').replace(/\$|\^/g, '').replace(/\?\?\*/g, ''),
-        routes: routerRoutes
-      });
-    }
-  });
+  function extractRoutes(stack, basePath = '') {
+    stack.forEach(layer => {
+      if (layer.route) {
+        routes.push({
+          method: Object.keys(layer.route.methods)[0].toUpperCase(),
+          path: basePath + layer.route.path
+        });
+      } else if (layer.name === 'router' && layer.handle.stack) {
+        const routerPath = layer.regexp.source
+          .replace(/\\\//g, '/')
+          .replace(/\(\?\:/g, '')
+          .replace(/\)\?\(\?\=/g, '')
+          .replace(/\|\)/g, '')
+          .replace(/\$/, '')
+          .replace(/\^/, '');
+        extractRoutes(layer.handle.stack, routerPath);
+      }
+    });
+  }
+  
+  if (app._router && app._router.stack) {
+    extractRoutes(app._router.stack);
+  }
   
   res.json({
     message: 'Registered routes',
     timestamp: new Date().toISOString(),
     routes: routes,
-    routesLoaded: routesLoaded
+    totalRoutes: routes.length,
+    routesLoaded: true
   });
 });
+
+console.log('✅ Debug endpoints configured');
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -188,66 +168,59 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
+// 404 handler (must be last)
 app.use('*', (req, res) => {
+  console.log(`❌ 404 for ${req.method} ${req.originalUrl}`);
   res.status(404).json({ 
     error: 'Route not found',
-    routesLoaded: routesLoaded,
-    availableEndpoints: ['/health', '/api/status']
+    path: req.originalUrl,
+    method: req.method,
+    timestamp: new Date().toISOString(),
+    availableEndpoints: ['/health', '/api/status', '/api/debug/routes']
   });
 });
 
-console.log('🔄 Starting Basarometer API with route mounting...');
+console.log('✅ Error handlers configured');
 
-// **CRITICAL: Load and mount routes BEFORE server starts listening**
-loadAndMountRoutes().then(success => {
-  if (success) {
-    console.log('🎯 Routes mounted successfully - starting server...');
-  } else {
-    console.warn('⚠️ Some routes failed to mount - starting server with basic functionality...');
+// Database initialization (async after server starts)
+async function initializeDatabase() {
+  try {
+    console.log('🔄 Initializing database...');
+    
+    if (process.env.DATABASE_URL) {
+      const { initializeDatabase } = require('./scripts/init-database');
+      await initializeDatabase();
+      console.log('✅ Database initialized');
+    } else {
+      console.log('ℹ️ No DATABASE_URL - skipping database initialization');
+    }
+  } catch (error) {
+    console.warn('⚠️ Database initialization warning:', error.message);
+  }
+}
+
+// Start server
+console.log('🔄 Starting server...');
+
+const server = app.listen(PORT, '0.0.0.0', async (err) => {
+  if (err) {
+    console.error('❌ Failed to start server:', err);
+    process.exit(1);
   }
   
-  // Start the server AFTER routes are mounted
-  const server = app.listen(PORT, '0.0.0.0', (err) => {
-    if (err) {
-      console.error('❌ Failed to start server:', err);
-      process.exit(1);
-    }
-    
-    console.log(`✅ Server running on port ${PORT}`);
-    console.log(`🌐 Server listening on 0.0.0.0:${PORT}`);
-    console.log(`🏥 Health check: http://0.0.0.0:${PORT}/health`);
-    console.log(`📊 Status: http://0.0.0.0:${PORT}/api/status`);
-    console.log(`🔗 Debug routes: http://0.0.0.0:${PORT}/api/debug/routes`);
-    console.log(`📦 Products API: http://0.0.0.0:${PORT}/api/products`);
-    console.log(`🔐 Auth API: http://0.0.0.0:${PORT}/api/auth`);
-    console.log(`🔪 Cuts API: http://0.0.0.0:${PORT}/api/cuts`);
-    
-    if (success) {
-      console.log('🚀 All API endpoints should be functional!');
-    } else {
-      console.log('⚠️ Some endpoints may not work due to route mounting failures');
-    }
-  });
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`🌐 Server listening on 0.0.0.0:${PORT}`);
+  console.log(`🏥 Health check: http://0.0.0.0:${PORT}/health`);
+  console.log(`📊 Status: http://0.0.0.0:${PORT}/api/status`);
+  console.log(`🔗 Debug routes: http://0.0.0.0:${PORT}/api/debug/routes`);
+  console.log(`📦 Products API: http://0.0.0.0:${PORT}/api/products`);
+  console.log(`🔪 Cuts API: http://0.0.0.0:${PORT}/api/cuts`);
+  console.log(`🔐 Auth API: http://0.0.0.0:${PORT}/api/auth`);
+  console.log('🚀 All API endpoints should be functional!');
   
-}).catch(err => {
-  console.error('💥 Critical failure in route mounting:', err.message);
-  console.error('📋 Stack:', err.stack);
-  
-  // Start server anyway with basic functionality
-  const server = app.listen(PORT, '0.0.0.0', (err) => {
-    if (err) {
-      console.error('❌ Failed to start server:', err);
-      process.exit(1);
-    }
-    
-    console.log(`⚠️ Server running on port ${PORT} (limited functionality)`);
-    console.log(`🏥 Health check: http://0.0.0.0:${PORT}/health`);
-    console.log(`📊 Status: http://0.0.0.0:${PORT}/api/status`);
-  });
+  // Initialize database after server starts
+  setTimeout(initializeDatabase, 1000);
 });
-
-// Remove timeout fallback since we now wait for routes before starting
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
