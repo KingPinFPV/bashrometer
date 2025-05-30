@@ -73,15 +73,34 @@ export default function CreateProductPage() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/categories`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const apiBase = process.env.NEXT_PUBLIC_API_URL?.endsWith('/') 
+        ? process.env.NEXT_PUBLIC_API_URL.slice(0, -1) 
+        : process.env.NEXT_PUBLIC_API_URL;
+      
+      const response = await fetch(`${apiBase}/api/categories`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+        credentials: 'include'
       });
+      
       if (response.ok) {
         const data = await response.json();
-        setCategories(data.categories || []);
+        console.log("Admin Categories API response:", data);
+        
+        // Handle the new categories API format
+        if (data.categories && Array.isArray(data.categories)) {
+          const categoryNames = data.categories.map((cat: any) => cat.name).filter((name: string) => name);
+          setCategories(categoryNames.sort());
+        } else {
+          console.warn("Categories API returned unexpected format:", data);
+          setCategories([]);
+        }
+      } else {
+        console.error("Categories API failed:", response.status, response.statusText);
+        setCategories([]);
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
+      setCategories([]);
     }
   };
 

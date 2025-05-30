@@ -16,13 +16,13 @@ interface Product {
 }
 
 interface ApiResponse {
-  data: Product[];
-  page_info: {
-    limit: number;
-    offset: number;
-    total_items?: number;
-    current_page_count?: number;
-  };
+  products: Product[];
+  total_items: number;
+  total_pages: number;
+  current_page: number;
+  items_per_page: number;
+  has_next: boolean;
+  has_previous: boolean;
 }
 
 export default function ProductsPage() {
@@ -84,8 +84,8 @@ export default function ProductsPage() {
 
       const data: ApiResponse = await response.json();
       console.log("ProductsPage fetched data:", data);
-      setProducts(data.data ?? []);
-      setTotalPages(Math.ceil((data.page_info.total_items || 0) / itemsPerPage));
+      setProducts(data.products ?? []);
+      setTotalPages(data.total_pages || Math.ceil((data.total_items || 0) / itemsPerPage));
       setCurrentPage(page);
     } catch (e: any) {
       console.error("ProductsPage - Failed to fetch products:", e);
@@ -98,20 +98,29 @@ export default function ProductsPage() {
   // Fetch categories for filter dropdown
   const fetchCategories = async () => {
     try {
-      const response = await fetch(`${apiBase}/api/products?limit=1000`, {
+      const base = apiBase.endsWith('/') ? apiBase.slice(0, -1) : apiBase;
+      const response = await fetch(`${base}/api/categories`, {
         credentials: 'include',
       });
       if (response.ok) {
         const data = await response.json();
-        const uniqueCategories = [...new Set(
-          data.data
-            .map((p: Product) => p.category)
-            .filter((cat: string) => cat && cat.trim() !== '')
-        )] as string[];
-        setCategories(uniqueCategories.sort());
+        console.log("Categories API response:", data);
+        
+        // Handle the new categories API format
+        if (data.categories && Array.isArray(data.categories)) {
+          const categoryNames = data.categories.map((cat: any) => cat.name).filter((name: string) => name);
+          setCategories(categoryNames.sort());
+        } else {
+          console.warn("Categories API returned unexpected format:", data);
+          setCategories([]);
+        }
+      } else {
+        console.error("Categories API failed:", response.status, response.statusText);
+        setCategories([]);
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
+      setCategories([]);
     }
   };
 
