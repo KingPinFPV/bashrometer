@@ -21,13 +21,15 @@ const getAllProducts = async (req, res, next) => {
   if (name_like) { whereClauses += ` AND LOWER(p.name) LIKE LOWER($${paramIndex++})`; queryParams.push(`%${name_like}%`); }
 
   const countQueryParams = [...queryParams]; 
-  const countQuery = `SELECT COUNT(DISTINCT p.id) FROM products p ${whereClauses.replace(/\$\d+/g, (match, i) => `$${countQueryParams.indexOf(queryParams[parseInt(match.substring(1))-1]) + 1}`)}`;
+  const countQuery = `SELECT COUNT(DISTINCT p.id) FROM products p LEFT JOIN cuts c ON p.cut_id = c.id ${whereClauses.replace(/\$\d+/g, (match, i) => `$${countQueryParams.indexOf(queryParams[parseInt(match.substring(1))-1]) + 1}`)}`;
   
   let mainQuery = `
     SELECT 
       p.id, p.name, p.brand, p.short_description, p.image_url, p.category, 
       p.unit_of_measure, p.is_active, p.origin_country, p.kosher_level, p.animal_type,
-      p.cut_type, p.description, p.default_weight_per_unit_grams,
+      p.cut_type, p.description, p.default_weight_per_unit_grams, p.cut_id,
+      c.hebrew_name as cut_hebrew_name,
+      c.category as cut_category,
       (
         SELECT ROUND(MIN(
             CASE 
@@ -45,6 +47,7 @@ const getAllProducts = async (req, res, next) => {
           AND (pr.price_valid_to IS NULL OR pr.price_valid_to >= CURRENT_DATE)
       ) as min_price_per_100g
     FROM products p
+    LEFT JOIN cuts c ON p.cut_id = c.id
     ${whereClauses}
   `;
 
@@ -105,8 +108,12 @@ const getProductById = async (req, res, next) => {
       SELECT 
         p.id, p.name, p.brand, p.origin_country, p.kosher_level, p.animal_type, 
         p.cut_type, p.description, p.category, p.unit_of_measure, 
-        p.default_weight_per_unit_grams, p.image_url, p.short_description, p.is_active
+        p.default_weight_per_unit_grams, p.image_url, p.short_description, p.is_active, p.cut_id,
+        c.hebrew_name as cut_hebrew_name,
+        c.english_name as cut_english_name,
+        c.category as cut_category
       FROM products p
+      LEFT JOIN cuts c ON p.cut_id = c.id
       WHERE p.id = $1 -- Removed AND p.is_active = TRUE to allow admin to see inactive products by ID
     `;
     const productResult = await pool.query(productQuery, [numericProductId]);
@@ -178,7 +185,8 @@ const createProduct = async (req, res, next) => {
   const { 
     name, brand, origin_country, kosher_level, animal_type, cut_type, 
     description, category, unit_of_measure = 'kg', // ברירת מחדל אם לא נשלח
-    default_weight_per_unit_grams, image_url, short_description, is_active = true 
+    default_weight_per_unit_grams, image_url, short_description, is_active = true,
+    cut_id // Support for new cut_id field
   } = req.body;
 
   if (!name || !unit_of_measure) {
@@ -186,22 +194,45 @@ const createProduct = async (req, res, next) => {
   }
 
   try {
+    console.log('Creating new product:', { name, brand, cut_id, short_description });
+    
     const newProduct = await pool.query(
       `INSERT INTO products 
         (name, brand, origin_country, kosher_level, animal_type, cut_type, 
          description, category, unit_of_measure, default_weight_per_unit_grams, 
-         image_url, short_description, is_active) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
+         image_url, short_description, is_active, cut_id) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
        RETURNING *`,
       [
         name, brand, origin_country, kosher_level, animal_type, cut_type, 
         description, category, unit_of_measure, default_weight_per_unit_grams, 
-        image_url, short_description, is_active
+        image_url, short_description, is_active, cut_id || null
       ]
     );
-    res.status(201).json(newProduct.rows[0]);
+    
+    console.log('Product created successfully:', newProduct.rows[0]);
+    
+    res.status(201).json({
+      success: true,
+      data: newProduct.rows[0]
+    });
   } catch (err) {
     console.error('Error in createProduct:', err.message);
+    
+    if (err.code === '23505') { // Unique constraint violation
+      return res.status(400).json({ 
+        success: false, 
+        error: 'מוצר עם השם הזה כבר קיים' 
+      });
+    }
+    
+    if (err.code === '23503') { // Foreign key constraint violation
+      return res.status(400).json({ 
+        success: false, 
+        error: 'מזהה הנתח שצוין אינו תקין' 
+      });
+    }
+    
     next(err);
   }
 };
@@ -216,7 +247,7 @@ const updateProduct = async (req, res, next) => {
   const { 
     name, brand, origin_country, kosher_level, animal_type, cut_type, 
     description, category, unit_of_measure, default_weight_per_unit_grams, 
-    image_url, short_description, is_active 
+    image_url, short_description, is_active, cut_id 
   } = req.body;
 
   // הרכב שאילתת עדכון דינמית כדי לעדכן רק שדות שנשלחו
@@ -237,6 +268,7 @@ const updateProduct = async (req, res, next) => {
   if (image_url !== undefined) { fields.push(`image_url = $${paramCount++}`); values.push(image_url); }
   if (short_description !== undefined) { fields.push(`short_description = $${paramCount++}`); values.push(short_description); }
   if (is_active !== undefined) { fields.push(`is_active = $${paramCount++}`); values.push(is_active); }
+  if (cut_id !== undefined) { fields.push(`cut_id = $${paramCount++}`); values.push(cut_id); }
 
   if (fields.length === 0) {
     return res.status(400).json({ error: 'No fields provided for update.' });

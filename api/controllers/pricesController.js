@@ -575,24 +575,61 @@ const getCurrentPrices = async (req, res, next) => {
     
     const result = await pool.query(`
       SELECT 
-        p.*, 
+        p.id,
+        p.product_id,
+        p.retailer_id,
+        p.regular_price,
+        p.sale_price,
+        p.is_on_sale,
+        p.is_sale,
+        p.sale_end_date,
+        p.original_price,
+        p.price_valid_to,
+        p.created_at,
+        p.updated_at,
+        p.status,
+        p.unit_for_price,
+        p.quantity_for_price,
         r.name as retailer_name,
         pr.name as product_name,
+        
+        -- חישוב המחיר הנוכחי (תמיכה בשני המבנים)
         CASE 
-          WHEN p.is_sale = true AND (p.sale_end_date IS NULL OR p.sale_end_date > NOW()) 
-          THEN p.regular_price 
-          ELSE COALESCE(p.original_price, p.regular_price)
+          -- מבנה חדש עם is_sale
+          WHEN p.is_sale = true 
+          AND (p.sale_end_date IS NULL OR p.sale_end_date >= NOW())
+          THEN COALESCE(p.sale_price, p.regular_price)
+          
+          -- מבנה ישן עם is_on_sale
+          WHEN p.is_on_sale = true 
+          AND (p.price_valid_to IS NULL OR p.price_valid_to >= CURRENT_DATE)
+          THEN COALESCE(p.sale_price, p.regular_price)
+          
+          -- מחיר רגיל
+          ELSE p.regular_price
         END as current_price,
+        
+        -- בדיקה אם זה מבצע פעיל
         CASE 
-          WHEN p.is_sale = true AND (p.sale_end_date IS NULL OR p.sale_end_date > NOW()) 
-          THEN true 
+          WHEN (p.is_sale = true AND (p.sale_end_date IS NULL OR p.sale_end_date >= NOW()))
+          OR (p.is_on_sale = true AND (p.price_valid_to IS NULL OR p.price_valid_to >= CURRENT_DATE))
+          THEN true
           ELSE false
         END as is_currently_on_sale,
+        
+        -- מחיר מקורי לתצוגה
+        COALESCE(p.original_price, p.regular_price) as display_original_price,
+        
+        -- חישוב חיסכון
         CASE 
-          WHEN p.is_sale = true AND (p.sale_end_date IS NULL OR p.sale_end_date > NOW())
-          THEN COALESCE(p.original_price, p.regular_price) - p.regular_price
+          WHEN (p.is_sale = true AND (p.sale_end_date IS NULL OR p.sale_end_date >= NOW()))
+          OR (p.is_on_sale = true AND (p.price_valid_to IS NULL OR p.price_valid_to >= CURRENT_DATE))
+          THEN COALESCE(p.original_price, p.regular_price) - COALESCE(p.sale_price, p.regular_price)
           ELSE 0
-        END as savings_amount
+        END as savings_amount,
+        
+        (SELECT COUNT(*) FROM price_report_likes prl WHERE prl.price_id = p.id) as likes_count
+        
       FROM prices p
       JOIN retailers r ON p.retailer_id = r.id
       JOIN products pr ON p.product_id = pr.id

@@ -26,6 +26,7 @@ interface CurrentPrice {
   retailer_name: string;
   is_currently_on_sale: boolean;
   current_price: number;
+  display_original_price: number;
   savings_amount: number;
   sale_end_date?: string;
   calculated_price_per_100g: number;
@@ -344,7 +345,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
                       color: '#6b7280',
                       textDecoration: 'line-through'
                     }}>
-                      ₪{bestSale.regular_price.toFixed(2)}
+                      ₪{bestSale.display_original_price.toFixed(2)}
                     </span>
                     <span style={{
                       fontSize: '0.75rem',
