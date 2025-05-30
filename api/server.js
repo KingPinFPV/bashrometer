@@ -1,105 +1,214 @@
 // server.js
 require('dotenv').config();
 
-// הוספת לוגים מפורטים
 console.log('🚀 Starting Basarometer API Server...');
 console.log('📍 Environment:', process.env.NODE_ENV || 'development');
-console.log('🔌 Requested Port:', process.env.PORT || 'not set');
 
-const app = require('./app');
-const db = require('./db');
+const PORT = process.env.PORT || 3001;
+console.log('🔌 Requested Port:', PORT);
 
-const PORT = process.env.PORT || 3000;
-console.log('🎯 Final Port:', PORT);
+// בדיקת משתני סביבה קריטיים
+if (!process.env.DATABASE_URL) {
+  console.error('❌ DATABASE_URL is not set');
+  console.log('ℹ️ Server will start but database operations will fail');
+}
 
-// Start server with error handling
-const startServer = async () => {
+const express = require('express');
+const cors = require('cors');
+
+console.log('✅ Express loaded');
+
+const app = express();
+
+// Middleware בסיסי
+app.use(cors());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+console.log('✅ Middleware configured');
+
+// Health check פשוט - בלי תלות במסד נתונים
+app.get('/health', (req, res) => {
+  console.log('🏥 Health check requested');
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    port: PORT,
+    uptime: process.uptime()
+  });
+});
+
+console.log('✅ Health endpoint configured');
+
+// טען routes בצורה defensive
+let routesLoaded = false;
+
+async function loadRoutes() {
   try {
-    console.log('🔄 Initializing server...');
+    console.log('📁 Starting to load routes...');
     
-    // Import and verify critical modules
-    console.log('📁 Loading app module...');
-    if (!app) {
-      throw new Error('App module failed to load');
-    }
-    console.log('✅ App module loaded successfully');
-    
-    // Start server with explicit host binding for Render
-    const server = app.listen(PORT, '0.0.0.0', (err) => {
-      if (err) {
-        console.error('❌ Failed to start server:', err);
-        process.exit(1);
+    // בדוק חיבור למסד נתונים ראשית
+    if (process.env.DATABASE_URL) {
+      console.log('🔄 Testing database connection...');
+      try {
+        const db = require('./db');
+        
+        // בדיקה פשוטה
+        const client = await db.pool.connect();
+        await client.query('SELECT 1');
+        client.release();
+        console.log('✅ Database connection successful');
+      } catch (dbError) {
+        console.error('❌ Database connection failed:', dbError.message);
+        console.log('⚠️ Continuing without database-dependent routes');
       }
-      console.log(`✅ Server running on port ${PORT}`);
-      console.log(`🌐 Server listening on 0.0.0.0:${PORT}`);
-      console.log(`🏥 Health check: http://localhost:${PORT}/api/health`);
-      
-      // Log all environment variables for debugging (be careful with secrets)
-      console.log('🔍 Environment variables:');
-      console.log('   NODE_ENV:', process.env.NODE_ENV || 'not set');
-      console.log('   DATABASE_URL:', process.env.DATABASE_URL ? 'set' : 'not set');
-      console.log('   JWT_SECRET:', process.env.JWT_SECRET ? 'set' : 'not set');
-    });
-    
-    // Graceful shutdown handlers
-    const gracefulShutdown = (signal) => {
-      console.log(`📤 ${signal} received, shutting down gracefully`);
-      server.close(() => {
-        console.log('✅ Server closed');
-        if (db.pool) {
-          db.pool.end(() => {
-            console.log('✅ Database connection pool closed');
-            process.exit(0);
-          });
-        } else {
-          process.exit(0);
-        }
-      });
-    };
-    
-    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-    
-    // Check DB connection after server starts (non-blocking)
-    if (db.checkConnection) {
-      setTimeout(async () => {
-        try {
-          console.log('🔄 Testing database connection...');
-          await db.checkConnection();
-          console.log('✅ Database connection verified');
-        } catch (error) {
-          console.error('⚠️ Database connection check failed:', error.message);
-          console.error('   Server will continue running but DB operations may fail');
-        }
-      }, 2000);
-    } else {
-      console.log('ℹ️ No database connection check function available');
     }
     
-    // Handle uncaught exceptions
-    process.on('uncaughtException', (error) => {
-      console.error('💥 Uncaught Exception:', error);
-      console.error('Stack:', error.stack);
-      process.exit(1);
-    });
+    console.log('📂 Loading route files...');
     
-    process.on('unhandledRejection', (reason, promise) => {
-      console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
-      console.error('Stack:', reason?.stack);
-      process.exit(1);
-    });
+    // נסה לטעון routes אחד אחד
+    try {
+      const cutsController = require('./controllers/cutsController');
+      console.log('✅ Cuts controller loaded');
+    } catch (e) {
+      console.error('❌ Cuts controller failed:', e.message);
+    }
     
-    return server;
+    try {
+      const cutsRoutes = require('./routes/cuts');
+      app.use('/api/cuts', cutsRoutes);
+      console.log('✅ Cuts routes loaded');
+    } catch (e) {
+      console.error('❌ Cuts routes failed:', e.message);
+    }
+    
+    try {
+      const authRoutes = require('./routes/auth');
+      app.use('/api/auth', authRoutes);
+      console.log('✅ Auth routes loaded');
+    } catch (e) {
+      console.error('❌ Auth routes failed:', e.message);
+    }
+    
+    try {
+      const pricesRoutes = require('./routes/prices');
+      app.use('/api/prices', pricesRoutes);
+      console.log('✅ Prices routes loaded');
+    } catch (e) {
+      console.error('❌ Prices routes failed:', e.message);
+    }
+    
+    console.log('✅ Route loading completed (some may have failed)');
+    routesLoaded = true;
     
   } catch (error) {
-    console.error('❌ Critical error during server startup:', error);
-    console.error('Stack trace:', error.stack);
+    console.error('❌ Critical error in route loading:', error.message);
+    console.error('📋 Stack:', error.stack);
+    
+    // הוסף basic endpoints אפילו אם Routes נכשלו
+    app.get('/api/status', (req, res) => {
+      res.json({ 
+        status: 'API partially available',
+        error: 'Routes loading failed',
+        timestamp: new Date().toISOString(),
+        routesLoaded: false
+      });
+    });
+    
+    console.log('⚠️ Added fallback endpoints');
+  }
+}
+
+// API status endpoint
+app.get('/api/status', (req, res) => {
+  res.json({ 
+    status: 'API available',
+    routesLoaded: routesLoaded,
+    timestamp: new Date().toISOString(),
+    port: PORT,
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('❌ Express Error:', err.message);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+  });
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ 
+    error: 'Route not found',
+    routesLoaded: routesLoaded,
+    availableEndpoints: ['/health', '/api/status']
+  });
+});
+
+console.log('🔄 Starting server...');
+
+// **זה החלק הקריטי - שרת חייב להתחיל**
+const server = app.listen(PORT, '0.0.0.0', (err) => {
+  if (err) {
+    console.error('❌ Failed to start server:', err);
     process.exit(1);
   }
-};
+  
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`🌐 Server listening on 0.0.0.0:${PORT}`);
+  console.log(`🏥 Health check: http://0.0.0.0:${PORT}/health`);
+  console.log(`📊 Status: http://0.0.0.0:${PORT}/api/status`);
+  
+  // טען routes לאחר שהשרת עלה
+  setTimeout(() => {
+    loadRoutes().then(() => {
+      console.log('🎯 Routes loading completed');
+    }).catch(err => {
+      console.error('💥 Routes loading crashed:', err.message);
+    });
+  }, 1000);
+});
 
-// Start the server
-startServer().catch(error => {
-  console.error('💥 Fatal error starting server:', error);
+// Timeout fallback - אם השרת לא עולה תוך 10 שניות
+setTimeout(() => {
+  if (!server.listening) {
+    console.error('❌ Server startup timeout - forcing exit');
+    process.exit(1);
+  }
+}, 10000);
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('📤 SIGTERM received');
+  server.close(() => {
+    console.log('✅ Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('📤 SIGINT received');
+  server.close(() => {
+    console.log('✅ Server closed');  
+    process.exit(0);
+  });
+});
+
+// Catch unhandled errors
+process.on('uncaughtException', (err) => {
+  console.error('💥 Uncaught Exception:', err);
+  console.error('Stack:', err.stack);
   process.exit(1);
 });
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
+console.log('🔚 Server setup completed');
+
+module.exports = app;

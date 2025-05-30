@@ -19,8 +19,27 @@ function loadMeatNamesMapping() {
     // Check if file exists
     if (!fs.existsSync(mappingPath)) {
       console.warn('⚠️ Mapping file not found at:', mappingPath);
-      console.warn('   Continuing without external mapping - using built-in mappings only');
-      return false;
+      console.log('🔄 Using built-in basic mappings');
+      
+      // Basic fallback mappings
+      meatNamesMapping = {
+        'אנטריקוט בקר': ['אנטרקוט', 'אנטירקוט', 'אנטריקוט עם עצם'],
+        'פילה בקר': ['פילה', 'פילה מדומה', 'פאלש פילה'],
+        'חזה עוף': ['חזה', 'פילה עוף', 'חזה ללא עור'],
+        'שוק עוף': ['שוק', 'שוק עליון', 'שוק תחתון']
+      };
+      
+      // Create basic reverse mapping
+      Object.entries(meatNamesMapping).forEach(([normalizedName, variations]) => {
+        variations.forEach(variation => {
+          const cleanVariation = variation.trim().toLowerCase();
+          reverseMeatNamesMapping[cleanVariation] = normalizedName;
+        });
+        reverseMeatNamesMapping[normalizedName.toLowerCase()] = normalizedName;
+      });
+      
+      console.log(`✅ Loaded ${Object.keys(meatNamesMapping).length} basic mappings`);
+      return true;
     }
     
     // Check file permissions and size
@@ -224,18 +243,30 @@ const hebrewCorrections = {
  * This has priority over built-in mappings
  */
 function normalizeMeatNameWithMapping(meatName) {
-  if (!meatName || typeof meatName !== 'string') return null;
-  
-  const cleaned = cleanHebrewText(meatName);
-  
-  // Check direct mapping in reverse lookup
-  if (reverseMeatNamesMapping[cleaned]) {
-    return {
-      normalizedName: reverseMeatNamesMapping[cleaned],
-      source: 'mapping',
-      confidence: 1.0,
-      originalVariation: meatName.trim()
-    };
+  try {
+    if (!meatName || typeof meatName !== 'string') return null;
+    
+    const cleaned = cleanHebrewText(meatName);
+    if (!cleaned) return null;
+    
+    // Check if we have any mappings loaded
+    if (!reverseMeatNamesMapping || Object.keys(reverseMeatNamesMapping).length === 0) {
+      console.warn('⚠️ No meat name mappings available');
+      return null;
+    }
+    
+    // Check direct mapping in reverse lookup
+    if (reverseMeatNamesMapping[cleaned]) {
+      return {
+        normalizedName: reverseMeatNamesMapping[cleaned],
+        source: 'mapping',
+        confidence: 1.0,
+        originalVariation: meatName.trim()
+      };
+    }
+  } catch (error) {
+    console.error('❌ Error in normalizeMeatNameWithMapping:', error.message);
+    return null;
   }
   
   // Check partial matches for more complex variations
