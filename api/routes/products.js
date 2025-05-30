@@ -13,7 +13,18 @@ const { authenticateToken, authorizeRole } = require('../middleware/authMiddlewa
 // GET /api/products - שליפת כל המוצרים (עם פילטור, מיון, עימוד)
 router.get('/', productController.getAllProducts);
 
-// GET /api/products/:id - שליפת מוצר יחיד לפי ID
+// GET /api/products/stats - סטטיסטיקות מוצרים (MUST be before /:id route)
+router.get('/stats', productController.getProductStats);
+
+// GET /api/products/health - בדיקת תקינות
+router.get('/health', (req, res) => {
+  res.json({ 
+    status: 'Products routes OK',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// GET /api/products/:id - שליפת מוצר יחיד לפי ID (MUST be after specific routes)
 router.get('/:id', productController.getProductById);
 
 
@@ -43,16 +54,5 @@ router.delete(
     productController.deleteProduct
 );
 
-// הוסף route לסטטיסטיקות
-router.get('/stats', productController.getProductStats);
-console.log('✅ GET /stats route registered');
-
-// הוסף health check אם לא קיים
-router.get('/health', (req, res) => {
-  res.json({ 
-    status: 'Products routes OK',
-    timestamp: new Date().toISOString()
-  });
-});
-
+console.log('✅ Products routes loaded successfully');
 module.exports = router;
