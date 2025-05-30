@@ -3,13 +3,17 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { AlertTriangle, RefreshCw, Clock, Wifi, WifiOff } from 'lucide-react';
 
-interface PriceData {
-  productId: number;
-  productName: string;
-  retailerId: number;
-  retailerName: string;
-  price: number;
-  lastUpdated: string;
+interface PriceReport {
+  id: number;
+  product_id: number;
+  retailer_id: number;
+  regular_price: number;
+  sale_price?: number;
+  is_on_sale: boolean;
+  reported_at: string;
+  likes_count: number;
+  retailer_name?: string;
+  product_name?: string;
 }
 
 interface Retailer {
@@ -32,7 +36,7 @@ export default function ComparePage() {
   const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [retailers, setRetailers] = useState<Retailer[]>([]);
-  const [priceMatrix, setPriceMatrix] = useState<Map<string, PriceData>>(new Map());
+  const [priceReports, setPriceReports] = useState<PriceReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'name' | 'avgPrice'>('name');
@@ -40,6 +44,7 @@ export default function ComparePage() {
   const [retrying, setRetrying] = useState(false);
   const [serverStatus, setServerStatus] = useState<'checking' | 'awake' | 'sleeping'>('checking');
   const [error, setError] = useState<string | null>(null);
+  const [showOfflineData, setShowOfflineData] = useState(false);
 
   const checkServerStatus = async () => {
     try {
@@ -95,6 +100,68 @@ export default function ComparePage() {
     return false;
   };
 
+  // Cache management functions
+  const getCachedData = (key: string) => {
+    try {
+      const cached = localStorage.getItem(key);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        // Check if cache is less than 6 hours old
+        if (Date.now() - parsed.timestamp < 6 * 60 * 60 * 1000) {
+          return parsed;
+        }
+      }
+    } catch (error) {
+      console.error('Error reading cache:', error);
+    }
+    return null;
+  };
+
+  const setCachedData = (key: string, data: any) => {
+    try {
+      localStorage.setItem(key, JSON.stringify({
+        data,
+        timestamp: Date.now()
+      }));
+    } catch (error) {
+      console.error('Error setting cache:', error);
+    }
+  };
+
+  // Price helper functions
+  const getLatestPricePerRetailer = (productId: number) => {
+    const productPrices = priceReports.filter(price => price.product_id === productId);
+    
+    // Group by retailer and get the latest from each
+    const latestByRetailer = new Map();
+    
+    productPrices.forEach(price => {
+      const current = latestByRetailer.get(price.retailer_id);
+      if (!current || new Date(price.reported_at) > new Date(current.reported_at)) {
+        latestByRetailer.set(price.retailer_id, price);
+      }
+    });
+    
+    return Array.from(latestByRetailer.values());
+  };
+
+  const sortPricesByPrice = (prices: PriceReport[]) => {
+    return [...prices].sort((a, b) => {
+      const priceA = a.sale_price && a.sale_price < a.regular_price ? a.sale_price : a.regular_price;
+      const priceB = b.sale_price && b.sale_price < b.regular_price ? b.sale_price : b.regular_price;
+      return priceA - priceB;
+    });
+  };
+
+  const formatPrice = (price: number) => {
+    return `₪${price.toFixed(2)}`;
+  };
+
+  const getRetailerName = (retailerId: number) => {
+    const retailer = retailers.find(r => r.id === retailerId);
+    return retailer?.name || 'קמעונאי לא ידוע';
+  };
+
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
@@ -110,88 +177,123 @@ export default function ComparePage() {
   }, []);
 
   const fetchData = async (showRetrying = false) => {
+    if (showRetrying) setRetrying(true);
+    setError(null);
+    setServerStatus('checking');
+    
     try {
-      setLoading(true);
-      setError(null);
-      if (showRetrying) setRetrying(true);
-      
       // בדוק אם השרת ער
-      let isServerAwake = await checkServerStatus();
+      const isServerAwake = await checkServerStatus();
+      
       if (!isServerAwake) {
-        console.log('🔄 השרת נרדם, מנסה להעיר...');
-        isServerAwake = await wakeUpServer();
-        if (!isServerAwake) {
-          throw new Error('לא ניתן להתחבר לשרת. השרת עלול להיות עמוס או לא זמין כרגע.');
+        const wakeUpSuccess = await wakeUpServer();
+        if (!wakeUpSuccess) {
+          // השתמש בנתונים שמורים
+          const cachedData = getCachedData('compare_data');
+          if (cachedData) {
+            const ageHours = (Date.now() - cachedData.timestamp) / (1000 * 60 * 60);
+            setProducts(cachedData.data.products || []);
+            setRetailers(cachedData.data.retailers || []);
+            setPriceReports(cachedData.data.prices || []);
+            setShowOfflineData(true);
+            setError(`מציג נתונים שמורים (${Math.round(ageHours)} שעות)`);
+            return;
+          }
+          setError('השרת לא מגיב. אנא נסה שוב בעוד כמה דקות.');
+          return;
         }
       } else {
         setServerStatus('awake');
       }
-      
-      // טען מוצרים
-      const productsRes = await fetch(`${API_BASE}/api/products?limit=100`);
-      if (!productsRes.ok) throw new Error(`Products API error: ${productsRes.status}`);
-      const productsData = await productsRes.json();
-      
-      // טען קמעונאים
-      const retailersRes = await fetch(`${API_BASE}/api/retailers?limit=100`);
-      if (!retailersRes.ok) throw new Error(`Retailers API error: ${retailersRes.status}`);
-      const retailersData = await retailersRes.json();
-      
-      // טען מחירים
-      const pricesRes = await fetch(`${API_BASE}/api/prices?limit=1000&status=approved`);
-      if (!pricesRes.ok) throw new Error(`Prices API error: ${pricesRes.status}`);
-      const pricesData = await pricesRes.json();
-      
-      setProducts(productsData.products || productsData);
-      setRetailers(retailersData.retailers || retailersData);
-      
-      // צור מטריצת מחירים
-      const matrix = new Map<string, PriceData>();
-      
-      if (pricesData.prices || Array.isArray(pricesData)) {
-        const prices = pricesData.prices || pricesData;
-        prices.forEach((price: any) => {
-          const key = `${price.product_id}-${price.retailer_id}`;
-          matrix.set(key, {
-            productId: price.product_id,
-            productName: price.product_name || 'מוצר לא ידוע',
-            retailerId: price.retailer_id,
-            retailerName: price.retailer_name || 'קמעונאי לא ידוע',
-            price: parseFloat(price.regular_price),
-            lastUpdated: price.created_at
-          });
-        });
+
+      const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      };
+
+      // טען נתונים במקביל
+      const [productsRes, retailersRes, pricesRes] = await Promise.all([
+        fetch(`${API_BASE}/api/products?limit=100`, { 
+          headers,
+          signal: AbortSignal.timeout(30000)
+        }),
+        fetch(`${API_BASE}/api/retailers?limit=100`, { 
+          headers,
+          signal: AbortSignal.timeout(30000)
+        }),
+        fetch(`${API_BASE}/api/prices?limit=500`, { 
+          headers,
+          signal: AbortSignal.timeout(30000)
+        })
+      ]);
+
+      // בדוק תגובות
+      if (!productsRes.ok) {
+        throw new Error(`שגיאה בטעינת מוצרים: ${productsRes.status}`);
       }
+      if (!retailersRes.ok) {
+        throw new Error(`שגיאה בטעינת קמעונאים: ${retailersRes.status}`);
+      }
+      if (!pricesRes.ok) {
+        // אם המחירים נכשלו, נמשיך בלי מחירים
+        console.warn('Failed to fetch prices:', pricesRes.status);
+      }
+
+      const [productsData, retailersData, pricesData] = await Promise.all([
+        productsRes.json(),
+        retailersRes.json(),
+        pricesRes.ok ? pricesRes.json() : { prices: [] }
+      ]);
+
+      const finalData = {
+        products: productsData.products || productsData.data || [],
+        retailers: retailersData.retailers || retailersData.data || [],
+        prices: pricesData.prices || pricesData.data || []
+      };
+
+      setProducts(finalData.products);
+      setRetailers(finalData.retailers);
+      setPriceReports(finalData.prices);
+      setShowOfflineData(false);
       
-      setPriceMatrix(matrix);
-    } catch (error) {
-      console.error('Error loading comparison data:', error);
-      setError(error instanceof Error ? error.message : 'שגיאה בטעינת נתוני השוואה');
+      // שמור בcache
+      setCachedData('compare_data', finalData);
+      
+      console.log('✅ כל הנתונים נטענו בהצלחה');
+      
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      
+      // נסה נתונים שמורים
+      const cachedData = getCachedData('compare_data');
+      if (cachedData) {
+        const ageHours = (Date.now() - cachedData.timestamp) / (1000 * 60 * 60);
+        setProducts(cachedData.data.products || []);
+        setRetailers(cachedData.data.retailers || []);
+        setPriceReports(cachedData.data.prices || []);
+        setShowOfflineData(true);
+        setError(`שגיאה בטעינה - מציג נתונים שמורים (${Math.round(ageHours)} שעות)`);
+      } else {
+        setError(err instanceof Error ? err.message : 'שגיאה בטעינת הנתונים');
+      }
     } finally {
       setLoading(false);
       setRetrying(false);
     }
   };
 
-  const getPrice = (productId: number, retailerId: number): PriceData | null => {
-    return priceMatrix.get(`${productId}-${retailerId}`) || null;
-  };
-
   const getPriceColor = (price: number, productId: number): string => {
-    // חשב ממוצע מחירים למוצר
-    const productPrices: number[] = [];
-    retailers.forEach(retailer => {
-      const priceData = getPrice(productId, retailer.id);
-      if (priceData) {
-        productPrices.push(priceData.price);
-      }
-    });
+    const latestPrices = getLatestPricePerRetailer(productId);
+    if (latestPrices.length === 0) return 'bg-gray-100';
     
-    if (productPrices.length === 0) return 'bg-gray-100';
+    const prices = latestPrices.map(p => 
+      p.sale_price && p.sale_price < p.regular_price ? p.sale_price : p.regular_price
+    );
     
-    const avgPrice = productPrices.reduce((a, b) => a + b, 0) / productPrices.length;
-    const minPrice = Math.min(...productPrices);
-    const maxPrice = Math.max(...productPrices);
+    const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
     
     if (price <= minPrice + (avgPrice - minPrice) * 0.3) {
       return 'bg-green-200 text-green-800'; // זול
@@ -331,33 +433,88 @@ export default function ComparePage() {
           </div>
         </div>
 
-        <div className="space-y-4">
-          {filteredProducts.map(product => (
-            <div key={product.id} className="bg-white rounded-lg shadow p-4">
-              <h3 className="font-bold text-lg mb-3">{product.name}</h3>
-              <div className="text-xs text-gray-500 mb-3">{product.category}</div>
-              <div className="grid grid-cols-2 gap-2">
-                {retailers.map(retailer => {
-                  const priceData = getPrice(product.id, retailer.id);
-                  return (
-                    <div 
-                      key={retailer.id}
-                      className={`p-2 rounded text-sm ${
-                        priceData ? getPriceColor(priceData.price, product.id) : 'bg-gray-100'
-                      }`}
-                    >
-                      <div className="font-medium">{retailer.name}</div>
-                      {priceData ? (
-                        <div className="font-bold">₪{priceData.price.toFixed(2)}</div>
-                      ) : (
-                        <div className="text-gray-400">אין מידע</div>
-                      )}
+        <div className="space-y-8">
+          {filteredProducts.map((product) => {
+            const latestPrices = getLatestPricePerRetailer(product.id);
+            const sortedPrices = sortPricesByPrice(latestPrices);
+            
+            return (
+              <div key={product.id} className="bg-white rounded-lg shadow-md border overflow-hidden">
+                <div className="bg-gray-50 px-6 py-4 border-b">
+                  <h3 className="text-xl font-semibold">{product.name}</h3>
+                  <p className="text-gray-600">{product.category}</p>
+                  {sortedPrices.length > 0 && (
+                    <div className="mt-2 flex items-center gap-4">
+                      <span className="text-sm text-green-600">
+                        💰 הזול ביותר: {formatPrice(
+                          sortedPrices[0].sale_price && sortedPrices[0].sale_price < sortedPrices[0].regular_price 
+                            ? sortedPrices[0].sale_price 
+                            : sortedPrices[0].regular_price
+                        )}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        ב{getRetailerName(sortedPrices[0].retailer_id)}
+                      </span>
                     </div>
-                  );
-                })}
+                  )}
+                </div>
+                
+                <div className="p-6">
+                  {sortedPrices.length === 0 ? (
+                    <p className="text-gray-500 text-center py-4">
+                      אין דיווחי מחיר עדכניים עבור מוצר זה
+                    </p>
+                  ) : (
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {sortedPrices.map((price) => (
+                        <div key={`${price.retailer_id}-${price.id}`} className="border rounded-lg p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <h4 className="font-medium text-gray-900">
+                              {getRetailerName(price.retailer_id)}
+                            </h4>
+                            <span className="text-xs text-gray-500">
+                              {new Date(price.reported_at).toLocaleDateString('he-IL')}
+                            </span>
+                          </div>
+                          
+                          <div className="space-y-1">
+                            {price.sale_price && price.sale_price < price.regular_price ? (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-lg font-bold text-red-600">
+                                    {formatPrice(price.sale_price)}
+                                  </span>
+                                  <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
+                                    מבצע
+                                  </span>
+                                </div>
+                                <div className="text-sm text-gray-500 line-through">
+                                  {formatPrice(price.regular_price)}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="text-lg font-bold text-gray-900">
+                                {formatPrice(price.regular_price)}
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="mt-2 flex items-center justify-between">
+                            <span className="text-xs text-gray-500">
+                              {price.likes_count} אהבו זאת
+                            </span>
+                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                              עדכני
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* סטטיסטיקות */}
@@ -372,7 +529,7 @@ export default function ComparePage() {
           </div>
           <div className="bg-purple-50 p-6 rounded-lg">
             <h3 className="font-bold text-lg mb-2">סה"כ מחירים</h3>
-            <p className="text-3xl font-bold text-purple-600">{priceMatrix.size}</p>
+            <p className="text-3xl font-bold text-purple-600">{priceReports.length}</p>
           </div>
         </div>
       </div>
@@ -423,86 +580,102 @@ export default function ComparePage() {
           </button>
         </div>
 
-        {/* מקרא צבעים */}
-        <div className="flex gap-4 mb-6 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-green-200 border"></div>
-            <span>מחיר זול</span>
+        {showOfflineData && (
+          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-center gap-2 text-yellow-800">
+              <WifiOff className="w-4 h-4" />
+              <span className="font-medium">מציג נתונים שמורים</span>
+            </div>
+            <p className="text-sm text-yellow-700 mt-1">
+              הנתונים המוצגים נשמרו מהחיבור האחרון לשרת
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-yellow-100 border"></div>
-            <span>מחיר ממוצע</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-red-200 border"></div>
-            <span>מחיר יקר</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-gray-100 border"></div>
-            <span>אין מידע</span>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* טבלת השוואה */}
-      <div className="overflow-x-auto bg-white rounded-lg shadow">
-        <table className="w-full min-w-[1200px]">
-          <thead>
-            <tr className="bg-gray-50">
-              <th className="sticky right-0 bg-gray-50 px-4 py-3 text-right font-bold border-l">
-                מוצר
-              </th>
-              {retailers.map(retailer => (
-                <th key={retailer.id} className="px-2 py-3 text-center min-w-[120px] border-l">
-                  <div className="text-sm font-bold">{retailer.name}</div>
-                  <div className="text-xs text-gray-500">{retailer.address}</div>
-                  {retailer.website && (
-                    <a 
-                      href={retailer.website} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:underline"
-                    >
-                      אתר
-                    </a>
-                  )}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filteredProducts.map(product => (
-              <tr key={product.id} className="border-b hover:bg-gray-50">
-                <td className="sticky right-0 bg-white px-4 py-3 font-medium border-l">
-                  <div>{product.name}</div>
-                  <div className="text-xs text-gray-500">{product.category}</div>
-                </td>
-                {retailers.map(retailer => {
-                  const priceData = getPrice(product.id, retailer.id);
-                  return (
-                    <td 
-                      key={`${product.id}-${retailer.id}`} 
-                      className={`px-2 py-3 text-center border-l ${
-                        priceData ? getPriceColor(priceData.price, product.id) : 'bg-gray-100'
-                      }`}
-                    >
-                      {priceData ? (
-                        <div>
-                          <div className="font-bold">₪{priceData.price.toFixed(2)}</div>
-                          <div className="text-xs">
-                            {new Date(priceData.lastUpdated).toLocaleDateString('he-IL')}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-gray-400 text-sm">אין מידע</div>
+      {/* תצוגת מוצרים עם מחירים עדכניים */}
+      <div className="space-y-8">
+        {filteredProducts.map((product) => {
+          const latestPrices = getLatestPricePerRetailer(product.id);
+          const sortedPrices = sortPricesByPrice(latestPrices);
+          
+          return (
+            <div key={product.id} className="bg-white rounded-lg shadow-md border overflow-hidden">
+              <div className="bg-gray-50 px-6 py-4 border-b">
+                <h3 className="text-xl font-semibold">{product.name}</h3>
+                <p className="text-gray-600">{product.category}</p>
+                {sortedPrices.length > 0 && (
+                  <div className="mt-2 flex items-center gap-4">
+                    <span className="text-sm text-green-600">
+                      💰 הזול ביותר: {formatPrice(
+                        sortedPrices[0].sale_price && sortedPrices[0].sale_price < sortedPrices[0].regular_price 
+                          ? sortedPrices[0].sale_price 
+                          : sortedPrices[0].regular_price
                       )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      ב{getRetailerName(sortedPrices[0].retailer_id)}
+                    </span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="p-6">
+                {sortedPrices.length === 0 ? (
+                  <p className="text-gray-500 text-center py-4">
+                    אין דיווחי מחיר עדכניים עבור מוצר זה
+                  </p>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {sortedPrices.map((price) => (
+                      <div key={`${price.retailer_id}-${price.id}`} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-medium text-gray-900">
+                            {getRetailerName(price.retailer_id)}
+                          </h4>
+                          <span className="text-xs text-gray-500">
+                            {new Date(price.reported_at).toLocaleDateString('he-IL')}
+                          </span>
+                        </div>
+                        
+                        <div className="space-y-1 mb-3">
+                          {price.sale_price && price.sale_price < price.regular_price ? (
+                            <>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xl font-bold text-red-600">
+                                  {formatPrice(price.sale_price)}
+                                </span>
+                                <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
+                                  מבצע
+                                </span>
+                              </div>
+                              <div className="text-sm text-gray-500 line-through">
+                                {formatPrice(price.regular_price)}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="text-xl font-bold text-gray-900">
+                              {formatPrice(price.regular_price)}
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">
+                            {price.likes_count} אהבו זאת
+                          </span>
+                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                            עדכני
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* סטטיסטיקות */}
@@ -517,7 +690,7 @@ export default function ComparePage() {
         </div>
         <div className="bg-purple-50 p-6 rounded-lg">
           <h3 className="font-bold text-lg mb-2">סה"כ מחירים</h3>
-          <p className="text-3xl font-bold text-purple-600">{priceMatrix.size}</p>
+          <p className="text-3xl font-bold text-purple-600">{priceReports.length}</p>
         </div>
       </div>
     </div>
