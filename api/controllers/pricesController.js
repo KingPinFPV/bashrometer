@@ -312,14 +312,18 @@ const createPriceReport = async (req, res, next) => {
     const userRole = req.user.role || 'user';
     const initialStatus = userRole === 'admin' ? 'approved' : 'pending_approval';
 
+    // Handle sale prices
+    const { is_sale, sale_end_date, original_price } = req.body;
+    
     // Create price report
     const insertQuery = `
       INSERT INTO prices (
         product_id, retailer_id, user_id, regular_price, sale_price, is_on_sale,
         unit_for_price, quantity_for_price, notes, source, report_type,
-        price_valid_from, price_valid_to, price_submission_date, status
+        price_valid_from, price_valid_to, price_submission_date, status,
+        is_sale, sale_end_date, original_price
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_DATE, $14
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_DATE, $14, $15, $16, $17
       ) RETURNING id
     `;
 
@@ -331,7 +335,10 @@ const createPriceReport = async (req, res, next) => {
       source, report_type,
       price_valid_from || null, 
       price_valid_to || null,
-      initialStatus
+      initialStatus,
+      is_sale || false,
+      sale_end_date || null,
+      original_price || finalRegularPrice
     ];
 
     const result = await pool.query(insertQuery, values);
@@ -559,6 +566,71 @@ const updatePriceReportStatus = async (req, res, next) => {
   }
 };
 
+// Get current prices for a product with sale calculations
+const getCurrentPrices = async (req, res, next) => {
+  const { product_id } = req.params;
+  
+  try {
+    console.log(`📊 Getting current prices for product: ${product_id}`);
+    
+    const result = await pool.query(`
+      SELECT 
+        p.*, 
+        r.name as retailer_name,
+        pr.name as product_name,
+        CASE 
+          WHEN p.is_sale = true AND (p.sale_end_date IS NULL OR p.sale_end_date > NOW()) 
+          THEN p.regular_price 
+          ELSE COALESCE(p.original_price, p.regular_price)
+        END as current_price,
+        CASE 
+          WHEN p.is_sale = true AND (p.sale_end_date IS NULL OR p.sale_end_date > NOW()) 
+          THEN true 
+          ELSE false
+        END as is_currently_on_sale,
+        CASE 
+          WHEN p.is_sale = true AND (p.sale_end_date IS NULL OR p.sale_end_date > NOW())
+          THEN COALESCE(p.original_price, p.regular_price) - p.regular_price
+          ELSE 0
+        END as savings_amount
+      FROM prices p
+      JOIN retailers r ON p.retailer_id = r.id
+      JOIN products pr ON p.product_id = pr.id
+      WHERE p.product_id = $1 AND p.status = 'approved'
+      ORDER BY current_price ASC
+    `, [product_id]);
+    
+    const prices = result.rows.map(row => {
+      const calculatedPrice = calcPricePer100g({
+        regular_price: parseFloat(row.current_price),
+        sale_price: row.is_currently_on_sale ? parseFloat(row.regular_price) : null,
+        unit_for_price: row.unit_for_price,
+        quantity_for_price: row.quantity_for_price,
+        default_weight_per_unit_grams: null // Will be handled by the function
+      });
+      
+      return {
+        ...row,
+        calculated_price_per_100g: calculatedPrice,
+        likes_count: parseInt(row.likes_count, 10) || 0
+      };
+    });
+    
+    console.log(`✅ Found ${prices.length} current prices`);
+    
+    res.json({
+      success: true,
+      prices: prices,
+      total_items: prices.length,
+      product_id: parseInt(product_id)
+    });
+    
+  } catch (error) {
+    console.error('❌ Error fetching current prices:', error);
+    next(error);
+  }
+};
+
 module.exports = { 
   getAllPrices, 
   getPriceById, 
@@ -567,5 +639,6 @@ module.exports = {
   deletePrice, 
   likePriceReport, 
   unlikePriceReport,
-  updatePriceReportStatus 
+  updatePriceReportStatus,
+  getCurrentPrices
 };

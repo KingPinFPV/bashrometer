@@ -15,8 +15,8 @@ const autocompleteRoutes = require('./routes/autocomplete');
 const requestsRoutes = require('./routes/requests');
 const analyticsRoutes = require('./routes/analytics');
 const categoriesRoutes = require('./routes/categories');
+const cutsRoutes = require('./routes/cuts');
 // const normalizeRoutes = require('./routes/normalize');
-// const cutsRoutes = require('./routes/cuts');
 
 const app = express();
 
@@ -141,8 +141,9 @@ app.use('/api/requests', requestsRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/categories', categoriesRoutes);
 console.log('✅ /api/categories mounted');
+app.use('/api/cuts', cutsRoutes);
+console.log('✅ /api/cuts mounted');
 // app.use('/api/normalize', normalizeRoutes);
-// app.use('/api/cuts', cutsRoutes);
 
 // ========== ROOT & HEALTH ROUTES ==========
 // Root route - חשוב להוסיף לפני כל הroutes האחרים
@@ -157,6 +158,7 @@ app.get('/', (req, res) => {
       healthz: '/healthz',
       products: '/api/products',
       categories: '/api/categories',
+      cuts: '/api/cuts',
       auth: '/api/auth',
       prices: '/api/prices',
       retailers: '/api/retailers',

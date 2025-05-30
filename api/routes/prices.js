@@ -6,6 +6,8 @@ const { authenticateToken, authorizeRole } = require('../middleware/authMiddlewa
 
 router.get('/', authenticateToken, pricesController.getAllPrices); 
 router.post('/', authenticateToken, pricesController.createPriceReport); 
+// GET /api/prices/current/:product_id - מחירים נוכחיים עם חישוב מבצעים
+router.get('/current/:product_id', pricesController.getCurrentPrices);
 router.get('/:id', authenticateToken, pricesController.getPriceById); 
 router.put('/:id', authenticateToken, pricesController.updatePrice); 
 router.delete('/:id', authenticateToken, pricesController.deletePrice); 
