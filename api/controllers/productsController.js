@@ -19,7 +19,7 @@ const getAllProducts = async (req, res) => {
     // Count total products
     const countQuery = 'SELECT COUNT(*) FROM products';
     const countResult = await pool.query(countQuery);
-    const total = parseInt(countResult.rows[0].count);
+    const total = parseInt(countResult?.rows?.[0]?.count || 0);
     
     // Get products with all expected columns
     const productsQuery = `
@@ -35,15 +35,19 @@ const getAllProducts = async (req, res) => {
     console.log('📝 Query:', productsQuery);
     
     const result = await pool.query(productsQuery, [parseInt(limit), parseInt(offset)]);
+    const products = result?.rows || [];
     
-    console.log(`✅ Found ${result.rows.length} products (total: ${total})`);
+    console.log(`✅ Found ${products.length} products (total: ${total})`);
     
+    // Frontend-compatible response format
     res.json({
-      products: result.rows,
-      total: total,
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-      count: result.rows.length
+      products: products,
+      total_items: total,
+      total_pages: Math.ceil(total / parseInt(limit)),
+      current_page: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+      items_per_page: parseInt(limit),
+      has_next: (parseInt(offset) + parseInt(limit)) < total,
+      has_previous: parseInt(offset) > 0
     });
     
   } catch (error) {
@@ -65,13 +69,17 @@ const getAllProducts = async (req, res) => {
         
         const result = await pool.query(fallbackQuery, [parseInt(limit), parseInt(offset)]);
         const countResult = await pool.query('SELECT COUNT(*) FROM products');
+        const products = result?.rows || [];
+        const total = parseInt(countResult?.rows?.[0]?.count || 0);
         
         return res.json({
-          products: result.rows,
-          total: parseInt(countResult.rows[0].count),
-          limit: parseInt(limit),
-          offset: parseInt(offset),
-          count: result.rows.length,
+          products: products,
+          total_items: total,
+          total_pages: Math.ceil(total / parseInt(limit)),
+          current_page: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+          items_per_page: parseInt(limit),
+          has_next: (parseInt(offset) + parseInt(limit)) < total,
+          has_previous: parseInt(offset) > 0,
           warning: 'Price column missing - showing default prices'
         });
       } catch (fallbackError) {
@@ -79,9 +87,17 @@ const getAllProducts = async (req, res) => {
       }
     }
     
-    res.status(500).json({ 
-      error: 'Failed to get products',
-      details: error.message
+    // Enhanced error response with frontend-compatible format
+    return res.status(500).json({
+      error: 'Internal server error',
+      details: error.message,
+      products: [],
+      total_items: 0,
+      total_pages: 0,
+      current_page: 1,
+      items_per_page: parseInt(limit),
+      has_next: false,
+      has_previous: false
     });
   }
 };
@@ -214,29 +230,37 @@ const getProductStats = async (req, res) => {
     const query = `
       SELECT 
         COUNT(*) as total_products,
-        AVG(price) as average_price,
-        MIN(price) as min_price,
-        MAX(price) as max_price,
+        AVG(COALESCE(price, 0)) as average_price,
+        MIN(COALESCE(price, 0)) as min_price,
+        MAX(COALESCE(price, 0)) as max_price,
         COUNT(DISTINCT retailer) as unique_retailers
       FROM products
     `;
     
     const result = await pool.query(query);
-    const stats = result.rows[0];
+    const stats = result?.rows?.[0] || {};
     
     console.log('✅ Product stats calculated');
     
     res.json({
-      totalProducts: parseInt(stats.total_products),
-      averagePrice: parseFloat(stats.average_price) || 0,
-      minPrice: parseFloat(stats.min_price) || 0,
-      maxPrice: parseFloat(stats.max_price) || 0,
-      uniqueRetailers: parseInt(stats.unique_retailers)
+      totalProducts: parseInt(stats.total_products || 0),
+      averagePrice: parseFloat(stats.average_price || 0),
+      minPrice: parseFloat(stats.min_price || 0),
+      maxPrice: parseFloat(stats.max_price || 0),
+      uniqueRetailers: parseInt(stats.unique_retailers || 0)
     });
     
   } catch (error) {
-    console.error('❌ Error getting product stats:', error);
-    res.status(500).json({ error: 'Failed to get statistics' });
+    console.error('❌ Products stats error:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+      details: error.message,
+      totalProducts: 0,
+      averagePrice: 0,
+      minPrice: 0,
+      maxPrice: 0,
+      uniqueRetailers: 0
+    });
   }
 };
 
