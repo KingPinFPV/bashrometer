@@ -27,7 +27,14 @@ class AnalyticsAPI {
   private baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
   private getAuthHeaders() {
-    const token = localStorage.getItem('token');
+    // Try to get token from localStorage with the correct key
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+    
+    if (!token) {
+      console.error('No authentication token found');
+      throw new Error('נדרש אימות למשתמש admin');
+    }
+
     return {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -38,52 +45,100 @@ class AnalyticsAPI {
     productId?: number, 
     timeRange: '7d' | '30d' | '90d' | '1y' = '30d'
   ): Promise<PriceTrendData[]> {
-    const params = new URLSearchParams();
-    if (productId) params.append('product_id', productId.toString());
-    params.append('range', timeRange);
+    try {
+      const params = new URLSearchParams();
+      if (productId) params.append('product_id', productId.toString());
+      params.append('range', timeRange);
 
-    const response = await fetch(`${this.baseUrl}/api/analytics/price-trends?${params}`, {
-      headers: this.getAuthHeaders()
-    });
-    
-    if (!response.ok) throw new Error('Failed to fetch price trends');
-    return response.json();
+      const url = `${this.baseUrl}/api/analytics/price-trends?${params}`;
+      console.log('Fetching price trends:', url);
+
+      const response = await fetch(url, {
+        headers: this.getAuthHeaders()
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Price trends API error:', response.status, errorText);
+        throw new Error(`Failed to fetch price trends: ${response.status} ${response.statusText}`);
+      }
+      return response.json();
+    } catch (error) {
+      console.error('Error in getPriceTrends:', error);
+      throw error;
+    }
   }
 
   async getRetailerComparison(
     categoryId?: number,
     timeRange: '7d' | '30d' | '90d' = '30d'
   ): Promise<RetailerAnalytics[]> {
-    const params = new URLSearchParams();
-    if (categoryId) params.append('category_id', categoryId.toString());
-    params.append('range', timeRange);
+    try {
+      const params = new URLSearchParams();
+      if (categoryId) params.append('category_id', categoryId.toString());
+      params.append('range', timeRange);
 
-    const response = await fetch(`${this.baseUrl}/api/analytics/retailers?${params}`, {
-      headers: this.getAuthHeaders()
-    });
-    
-    if (!response.ok) throw new Error('Failed to fetch retailer analytics');
-    return response.json();
+      const url = `${this.baseUrl}/api/analytics/retailers?${params}`;
+      console.log('Fetching retailer analytics:', url);
+
+      const response = await fetch(url, {
+        headers: this.getAuthHeaders()
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Retailer analytics API error:', response.status, errorText);
+        throw new Error(`Failed to fetch retailer analytics: ${response.status} ${response.statusText}`);
+      }
+      return response.json();
+    } catch (error) {
+      console.error('Error in getRetailerComparison:', error);
+      throw error;
+    }
   }
 
   async getUserActivity(
     timeRange: '7d' | '30d' | '90d' = '7d'
   ): Promise<UserActivityData[]> {
-    const response = await fetch(`${this.baseUrl}/api/analytics/user-activity?range=${timeRange}`, {
-      headers: this.getAuthHeaders()
-    });
-    
-    if (!response.ok) throw new Error('Failed to fetch user activity');
-    return response.json();
+    try {
+      const url = `${this.baseUrl}/api/analytics/user-activity?range=${timeRange}`;
+      console.log('Fetching user activity:', url);
+
+      const response = await fetch(url, {
+        headers: this.getAuthHeaders()
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('User activity API error:', response.status, errorText);
+        throw new Error(`Failed to fetch user activity: ${response.status} ${response.statusText}`);
+      }
+      return response.json();
+    } catch (error) {
+      console.error('Error in getUserActivity:', error);
+      throw error;
+    }
   }
 
   async getProductAnalytics(productId: number) {
-    const response = await fetch(`${this.baseUrl}/api/analytics/products/${productId}`, {
-      headers: this.getAuthHeaders()
-    });
-    
-    if (!response.ok) throw new Error('Failed to fetch product analytics');
-    return response.json();
+    try {
+      const url = `${this.baseUrl}/api/analytics/products/${productId}`;
+      console.log('Fetching product analytics:', url);
+
+      const response = await fetch(url, {
+        headers: this.getAuthHeaders()
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Product analytics API error:', response.status, errorText);
+        throw new Error(`Failed to fetch product analytics: ${response.status} ${response.statusText}`);
+      }
+      return response.json();
+    } catch (error) {
+      console.error('Error in getProductAnalytics:', error);
+      throw error;
+    }
   }
 }
 
