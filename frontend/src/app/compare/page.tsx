@@ -112,33 +112,60 @@ export default function ComparePage() {
     
     console.log('🔍 Building price matrix from', priceReports.length, 'price reports');
     
+    // Debug: Check data structure
+    if (priceReports.length > 0) {
+      console.log('🔍 Sample price object:', priceReports[0]);
+      console.log('🔍 Available fields:', Object.keys(priceReports[0]));
+    }
+    
+    // Helper function to find valid date from various possible field names
+    const getValidDate = (priceObj: Record<string, any>) => {
+      const possibleDateFields = [
+        'reported_at', 'reportedAt', 'created_at', 'createdAt', 
+        'date', 'timestamp', 'updated_at', 'updatedAt'
+      ];
+      
+      for (const field of possibleDateFields) {
+        if (priceObj[field]) {
+          try {
+            const date = new Date(priceObj[field]);
+            if (!isNaN(date.getTime())) {
+              return date;
+            }
+          } catch {
+            continue;
+          }
+        }
+      }
+      
+      console.warn('No valid date found for:', priceObj);
+      return null;
+    };
+    
     // Group by product and retailer, keep only latest price
     priceReports.forEach(report => {
-      const { product_id, retailer_id, regular_price, sale_price, reported_at } = report;
+      const { product_id, retailer_id, regular_price, sale_price } = report;
       
       if (!matrix[product_id]) {
         matrix[product_id] = {};
       }
       
-      // Check if this is newer than existing price for this product-retailer combination
-      const existing = matrix[product_id][retailer_id];
-      const reportDate = new Date(reported_at);
-      const existingDate = existing ? new Date(existing.reportedAt) : null;
-      
-      // Validate dates to prevent RangeError
-      const isValidReportDate = !isNaN(reportDate.getTime());
-      const isValidExistingDate = existingDate ? !isNaN(existingDate.getTime()) : true;
-      
-      if (!isValidReportDate) {
-        console.warn(`⚠️ Invalid reported_at date for product ${product_id}, retailer ${retailer_id}: ${reported_at}`);
+      // Get valid date using flexible function
+      const reportDate = getValidDate(report);
+      if (!reportDate) {
+        console.warn(`⚠️ No valid date found for product ${product_id}, retailer ${retailer_id}, skipping...`);
         return; // Skip this price report
       }
       
-      if (!existing || (isValidReportDate && isValidExistingDate && reportDate > existingDate!)) {
+      // Check if this is newer than existing price for this product-retailer combination
+      const existing = matrix[product_id][retailer_id];
+      const existingDate = existing ? new Date(existing.reportedAt) : null;
+      
+      if (!existing || (existingDate && reportDate > existingDate) || !existingDate) {
         const effectivePrice = sale_price && sale_price < regular_price ? sale_price : regular_price;
         
-        const reportDateStr = isValidReportDate ? reportDate.toISOString() : 'Invalid date';
-        const existingDateStr = existingDate && isValidExistingDate ? existingDate.toISOString() : 'Invalid date';
+        const reportDateStr = reportDate.toISOString();
+        const existingDateStr = existingDate ? existingDate.toISOString() : 'No existing date';
         
         console.log(`📊 Product ${product_id}, Retailer ${retailer_id}: Setting price ${effectivePrice} (${reportDateStr})`, 
           existing ? `replacing ${existing.price} (${existingDateStr})` : 'new entry');
@@ -147,11 +174,11 @@ export default function ComparePage() {
           price: effectivePrice,
           isOnSale: !!(sale_price && sale_price < regular_price),
           originalPrice: sale_price && sale_price < regular_price ? regular_price : undefined,
-          reportedAt: reported_at
+          reportedAt: reportDate.toISOString() // Store as ISO string
         };
       } else {
-        const reportDateStr = isValidReportDate ? reportDate.toISOString() : 'Invalid date';
-        const existingDateStr = existingDate && isValidExistingDate ? existingDate.toISOString() : 'Invalid date';
+        const reportDateStr = reportDate.toISOString();
+        const existingDateStr = existingDate ? existingDate.toISOString() : 'No existing date';
         console.log(`⏭️ Product ${product_id}, Retailer ${retailer_id}: Skipping older price ${regular_price} (${reportDateStr}) - keeping ${existing.price} (${existingDateStr})`);
       }
     });
