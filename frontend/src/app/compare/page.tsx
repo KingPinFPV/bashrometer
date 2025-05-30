@@ -125,11 +125,23 @@ export default function ComparePage() {
       const reportDate = new Date(reported_at);
       const existingDate = existing ? new Date(existing.reportedAt) : null;
       
-      if (!existing || reportDate > existingDate!) {
+      // Validate dates to prevent RangeError
+      const isValidReportDate = !isNaN(reportDate.getTime());
+      const isValidExistingDate = existingDate ? !isNaN(existingDate.getTime()) : true;
+      
+      if (!isValidReportDate) {
+        console.warn(`⚠️ Invalid reported_at date for product ${product_id}, retailer ${retailer_id}: ${reported_at}`);
+        return; // Skip this price report
+      }
+      
+      if (!existing || (isValidReportDate && isValidExistingDate && reportDate > existingDate!)) {
         const effectivePrice = sale_price && sale_price < regular_price ? sale_price : regular_price;
         
-        console.log(`📊 Product ${product_id}, Retailer ${retailer_id}: Setting price ${effectivePrice} (${reportDate.toISOString()})`, 
-          existing ? `replacing ${existing.price} (${existingDate!.toISOString()})` : 'new entry');
+        const reportDateStr = isValidReportDate ? reportDate.toISOString() : 'Invalid date';
+        const existingDateStr = existingDate && isValidExistingDate ? existingDate.toISOString() : 'Invalid date';
+        
+        console.log(`📊 Product ${product_id}, Retailer ${retailer_id}: Setting price ${effectivePrice} (${reportDateStr})`, 
+          existing ? `replacing ${existing.price} (${existingDateStr})` : 'new entry');
         
         matrix[product_id][retailer_id] = {
           price: effectivePrice,
@@ -138,7 +150,9 @@ export default function ComparePage() {
           reportedAt: reported_at
         };
       } else {
-        console.log(`⏭️ Product ${product_id}, Retailer ${retailer_id}: Skipping older price ${regular_price} (${reportDate.toISOString()}) - keeping ${existing.price} (${existingDate!.toISOString()})`);
+        const reportDateStr = isValidReportDate ? reportDate.toISOString() : 'Invalid date';
+        const existingDateStr = existingDate && isValidExistingDate ? existingDate.toISOString() : 'Invalid date';
+        console.log(`⏭️ Product ${product_id}, Retailer ${retailer_id}: Skipping older price ${regular_price} (${reportDateStr}) - keeping ${existing.price} (${existingDateStr})`);
       }
     });
     
@@ -292,15 +306,21 @@ export default function ComparePage() {
 
       // Debug: Show sample of price data
       if (fetchedPrices.length > 0) {
-        console.log('🔍 Sample price reports:', fetchedPrices.slice(0, 5).map(p => ({
-          id: p.id,
-          product_id: p.product_id,
-          retailer_id: p.retailer_id,
-          regular_price: p.regular_price,
-          sale_price: p.sale_price,
-          reported_at: p.reported_at,
-          status: p.status
-        })));
+        console.log('🔍 Sample price reports:', fetchedPrices.slice(0, 5).map(p => {
+          const reportDate = new Date(p.reported_at);
+          const isValidDate = !isNaN(reportDate.getTime());
+          return {
+            id: p.id,
+            product_id: p.product_id,
+            retailer_id: p.retailer_id,
+            regular_price: p.regular_price,
+            sale_price: p.sale_price,
+            reported_at: p.reported_at,
+            reported_at_valid: isValidDate,
+            reported_at_parsed: isValidDate ? reportDate.toISOString() : 'Invalid date',
+            status: p.status
+          };
+        }));
       }
 
       // Debug: Show sample products
