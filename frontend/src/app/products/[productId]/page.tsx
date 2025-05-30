@@ -63,7 +63,9 @@ export default function ProductDetailPage() {
   const { navigateToReport } = useReport();
 
   const [product, setProduct] = useState<ProductDetailed | null>(null);
+  const [prices, setPrices] = useState<PriceExample[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [pricesLoading, setPricesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // State to track loading state for individual like buttons
   const [likeActionLoading, setLikeActionLoading] = useState<Record<number, boolean>>({});
@@ -160,12 +162,82 @@ export default function ProductDetailPage() {
     }
   }, [productId, token]);
 
+  // Fetch prices separately for real-time updates
+  const fetchPrices = useCallback(async () => {
+    console.log(`fetchPrices: Loading prices for product ${productId}`);
+    if (!productId) return;
+
+    setPricesLoading(true);
+    try {
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/prices?product_id=${productId}&sort_by=reported_at&order=DESC&limit=100`;
+      console.log(`fetchPrices: Fetching from URL: ${apiUrl}`);
+
+      const response = await fetch(apiUrl, { headers });
+      console.log(`fetchPrices: Response status: ${response.status}`);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch prices: ${response.status}`);
+      }
+
+      const pricesData = await response.json();
+      console.log(`fetchPrices: Received prices data:`, pricesData);
+
+      // Extract prices array from response
+      const pricesArray = pricesData.prices || pricesData.data || [];
+      console.log(`fetchPrices: Extracted ${pricesArray.length} prices`);
+
+      // Convert API response to PriceExample format
+      const formattedPrices: PriceExample[] = pricesArray.map((price: any) => ({
+        price_id: price.id,
+        retailer_id: price.retailer_id,
+        retailer: price.retailer_name || `Retailer ${price.retailer_id}`,
+        regular_price: parseFloat(price.regular_price),
+        sale_price: price.sale_price ? parseFloat(price.sale_price) : null,
+        is_on_sale: price.is_on_sale || false,
+        unit_for_price: price.unit_for_price || '100g',
+        quantity_for_price: parseFloat(price.quantity_for_price || 1),
+        submission_date: price.reported_at || price.created_at,
+        valid_to: price.price_valid_to,
+        notes: price.notes,
+        calculated_price_per_100g: parseFloat(price.regular_price), // Will be calculated properly
+        likes_count: price.likes_count || 0,
+        current_user_liked: false // Will be updated if needed
+      }));
+
+      console.log(`fetchPrices: Formatted ${formattedPrices.length} prices`);
+      setPrices(formattedPrices);
+
+    } catch (error) {
+      console.error('fetchPrices: Error:', error);
+    } finally {
+      setPricesLoading(false);
+    }
+  }, [productId, token]);
+
   useEffect(() => {
     console.log("ProductDetailPage useEffect for fetchProductDetails triggered.");
-    if (productId) { // Only fetch if productId is available
-        fetchProductDetails();
+    if (productId) { 
+      fetchProductDetails();
+      fetchPrices(); // Load prices separately
     }
-  }, [productId, fetchProductDetails]); // Include fetchProductDetails in dependency array
+  }, [productId, fetchProductDetails, fetchPrices]);
+
+  // Add effect to refresh prices when user reports a new price
+  useEffect(() => {
+    if (product) {
+      const interval = setInterval(() => {
+        console.log('Auto-refreshing prices...');
+        fetchPrices();
+      }, 30000); // Refresh every 30 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [product, fetchPrices]);
 
   const handleReportPrice = () => {
     if (!product) return;
@@ -486,12 +558,12 @@ export default function ProductDetailPage() {
             💰 השוואת מחירים - 5 הרשתות המובילות
           </h2>
 
-          {product.price_examples && product.price_examples.length > 0 ? (
+          {prices && prices.length > 0 ? (
             (() => {
-              const uniqueLatestPrices = getUniqueLatestPrices(product.price_examples);
+              const uniqueLatestPrices = getUniqueLatestPrices(prices);
               const sortedPrices = sortByEffectivePrice(uniqueLatestPrices);
-              const bestPrice = getBestCurrentPrice(product.price_examples);
-              const latestPrice = getLatestReportedPrice(product.price_examples);
+              const bestPrice = getBestCurrentPrice(prices);
+              const latestPrice = getLatestReportedPrice(prices);
               
               return (
                 <div>
@@ -505,7 +577,7 @@ export default function ProductDetailPage() {
                       fontSize: '0.875rem',
                       color: '#cbd5e1'
                     }}>
-                      <strong>Debug:</strong> {product.price_examples.length} דיווחים כולל, {uniqueLatestPrices.length} ייחודיים עדכניים
+                      <strong>Debug:</strong> {prices.length} דיווחים כולל, {uniqueLatestPrices.length} ייחודיים עדכניים
                       <br />
                       <strong>Best Price:</strong> {bestPrice ? `₪${bestPrice.calculated_price_per_100g?.toFixed(2)} at ${bestPrice.retailer}` : 'None'}
                       <br />
@@ -867,8 +939,18 @@ export default function ProductDetailPage() {
           )}
         </div>
 
+        {/* Price Loading Indicator */}
+        {pricesLoading && (
+          <div style={cardStyle}>
+            <div style={{textAlign: 'center', padding: '2rem'}}>
+              <div style={{fontSize: '1.5rem', marginBottom: '1rem'}}>🔄</div>
+              <p style={{color: '#cbd5e1'}}>טוען מחירים עדכניים...</p>
+            </div>
+          </div>
+        )}
+
         {/* Price History Section */}
-        {product.price_examples && product.price_examples.length > 0 && (
+        {prices && prices.length > 0 && (
           <div style={cardStyle}>
             <h2 style={{
               fontSize: '2rem',
@@ -912,7 +994,7 @@ export default function ProductDetailPage() {
                 </div>
 
                 {/* Table Rows */}
-                {product.price_examples
+                {prices
                   .sort((a, b) => new Date(b.submission_date).getTime() - new Date(a.submission_date).getTime())
                   .slice(0, 15)
                   .map((price, index) => (
@@ -993,14 +1075,14 @@ export default function ProductDetailPage() {
                 ))}
               </div>
 
-              {product.price_examples.length > 15 && (
+              {prices.length > 15 && (
                 <div style={{
                   textAlign: 'center',
                   marginTop: '1rem',
                   color: '#94a3b8',
                   fontSize: '0.875rem'
                 }}>
-                  מוצגים 15 דיווחים אחרונים מתוך {product.price_examples.length} דיווחים
+                  מוצגים 15 דיווחים אחרונים מתוך {prices.length} דיווחים
                 </div>
               )}
             </div>

@@ -236,11 +236,11 @@ export default function ComparePage() {
         ...(token && { 'Authorization': `Bearer ${token}` })
       };
 
-      // Fetch all data - ensure prices are sorted by latest first
+      // Fetch all data - ensure prices are sorted by latest first (removed status filter to include all reports)
       const [productsRes, retailersRes, pricesRes] = await Promise.all([
         fetch(`${API_BASE}/api/products?limit=100`, { headers }),
         fetch(`${API_BASE}/api/retailers?limit=100`, { headers }),
-        fetch(`${API_BASE}/api/prices?limit=500&status=approved&sort_by=reported_at&order=DESC`, { headers })
+        fetch(`${API_BASE}/api/prices?limit=500&sort_by=reported_at&order=DESC`, { headers })
       ]);
 
       if (!productsRes.ok || !retailersRes.ok) {
