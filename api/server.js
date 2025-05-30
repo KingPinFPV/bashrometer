@@ -75,6 +75,14 @@ async function loadRoutes() {
         await client.query('SELECT 1');
         client.release();
         console.log('✅ Database connection successful');
+        
+        // Initialize database tables
+        try {
+          const { initializeDatabase } = require('./scripts/init-database');
+          await initializeDatabase();
+        } catch (err) { 
+          console.warn('⚠️ Database init warning:', err.message); 
+        }
       } catch (dbError) {
         console.error('❌ Database connection failed:', dbError.message);
         console.log('⚠️ Continuing without database-dependent routes');

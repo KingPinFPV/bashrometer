@@ -135,5 +135,69 @@ if (cutsController) {
   });
 }
 
+// הוסף enhanced test-mapping route
+router.get('/test-mapping', (req, res) => {
+  try {
+    const { name } = req.query;
+    if (!name) {
+      return res.status(400).json({ error: 'Name parameter required' });
+    }
+    
+    // Try to use normalization service if available
+    try {
+      const cutNormalizer = require('../utils/cutNormalizer');
+      if (cutNormalizer && cutNormalizer.cleanHebrewText) {
+        const cleaned = cutNormalizer.cleanHebrewText(name);
+        return res.json({
+          input: name,
+          cleaned: cleaned,
+          message: 'Cut normalizer working',
+          timestamp: new Date().toISOString()
+        });
+      }
+    } catch (normErr) {
+      console.log('ℹ️ Normalizer not available, using basic response');
+    }
+    
+    res.json({
+      input: name,
+      message: 'Basic test mapping endpoint working',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error in test-mapping:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// הוסף enhanced mapping-stats route
+router.get('/mapping-stats', (req, res) => {
+  try {
+    let totalMappings = 0;
+    let mappingFileLoaded = false;
+    
+    // Try to get real mapping stats if available
+    try {
+      const cutNormalizer = require('../utils/cutNormalizer');
+      if (cutNormalizer && cutNormalizer.meatNamesMapping) {
+        totalMappings = Object.keys(cutNormalizer.meatNamesMapping).length;
+        mappingFileLoaded = totalMappings > 0;
+      }
+    } catch (normErr) {
+      console.log('ℹ️ Normalizer not available, using basic stats');
+    }
+    
+    res.json({
+      totalMappings: totalMappings,
+      mappingFileLoaded: mappingFileLoaded,
+      message: 'Mapping stats endpoint working',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error in mapping-stats:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 console.log('✅ Cuts routes module loaded');
 module.exports = router;

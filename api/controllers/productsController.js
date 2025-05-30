@@ -275,10 +275,42 @@ const deleteProduct = async (req, res, next) => {
   }
 };
 
+const getProductStats = async (req, res) => {
+  try {
+    console.log('📊 Getting product statistics...');
+    
+    const query = `
+      SELECT 
+        COUNT(*) as total_products,
+        AVG(price) as average_price,
+        MIN(price) as min_price,
+        MAX(price) as max_price,
+        COUNT(DISTINCT retailer) as unique_retailers
+      FROM products
+    `;
+    
+    const result = await pool.query(query);
+    const stats = result.rows[0];
+    
+    res.json({
+      totalProducts: parseInt(stats.total_products),
+      averagePrice: parseFloat(stats.average_price) || 0,
+      minPrice: parseFloat(stats.min_price) || 0,
+      maxPrice: parseFloat(stats.max_price) || 0,
+      uniqueRetailers: parseInt(stats.unique_retailers)
+    });
+    
+  } catch (error) {
+    console.error('❌ Error getting product stats:', error);
+    res.status(500).json({ error: 'Failed to get statistics' });
+  }
+};
+
 module.exports = {
   getAllProducts,
   getProductById,
   createProduct,   // הוספנו
   updateProduct,   // הוספנו
-  deleteProduct    // הוספנו
+  deleteProduct,   // הוספנו
+  getProductStats  // הוסף את זה
 };

@@ -43,4 +43,16 @@ router.delete(
     productController.deleteProduct
 );
 
+// הוסף route לסטטיסטיקות
+router.get('/stats', productController.getProductStats);
+console.log('✅ GET /stats route registered');
+
+// הוסף health check אם לא קיים
+router.get('/health', (req, res) => {
+  res.json({ 
+    status: 'Products routes OK',
+    timestamp: new Date().toISOString()
+  });
+});
+
 module.exports = router;
