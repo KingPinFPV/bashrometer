@@ -14,6 +14,7 @@ const pricesRoutes = require('./routes/prices');
 const autocompleteRoutes = require('./routes/autocomplete');
 const requestsRoutes = require('./routes/requests');
 const analyticsRoutes = require('./routes/analytics');
+const normalizeRoutes = require('./routes/normalize');
 
 const app = express();
 
@@ -123,6 +124,7 @@ app.use('/api/prices', pricesRoutes);
 app.use('/api/autocomplete', autocompleteRoutes);
 app.use('/api/requests', requestsRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/normalize', normalizeRoutes);
 
 // Simple root route for health check or basic info
 app.get('/', (req, res) => {

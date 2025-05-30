@@ -18,4 +18,8 @@ router.put(
     pricesController.updatePriceReportStatus 
 ); 
 
+// Normalized product price comparison endpoints
+router.get('/compare/:normalizedProductId', pricesController.compareNormalizedProductPrices);
+router.get('/normalized/:normalizedProductId', pricesController.getPricesForNormalizedProduct);
+
 module.exports = router;
