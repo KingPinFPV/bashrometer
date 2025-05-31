@@ -20,7 +20,7 @@ export default function LoginPage() {
     setIsLoading(true);
     setMessage('');
 
-    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`; 
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'https://bashrometer-api.onrender.com'}/api/auth/login`; 
     // !!! חשוב: ודא שזהו ה-URL הנכון והפעיל של ה-API שלך !!!
 
     try {

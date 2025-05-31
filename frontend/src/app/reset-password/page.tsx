@@ -84,7 +84,7 @@ function ResetPasswordContent() {
     }
 
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/reset-password`;
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'https://bashrometer-api.onrender.com'}/api/auth/reset-password`;
       
       const response = await fetch(apiUrl, {
         method: 'POST',

@@ -1,7 +1,8 @@
 // הגדרת API base URL נכונה
-export const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://bashrometer-api.onrender.com'
-  : 'http://localhost:3000';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 
+  (process.env.NODE_ENV === 'production' 
+    ? 'https://bashrometer-api.onrender.com'
+    : 'http://localhost:3000');
 
 // פונקציה עזר לקריאות API
 export const apiCall = async (endpoint: string, options?: RequestInit) => {

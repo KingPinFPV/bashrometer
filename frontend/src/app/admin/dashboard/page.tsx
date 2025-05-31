@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedApiCall } from '@/config/api';
 import { 
   Users, 
   Package, 
@@ -45,21 +46,13 @@ export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
-
   const loadDashboardStats = async () => {
     if (!token) return;
     
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/api/admin/dashboard`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data.dashboard);
-      }
+      const data = await authenticatedApiCall('/api/admin/dashboard');
+      setStats(data.dashboard);
     } catch (error) {
       console.error('Error loading dashboard:', error);
     } finally {

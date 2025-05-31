@@ -29,7 +29,7 @@ export default function ForgotPasswordPage() {
     }
 
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/forgot-password`;
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'https://bashrometer-api.onrender.com'}/api/auth/forgot-password`;
       
       const response = await fetch(apiUrl, {
         method: 'POST',

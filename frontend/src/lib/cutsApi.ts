@@ -20,7 +20,7 @@ import {
   BulkImportResponse
 } from '@/types/cuts';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://bashrometer-api.onrender.com';
 
 // Helper function to build query string
 function buildQueryString(params: Record<string, any>): string {

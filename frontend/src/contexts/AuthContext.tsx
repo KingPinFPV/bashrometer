@@ -3,6 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation'; // לניתוב לאחר התנתקות
+import { apiCall, API_BASE_URL } from '@/config/api';
 
 // ממשק לפרטי המשתמש (דומה ל-UserBase מה-API)
 interface User {
@@ -45,7 +46,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/auth/me`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${currentToken}`,

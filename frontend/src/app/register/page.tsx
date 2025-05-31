@@ -21,7 +21,7 @@ export default function RegisterPage() {
     setIsLoading(true);
     setMessage('');
 
-    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`; 
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'https://bashrometer-api.onrender.com'}/api/auth/register`; 
     // !!! חשוב: ודא שזהו ה-URL הנכון והפעיל של ה-API שלך !!!
 
     try {

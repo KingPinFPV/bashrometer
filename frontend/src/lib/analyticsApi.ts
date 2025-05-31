@@ -24,7 +24,7 @@ export interface UserActivityData {
 }
 
 class AnalyticsAPI {
-  private baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+  private baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://bashrometer-api.onrender.com';
 
   private getAuthHeaders() {
     // Try to get token from localStorage with the correct key
