@@ -634,13 +634,12 @@ const getCurrentPrices = async (req, res, next) => {
       JOIN retailers r ON p.retailer_id = r.id
       JOIN products pr ON p.product_id = pr.id
       WHERE p.product_id = $1 AND p.status = 'approved'
-      ORDER BY current_price ASC
     `, [product_id]);
     
     const prices = result.rows.map(row => {
       const calculatedPrice = calcPricePer1kg({
-        regular_price: parseFloat(row.current_price),
-        sale_price: row.is_currently_on_sale ? parseFloat(row.regular_price) : null,
+        regular_price: parseFloat(row.current_price), // המחיר האפקטיבי (כולל מבצע)
+        sale_price: null, // לא נחוץ כיוון שכבר יש לנו את המחיר האפקטיבי
         unit_for_price: row.unit_for_price,
         quantity_for_price: row.quantity_for_price,
         default_weight_per_unit_grams: null // Will be handled by the function
@@ -651,6 +650,9 @@ const getCurrentPrices = async (req, res, next) => {
         calculated_price_per_1kg: calculatedPrice,
         likes_count: parseInt(row.likes_count, 10) || 0
       };
+    }).sort((a, b) => {
+      // מיון לפי המחיר המנורמל ל-1kg (כולל מבצעים)
+      return (a.calculated_price_per_1kg || 0) - (b.calculated_price_per_1kg || 0);
     });
     
     console.log(`✅ Found ${prices.length} current prices`);

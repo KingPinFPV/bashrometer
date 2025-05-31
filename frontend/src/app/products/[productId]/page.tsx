@@ -84,7 +84,10 @@ export default function ProductDetailPage() {
       }
     });
     
-    return Array.from(latestByRetailer.values());
+    // החזר את הנתונים מסודרים לפי המחיר המנורמל (כולל מבצעים)
+    return Array.from(latestByRetailer.values()).sort((a, b) => {
+      return (a.calculated_price_per_1kg || 0) - (b.calculated_price_per_1kg || 0);
+    });
   };
 
   // פונקציה למיון לפי מחיר (כולל מבצעים)
@@ -562,7 +565,7 @@ export default function ProductDetailPage() {
           {prices && prices.length > 0 ? (
             (() => {
               const uniqueLatestPrices = getUniqueLatestPrices(prices);
-              const sortedPrices = sortByEffectivePrice(uniqueLatestPrices);
+              // הנתונים כבר מסודרים לפי המחיר המנורמל מה-Backend
               const bestPrice = getBestCurrentPrice(prices);
               const latestPrice = getLatestReportedPrice(prices);
               
@@ -698,7 +701,7 @@ export default function ProductDetailPage() {
                   </h3>
                   
                   <div style={{display: 'grid', gap: '1rem'}}>
-                    {sortedPrices.slice(0, 5).map((price, index) => {
+                    {uniqueLatestPrices.slice(0, 5).map((price, index) => {
                       const isLowest = index === 0;
                       const isSale = price.is_on_sale && price.sale_price;
                 
