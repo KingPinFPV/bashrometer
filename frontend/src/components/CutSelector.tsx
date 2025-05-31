@@ -184,11 +184,6 @@ const CutSelector: React.FC<CutSelectorProps> = ({
                 <span className="text-gray-500 text-xs">(יש לבחור קטגוריה)</span>
               )}
             </button>
-            {!category && (
-              <div className="text-gray-500 text-xs mt-1">
-                יש לבחור קטגוריה או סוג בעל חיים תחילה
-              </div>
-            )}
           ) : (
             <div className="bg-gray-50 border border-gray-200 rounded-md p-4 space-y-3">
               <h4 className="font-medium text-gray-900">הוספת נתח חדש</h4>
@@ -254,6 +249,18 @@ const CutSelector: React.FC<CutSelectorProps> = ({
             </div>
           )}
         </>
+      )}
+      
+      {!category && (
+        <div className="text-gray-500 text-xs mt-1">
+          יש לבחור קטגוריה או סוג בעל חיים תחילה
+        </div>
+      )}
+      
+      {category && cuts.length === 0 && !loading && (
+        <div className="text-gray-500 text-xs mt-1">
+          לא נמצאו נתחים עבור קטגוריה זו
+        </div>
       )}
     </div>
   );
