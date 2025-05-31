@@ -99,9 +99,24 @@ const getAllProducts = async (req, res, next) => {
 
 const getProductById = async (req, res, next) => { 
   const { id } = req.params;
+  
+  // Enhanced validation for product ID
+  if (!id || id === 'undefined' || id === 'null') {
+    console.error('getProductById: Invalid product ID received:', id);
+    return res.status(400).json({ 
+      error: 'Invalid product ID', 
+      received: id,
+      details: 'Product ID is required and cannot be undefined or null'
+    });
+  }
+  
   const numericProductId = parseInt(id, 10);
-  if (isNaN(numericProductId)) {
-    return res.status(400).json({ error: 'Invalid product ID format. Must be an integer.' });
+  if (isNaN(numericProductId) || numericProductId <= 0) {
+    console.error('getProductById: Product ID is not a valid positive integer:', id);
+    return res.status(400).json({ 
+      error: 'Invalid product ID format. Must be a positive integer.',
+      received: id 
+    });
   }
   const currentUserId = req.user ? req.user.id : null;
   try {

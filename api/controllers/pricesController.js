@@ -570,8 +570,29 @@ const updatePriceReportStatus = async (req, res, next) => {
 const getCurrentPrices = async (req, res, next) => {
   const { product_id } = req.params;
   
+  // Enhanced validation for product_id
+  if (!product_id || product_id === 'undefined' || product_id === 'null') {
+    console.error('getCurrentPrices: Invalid product_id received:', product_id);
+    return res.status(400).json({ 
+      success: false,
+      error: 'מזהה מוצר לא תקין', 
+      received: product_id,
+      details: 'Product ID is required and cannot be undefined or null'
+    });
+  }
+  
+  const numericProductId = parseInt(product_id, 10);
+  if (isNaN(numericProductId) || numericProductId <= 0) {
+    console.error('getCurrentPrices: Product ID is not a valid positive integer:', product_id);
+    return res.status(400).json({ 
+      success: false,
+      error: 'מזהה מוצר חייב להיות מספר חיובי',
+      received: product_id 
+    });
+  }
+  
   try {
-    console.log(`📊 Getting current prices for product: ${product_id}`);
+    console.log(`📊 Getting current prices for product: ${numericProductId}`);
     
     const result = await pool.query(`
       SELECT 
@@ -634,7 +655,7 @@ const getCurrentPrices = async (req, res, next) => {
       JOIN retailers r ON p.retailer_id = r.id
       JOIN products pr ON p.product_id = pr.id
       WHERE p.product_id = $1 AND p.status = 'approved'
-    `, [product_id]);
+    `, [numericProductId]);
     
     const prices = result.rows.map(row => {
       const calculatedPrice = calcPricePer1kg({
@@ -661,7 +682,7 @@ const getCurrentPrices = async (req, res, next) => {
       success: true,
       prices: prices,
       total_items: prices.length,
-      product_id: parseInt(product_id)
+      product_id: numericProductId
     });
     
   } catch (error) {

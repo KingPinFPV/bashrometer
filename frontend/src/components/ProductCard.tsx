@@ -37,6 +37,26 @@ export default function ProductCard({
   showStatus = false,
   compact = false
 }: ProductCardProps) {
+  // Validation: Check for required props
+  if (!id || id === 0 || !name) {
+    console.error('ProductCard: Invalid product data - missing id or name', { id, name });
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <p className="text-red-600 text-sm">שגיאה: נתוני מוצר לא תקינים</p>
+      </div>
+    );
+  }
+
+  // Ensure id is a valid number
+  const productId = typeof id === 'string' ? parseInt(id) : id;
+  if (isNaN(productId) || productId <= 0) {
+    console.error('ProductCard: Invalid product ID format', { id, productId });
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <p className="text-red-600 text-sm">שגיאה: מזהה מוצר לא תקין</p>
+      </div>
+    );
+  }
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'approved': return 'bg-green-100 text-green-800';
@@ -61,7 +81,7 @@ export default function ProductCard({
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1">
             <Link 
-              href={`/products/${id}`}
+              href={`/products/${productId}`}
               className="text-lg font-medium text-gray-900 hover:text-blue-600 transition-colors"
             >
               {name}
@@ -140,7 +160,7 @@ export default function ProductCard({
           </div>
           
           <Link 
-            href={`/products/${id}`}
+            href={`/products/${productId}`}
             className="text-blue-600 hover:text-blue-800 text-sm font-medium"
           >
             צפה בפרטים ←

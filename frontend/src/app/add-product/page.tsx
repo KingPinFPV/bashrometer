@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import StepIndicator from '@/components/StepIndicator';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import CutSelector from '@/components/CutSelector';
 import { ChevronRight, ChevronLeft, Check } from 'lucide-react';
 
 interface Cut {
@@ -257,19 +258,19 @@ export default function AddProductPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 נתח *
               </label>
-              <select
-                value={formData.cut_id}
-                onChange={(e) => updateFormData('cut_id', e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              <CutSelector
+                selectedCut={cuts.find(cut => cut.id === parseInt(formData.cut_id)) || null}
+                onCutSelect={(cut) => {
+                  updateFormData('cut_id', cut ? cut.id.toString() : '');
+                  if (cut && cut.id !== parseInt(formData.cut_id)) {
+                    // Clear subtype when cut changes
+                    updateFormData('product_subtype_id', '');
+                    loadSubtypes(cut.id);
+                  }
+                }}
+                category={formData.category}
                 required
-              >
-                <option value="">בחר נתח</option>
-                {filteredCuts.map(cut => (
-                  <option key={cut.id} value={cut.id}>
-                    {cut.hebrew_name} ({cut.category})
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             {subtypes.length > 0 && (
