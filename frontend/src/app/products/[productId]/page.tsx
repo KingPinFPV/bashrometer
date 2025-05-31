@@ -335,8 +335,14 @@ export default function ProductDetailPage() {
   const containerStyle = {
     minHeight: 'calc(100vh - 200px)',
     background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
-    padding: '2rem',
+    padding: '1rem',
     position: 'relative' as const,
+    '@media (min-width: 640px)': {
+      padding: '1.5rem',
+    },
+    '@media (min-width: 768px)': {
+      padding: '2rem',
+    }
   };
 
   const overlayStyle = {
@@ -359,22 +365,38 @@ export default function ProductDetailPage() {
   const cardStyle = {
     background: 'rgba(255, 255, 255, 0.1)',
     backdropFilter: 'blur(20px)',
-    borderRadius: '20px',
+    borderRadius: '16px',
     border: '1px solid rgba(255, 255, 255, 0.2)',
-    padding: '2rem',
-    marginBottom: '2rem',
+    padding: '1rem',
+    marginBottom: '1.5rem',
     boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+    '@media (min-width: 640px)': {
+      borderRadius: '20px',
+      padding: '1.5rem',
+      marginBottom: '2rem',
+    },
+    '@media (min-width: 768px)': {
+      padding: '2rem',
+    }
   };
 
   const titleStyle = {
-    fontSize: '2.5rem',
+    fontSize: '1.75rem',
     fontWeight: 'bold',
     color: '#ffffff',
-    marginBottom: '1rem',
+    marginBottom: '0.75rem',
     background: 'linear-gradient(135deg, #3b82f6 0%, #f97316 100%)',
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
     backgroundClip: 'text',
+    lineHeight: '1.2',
+    '@media (min-width: 640px)': {
+      fontSize: '2rem',
+      marginBottom: '1rem',
+    },
+    '@media (min-width: 768px)': {
+      fontSize: '2.5rem',
+    }
   };
 
   console.log("ProductDetailPage: Rendering product details for:", product.name);
@@ -384,33 +406,62 @@ export default function ProductDetailPage() {
       <div style={contentStyle}>
         {/* Product Main Details */}
         <div style={cardStyle}>
-          <div style={{display: 'flex', gap: '2rem', flexWrap: 'wrap'}}>
+          <div style={{
+            display: 'flex',
+            gap: '1rem',
+            flexDirection: 'column',
+            '@media (min-width: 768px)': {
+              flexDirection: 'row',
+              gap: '2rem',
+              flexWrap: 'wrap'
+            }
+          }}>
             {/* Product Image */}
-            <div style={{flex: '0 0 300px'}}>
+            <div style={{
+              width: '100%',
+              '@media (min-width: 768px)': {
+                flex: '0 0 300px'
+              }
+            }}>
               {product.image_url ? (
                 <img 
                   src={product.image_url} 
                   alt={product.name} 
                   style={{
                     width: '100%',
-                    height: '300px',
+                    height: '200px',
                     objectFit: 'cover',
-                    borderRadius: '16px',
-                    border: '1px solid rgba(255, 255, 255, 0.2)'
+                    borderRadius: '12px',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    '@media (min-width: 640px)': {
+                      height: '250px',
+                      borderRadius: '16px'
+                    },
+                    '@media (min-width: 768px)': {
+                      height: '300px'
+                    }
                   }}
                 />
               ) : (
                 <div style={{
                   width: '100%',
-                  height: '300px',
+                  height: '200px',
                   background: 'rgba(255, 255, 255, 0.1)',
-                  borderRadius: '16px',
+                  borderRadius: '12px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   color: '#cbd5e1',
-                  fontSize: '1rem',
-                  border: '1px solid rgba(255, 255, 255, 0.2)'
+                  fontSize: '0.875rem',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  '@media (min-width: 640px)': {
+                    height: '250px',
+                    fontSize: '1rem',
+                    borderRadius: '16px'
+                  },
+                  '@media (min-width: 768px)': {
+                    height: '300px'
+                  }
                 }}>
                   🥩 אין תמונה זמינה
                 </div>
@@ -418,10 +469,28 @@ export default function ProductDetailPage() {
             </div>
 
             {/* Product Info */}
-            <div style={{flex: '1', minWidth: '300px'}}>
+            <div style={{
+              flex: '1',
+              '@media (min-width: 768px)': {
+                minWidth: '300px'
+              }
+            }}>
               <h1 style={titleStyle}>{product.name}</h1>
               
-              <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem'}}>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr',
+                gap: '0.75rem',
+                marginBottom: '1rem',
+                '@media (min-width: 640px)': {
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                  gap: '1rem',
+                  marginBottom: '1.5rem'
+                },
+                '@media (min-width: 768px)': {
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))'
+                }
+              }}>
                 {product.brand && (
                   <div style={{
                     background: 'rgba(59, 130, 246, 0.1)',
@@ -487,22 +556,42 @@ export default function ProductDetailPage() {
               )}
 
               {/* Action Buttons */}
-              <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1.5rem'}}>
+              <div style={{
+                display: 'flex',
+                gap: '0.75rem',
+                flexDirection: 'column',
+                marginTop: '1rem',
+                '@media (min-width: 640px)': {
+                  flexDirection: 'row',
+                  gap: '1rem',
+                  flexWrap: 'wrap',
+                  marginTop: '1.5rem'
+                }
+              }}>
                 <button
                   onClick={handleReportPrice}
                   style={{
                     background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                     color: 'white',
-                    padding: '0.875rem 1.5rem',
+                    padding: '0.875rem 1rem',
                     borderRadius: '12px',
                     fontWeight: '600',
+                    fontSize: '0.9rem',
                     border: 'none',
                     cursor: 'pointer',
-                    display: 'inline-flex',
+                    display: 'flex',
                     alignItems: 'center',
+                    justifyContent: 'center',
                     gap: '0.5rem',
                     boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.25)',
-                    transition: 'all 0.3s ease'
+                    transition: 'all 0.3s ease',
+                    minHeight: '44px',
+                    width: '100%',
+                    '@media (min-width: 640px)': {
+                      width: 'auto',
+                      padding: '0.875rem 1.5rem',
+                      fontSize: '1rem'
+                    }
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = 'translateY(-2px)';
@@ -521,15 +610,24 @@ export default function ProductDetailPage() {
                   style={{
                     background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
                     color: 'white',
-                    padding: '0.875rem 1.5rem',
+                    padding: '0.875rem 1rem',
                     borderRadius: '12px',
                     fontWeight: '600',
+                    fontSize: '0.9rem',
                     textDecoration: 'none',
-                    display: 'inline-flex',
+                    display: 'flex',
                     alignItems: 'center',
+                    justifyContent: 'center',
                     gap: '0.5rem',
                     boxShadow: '0 4px 14px 0 rgba(59, 130, 246, 0.25)',
-                    transition: 'all 0.3s ease'
+                    transition: 'all 0.3s ease',
+                    minHeight: '44px',
+                    width: '100%',
+                    '@media (min-width: 640px)': {
+                      width: 'auto',
+                      padding: '0.875rem 1.5rem',
+                      fontSize: '1rem'
+                    }
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = 'translateY(-2px)';
@@ -550,14 +648,23 @@ export default function ProductDetailPage() {
         {/* Price Comparison Section */}
         <div style={cardStyle}>
           <h2 style={{
-            fontSize: '2rem',
+            fontSize: '1.5rem',
             fontWeight: 'bold',
             color: '#ffffff',
-            marginBottom: '1.5rem',
+            marginBottom: '1rem',
             background: 'linear-gradient(135deg, #f97316 0%, #3b82f6 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
+            lineHeight: '1.3',
+            '@media (min-width: 640px)': {
+              fontSize: '1.75rem',
+              marginBottom: '1.25rem'
+            },
+            '@media (min-width: 768px)': {
+              fontSize: '2rem',
+              marginBottom: '1.5rem'
+            }
           }}>
             💰 השוואת מחירים - 5 הרשתות המובילות
           </h2>
@@ -957,26 +1064,44 @@ export default function ProductDetailPage() {
         {prices && prices.length > 0 && (
           <div style={cardStyle}>
             <h2 style={{
-              fontSize: '2rem',
+              fontSize: '1.5rem',
               fontWeight: 'bold',
               color: '#ffffff',
-              marginBottom: '1.5rem',
+              marginBottom: '1rem',
               background: 'linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
+              lineHeight: '1.3',
+              '@media (min-width: 640px)': {
+                fontSize: '1.75rem',
+                marginBottom: '1.25rem'
+              },
+              '@media (min-width: 768px)': {
+                fontSize: '2rem',
+                marginBottom: '1.5rem'
+              }
             }}>
               📈 היסטוריית מחירים
             </h2>
 
             <div style={{
               background: 'rgba(255, 255, 255, 0.05)',
-              borderRadius: '16px',
-              padding: '1.5rem',
+              borderRadius: '12px',
+              padding: '1rem',
               border: '1px solid rgba(255, 255, 255, 0.1)',
-              overflowX: 'auto'
+              overflowX: 'auto',
+              '@media (min-width: 640px)': {
+                borderRadius: '16px',
+                padding: '1.5rem'
+              }
             }}>
-              <div style={{minWidth: '600px'}}>
+              <div style={{
+                minWidth: '500px',
+                '@media (min-width: 640px)': {
+                  minWidth: '600px'
+                }
+              }}>
                 {/* Table Header */}
                 <div style={{
                   display: 'grid',

@@ -18,8 +18,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "בשרומטר 1.0 - השוואת מחירי בשר", 
+  title: "בשרומטר 2.0 - השוואת מחירי בשר", 
   description: "מצא את המחירים הטובים ביותר לבשר טרי וקפוא באזורך.",
+  viewport: "width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes",
 };
 
 export default function RootLayout({

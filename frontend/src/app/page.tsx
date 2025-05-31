@@ -32,32 +32,56 @@ export default function HomePage() {
   };
 
   const titleStyle = {
-    fontSize: '4rem',
+    fontSize: '2.5rem',
     fontWeight: 'bold',
-    marginBottom: '2rem',
+    marginBottom: '1.5rem',
     background: 'linear-gradient(135deg, #3b82f6 0%, #f97316 100%)',
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
     backgroundClip: 'text',
     textShadow: '0 0 20px rgba(59, 130, 246, 0.3)',
     lineHeight: '1.2',
+    '@media (min-width: 640px)': {
+      fontSize: '3rem',
+      marginBottom: '2rem',
+    },
+    '@media (min-width: 768px)': {
+      fontSize: '4rem',
+    }
   };
 
   const subtitleStyle = {
-    fontSize: '1.5rem',
-    marginBottom: '3rem',
+    fontSize: '1.125rem',
+    marginBottom: '2rem',
     color: '#e2e8f0',
     textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
     lineHeight: '1.6',
-    maxWidth: '600px',
-    margin: '0 auto 3rem auto',
+    maxWidth: '500px',
+    margin: '0 auto 2rem auto',
+    padding: '0 1rem',
+    '@media (min-width: 640px)': {
+      fontSize: '1.25rem',
+      marginBottom: '2.5rem',
+      maxWidth: '600px',
+    },
+    '@media (min-width: 768px)': {
+      fontSize: '1.5rem',
+      marginBottom: '3rem',
+      padding: '0',
+    }
   };
 
   const buttonContainerStyle = {
     display: 'flex',
-    gap: '1.5rem',
+    gap: '1rem',
     justifyContent: 'center',
     flexWrap: 'wrap' as const,
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    '@media (min-width: 640px)': {
+      flexDirection: 'row',
+      gap: '1.5rem',
+    }
   };
 
   const primaryButtonStyle = {

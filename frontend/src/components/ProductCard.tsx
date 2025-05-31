@@ -147,24 +147,36 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
     border: '1px solid rgba(255, 255, 255, 0.2)',
     transition: 'all 0.3s ease',
     overflow: 'hidden',
-    display: viewMode === 'list' ? 'flex' : 'flex',
-    flexDirection: viewMode === 'list' ? 'row' : 'column',
-    padding: viewMode === 'list' ? '1rem' : '1.5rem',
-    gap: viewMode === 'list' ? '1rem' : '0',
-    alignItems: viewMode === 'list' ? 'center' : 'stretch',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    padding: '1rem',
+    gap: '0.75rem',
+    minHeight: '280px',
+    width: '100%',
+    '@media (min-width: 640px)': {
+      padding: viewMode === 'list' ? '1rem' : '1.5rem',
+      flexDirection: viewMode === 'list' ? 'row' : 'column',
+      gap: viewMode === 'list' ? '1rem' : '0',
+      alignItems: viewMode === 'list' ? 'center' : 'stretch',
+      minHeight: viewMode === 'list' ? 'auto' : '300px',
+    }
   } as const;
 
   const imageStyle = {
-    width: viewMode === 'list' ? '80px' : '100%',
-    height: viewMode === 'list' ? '80px' : '160px',
+    width: '100%',
+    height: '140px',
     objectFit: 'cover' as const,
     borderRadius: '12px',
     flexShrink: 0,
+    '@media (min-width: 640px)': {
+      width: viewMode === 'list' ? '80px' : '100%',
+      height: viewMode === 'list' ? '80px' : '160px',
+    }
   };
 
   const placeholderStyle = {
-    width: viewMode === 'list' ? '80px' : '100%',
-    height: viewMode === 'list' ? '80px' : '160px',
+    width: '100%',
+    height: '140px',
     background: 'rgba(255, 255, 255, 0.1)',
     borderRadius: '12px',
     display: 'flex',
@@ -173,6 +185,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
     color: '#cbd5e1',
     fontSize: '0.875rem',
     flexShrink: 0,
+    '@media (min-width: 640px)': {
+      width: viewMode === 'list' ? '80px' : '100%',
+      height: viewMode === 'list' ? '80px' : '160px',
+    }
   };
 
   const contentStyle = {
@@ -240,17 +256,25 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
   const linkStyle = {
     color: '#60a5fa',
     fontWeight: '600',
-    fontSize: '0.875rem',
+    fontSize: '1rem',
     textDecoration: 'none',
-    padding: '0.5rem 1rem',
+    padding: '0.875rem 1rem',
     background: 'rgba(59, 130, 246, 0.1)',
-    borderRadius: '8px',
+    borderRadius: '12px',
     border: '1px solid rgba(59, 130, 246, 0.3)',
     transition: 'all 0.3s ease',
     textAlign: 'center' as const,
     marginTop: 'auto',
-    alignSelf: viewMode === 'list' ? 'flex-end' : 'stretch',
-    whiteSpace: 'nowrap' as const,
+    minHeight: '44px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    '@media (min-width: 640px)': {
+      fontSize: '0.875rem',
+      padding: '0.5rem 1rem',
+      alignSelf: viewMode === 'list' ? 'flex-end' : 'stretch',
+      whiteSpace: 'nowrap' as const,
+    }
   };
 
   const actionsStyle = {
@@ -262,6 +286,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
 
   return (
     <div 
+      className="w-full max-w-sm mx-auto sm:max-w-none"
       style={cardStyle}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = viewMode === 'list' ? 'translateX(4px)' : 'translateY(-4px)';
