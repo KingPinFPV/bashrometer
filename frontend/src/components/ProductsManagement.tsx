@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import AddProductModal from '@/components/admin/AddProductModal';
 import { 
   Plus,
   Search,
@@ -133,6 +134,41 @@ const ProductsManagement: React.FC = () => {
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleProductAdded = () => {
+    // Refresh the products list after adding a new product
+    const fetchProducts = async () => {
+      if (!token) return;
+
+      try {
+        setLoading(true);
+        const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+        const searchQuery = searchTerm ? `&name_like=${encodeURIComponent(searchTerm)}` : '';
+        
+        const response = await fetch(
+          `${API_URL}/api/products?limit=${ITEMS_PER_PAGE}&offset=${offset}${searchQuery}`,
+          {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setProducts(data.products || []);
+          
+          if (data.total_items) {
+            setTotalPages(data.total_pages || Math.ceil(data.total_items / ITEMS_PER_PAGE));
+          }
+        }
+      } catch (err) {
+        console.error('Error refreshing products:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
   };
 
 
@@ -322,20 +358,12 @@ const ProductsManagement: React.FC = () => {
         )}
       </div>
 
-      {/* Add Modal (placeholder) */}
+      {/* Add Product Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">הוספת מוצר חדש</h3>
-            <p className="text-gray-600 mb-4">פונקציה זו תתמוך בעתיד הקרוב</p>
-            <button
-              onClick={() => setShowAddModal(false)}
-              className="w-full px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
-            >
-              סגור
-            </button>
-          </div>
-        </div>
+        <AddProductModal
+          onClose={() => setShowAddModal(false)}
+          onSuccess={handleProductAdded}
+        />
       )}
 
       {/* Delete Confirmation Modal */}

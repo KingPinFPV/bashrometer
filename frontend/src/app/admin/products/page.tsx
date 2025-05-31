@@ -1,9 +1,9 @@
-import AdminProductsManager from '@/components/admin/AdminProductsManager';
+// src/app/admin/products/page.tsx
+"use client";
+
+import React from 'react';
+import ProductsManagement from '@/components/ProductsManagement';
 
 export default function AdminProductsPage() {
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <AdminProductsManager />
-    </div>
-  );
+  return <ProductsManagement />;
 }
