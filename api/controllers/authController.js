@@ -47,6 +47,15 @@ const register = async (req, res, next) => { // הוספת next
 
 
   try {
+    // Debug logging
+    console.log('Registration attempt:', { 
+      email: email?.toLowerCase(), 
+      hasPassword: !!password, 
+      passwordLength: password?.length,
+      name: name || 'undefined',
+      role: finalRole 
+    });
+
     const userExists = await pool.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
     if (userExists.rows.length > 0) {
       // שים לב: הבדיקה שלך מצפה ל-409 כאן
@@ -54,6 +63,7 @@ const register = async (req, res, next) => { // הוספת next
     }
 
     const password_hash = await bcrypt.hash(password, 10); 
+    console.log('Password hashed successfully, length:', password_hash.length);
     
     const result = await pool.query(
       'INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role, created_at',
