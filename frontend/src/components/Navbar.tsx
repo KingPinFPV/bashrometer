@@ -8,7 +8,6 @@ import { useState, useEffect } from 'react';
 const Navbar = () => {
   const { user, logout, isLoading } = useAuth();
   const [isClient, setIsClient] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -19,7 +18,6 @@ const Navbar = () => {
     backdropFilter: 'blur(20px)',
     borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
     boxShadow: '0 4px 32px rgba(0, 0, 0, 0.25)',
-    padding: '1rem 0',
     position: 'sticky' as const,
     top: 0,
     zIndex: 50,
@@ -28,18 +26,53 @@ const Navbar = () => {
   const containerStyle = {
     maxWidth: '1200px',
     margin: '0 auto',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '0 1rem',
-    position: 'relative' as const,
+    padding: '0 0.5rem',
+    '@media (min-width: 640px)': {
+      padding: '0 1rem',
+    }
   };
 
-  // מסכים קטנים - responsive breakpoints
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const navRowStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: '3rem',
+    gap: '0.5rem',
+    '@media (min-width: 640px)': {
+      height: '4rem',
+      gap: '1rem',
+    }
+  };
+
+  const leftLinksStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.25rem',
+    '@media (min-width: 640px)': {
+      gap: '1rem',
+    }
+  };
+
+  const linkStyle = {
+    color: '#e2e8f0',
+    textDecoration: 'none',
+    padding: '0.5rem',
+    borderRadius: '6px',
+    fontSize: '0.75rem',
+    fontWeight: '500',
+    transition: 'all 0.3s ease',
+    display: 'flex',
+    alignItems: 'center',
+    minHeight: '2rem',
+    '@media (min-width: 640px)': {
+      padding: '0.75rem 1rem',
+      fontSize: '0.875rem',
+      minHeight: '2.5rem',
+    }
+  };
 
   const logoStyle = {
-    fontSize: '1.5rem',
+    fontSize: '0.875rem',
     fontWeight: 'bold',
     background: 'linear-gradient(135deg, #3b82f6 0%, #f97316 100%)',
     WebkitBackgroundClip: 'text',
@@ -47,469 +80,219 @@ const Navbar = () => {
     backgroundClip: 'text',
     textDecoration: 'none',
     transition: 'all 0.3s ease',
-    transform: 'scale(1)',
-    '@media (min-width: 768px)': {
-      fontSize: '1.75rem',
+    '@media (min-width: 640px)': {
+      fontSize: '1.25rem',
     }
   };
 
-  const desktopMenuStyle = {
-    display: 'none',
-    gap: '1.5rem',
+  const authButtonStyle = {
+    padding: '0.5rem 0.75rem',
+    borderRadius: '6px',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    textDecoration: 'none',
+    display: 'inline-flex',
     alignItems: 'center',
-    direction: 'rtl' as const,
-    '@media (min-width: 768px)': {
-      display: 'flex',
-    }
-  };
-
-  const mobileMenuStyle = {
-    position: 'absolute' as const,
-    top: '100%',
-    left: 0,
-    right: 0,
-    background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
-    backdropFilter: 'blur(20px)',
-    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-    boxShadow: '0 4px 32px rgba(0, 0, 0, 0.25)',
-    display: isMobileMenuOpen ? 'flex' : 'none',
-    flexDirection: 'column' as const,
-    padding: '1rem',
-    gap: '0.75rem',
-    zIndex: 40,
-  };
-
-  const hamburgerStyle = {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '3px',
-    padding: '0.5rem',
-    cursor: 'pointer',
-    background: 'transparent',
-    border: 'none',
-    '@media (min-width: 768px)': {
-      display: 'none',
-    }
-  };
-
-  const hamburgerLineStyle = {
-    width: '20px',
-    height: '2px',
-    background: '#e2e8f0',
-    borderRadius: '1px',
+    justifyContent: 'center',
     transition: 'all 0.3s ease',
-    transformOrigin: 'center',
-  };
-
-  const linkStyle = {
-    color: '#e2e8f0',
-    textDecoration: 'none',
-    fontWeight: '500',
-    padding: '0.5rem 1rem',
-    borderRadius: '8px',
-    transition: 'all 0.3s ease',
-    position: 'relative' as const,
-  };
-
-  const primaryButtonStyle = {
-    background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-    color: 'white',
-    padding: '0.625rem 1rem',
-    borderRadius: '8px',
-    fontWeight: '600',
-    fontSize: '0.875rem',
-    textDecoration: 'none',
-    display: 'inline-block',
-    boxShadow: '0 4px 14px 0 rgba(59, 130, 246, 0.25)',
-    transition: 'all 0.3s ease',
-    transform: 'translateY(0)',
     border: 'none',
     cursor: 'pointer',
-    minHeight: '36px',
+    minHeight: '2rem',
     '@media (min-width: 640px)': {
-      padding: '0.75rem 1.5rem',
-      fontSize: '0.9rem',
-      minHeight: '40px'
-    }
-  };
-
-  const secondaryButtonStyle = {
-    background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
-    color: 'white',
-    padding: '0.625rem 1rem',
-    borderRadius: '8px',
-    fontWeight: '600',
-    fontSize: '0.875rem',
-    textDecoration: 'none',
-    display: 'inline-block',
-    boxShadow: '0 4px 14px 0 rgba(249, 115, 22, 0.25)',
-    transition: 'all 0.3s ease',
-    transform: 'translateY(0)',
-    border: 'none',
-    cursor: 'pointer',
-    minHeight: '36px',
-    '@media (min-width: 640px)': {
-      padding: '0.75rem 1.5rem',
-      fontSize: '0.9rem',
-      minHeight: '40px'
-    }
-  };
-
-  const logoutButtonStyle = {
-    background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-    color: 'white',
-    padding: '0.625rem 1rem',
-    borderRadius: '8px',
-    fontWeight: '600',
-    fontSize: '0.875rem',
-    border: 'none',
-    cursor: 'pointer',
-    backdropFilter: 'blur(10px)',
-    transition: 'all 0.3s ease',
-    transform: 'translateY(0)',
-    boxShadow: '0 4px 14px 0 rgba(239, 68, 68, 0.25)',
-    minHeight: '36px',
-    '@media (min-width: 640px)': {
-      padding: '0.75rem 1.5rem',
-      fontSize: '0.9rem',
-      minHeight: '40px'
-    }
-  };
-
-  const userGreetingStyle = {
-    color: '#cbd5e1',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    '@media (min-width: 640px)': {
-      fontSize: '0.9rem'
+      padding: '0.75rem 1rem',
+      fontSize: '0.875rem',
+      minHeight: '2.5rem',
     }
   };
 
   const loginButtonStyle = {
+    ...authButtonStyle,
     background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
     color: 'white',
-    padding: '0.625rem 1rem',
-    borderRadius: '8px',
-    fontWeight: '600',
-    fontSize: '0.875rem',
-    textDecoration: 'none',
-    display: 'inline-block',
-    boxShadow: '0 4px 14px 0 rgba(59, 130, 246, 0.25)',
-    transition: 'all 0.3s ease',
-    transform: 'translateY(0)',
-    border: 'none',
-    cursor: 'pointer',
-    minHeight: '36px',
-    '@media (min-width: 640px)': {
-      padding: '0.75rem 1.5rem',
-      fontSize: '0.9rem',
-      minHeight: '40px'
+    boxShadow: '0 2px 8px rgba(59, 130, 246, 0.25)',
+  };
+
+  const logoutButtonStyle = {
+    ...authButtonStyle,
+    background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+    color: 'white',
+    boxShadow: '0 2px 8px rgba(239, 68, 68, 0.25)',
+  };
+
+  const userGreetingStyle = {
+    color: '#cbd5e1',
+    fontSize: '0.75rem',
+    fontWeight: '500',
+    display: 'none',
+    '@media (min-width: 768px)': {
+      display: 'block',
+      fontSize: '0.875rem',
     }
   };
 
   return (
     <nav style={navStyle}>
       <div style={containerStyle}>
-        <Link 
-          href="/" 
-          style={logoStyle}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'scale(1.05)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'scale(1)';
-          }}
-        >
-          🥩 בשרומטר 2.0
-        </Link>
-        
-        {/* Hamburger Menu for Mobile */}
-        <button
-          style={hamburgerStyle}
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="md:hidden"
-          aria-label="תפריט ניווט"
-        >
-          <div 
-            style={{
-              ...hamburgerLineStyle,
-              transform: isMobileMenuOpen ? 'rotate(45deg) translateY(7px)' : 'none',
-            }}
-          />
-          <div 
-            style={{
-              ...hamburgerLineStyle,
-              opacity: isMobileMenuOpen ? 0 : 1,
-            }}
-          />
-          <div 
-            style={{
-              ...hamburgerLineStyle,
-              transform: isMobileMenuOpen ? 'rotate(-45deg) translateY(-7px)' : 'none',
-            }}
-          />
-        </button>
-        
-        {/* Desktop Menu */}
-        <div style={desktopMenuStyle} className="hidden md:flex">
+        <div style={navRowStyle}>
+          {/* Left side - Navigation Links */}
+          <div style={leftLinksStyle}>
+            <Link 
+              href="/" 
+              style={linkStyle}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                e.currentTarget.style.color = '#60a5fa';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = '#e2e8f0';
+              }}
+            >
+              <span className="sm:hidden">🏠</span>
+              <span className="hidden sm:inline">🏠 בית</span>
+            </Link>
+            
+            <Link 
+              href="/products" 
+              style={linkStyle}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                e.currentTarget.style.color = '#fb923c';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = '#e2e8f0';
+              }}
+            >
+              <span className="sm:hidden">🥩</span>
+              <span className="hidden sm:inline">🥩 מוצרים</span>
+            </Link>
+
+            <Link 
+              href="/compare" 
+              style={linkStyle}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                e.currentTarget.style.color = '#a78bfa';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = '#e2e8f0';
+              }}
+            >
+              <span className="sm:hidden">📊</span>
+              <span className="hidden sm:inline">📊 השוואה</span>
+            </Link>
+
+            <Link 
+              href="/report-price" 
+              style={linkStyle}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                e.currentTarget.style.color = '#10b981';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = '#e2e8f0';
+              }}
+            >
+              <span className="sm:hidden">💰</span>
+              <span className="hidden sm:inline">💰 מחירים</span>
+            </Link>
+          </div>
+
+          {/* Center - Logo */}
           <Link 
             href="/" 
-            style={linkStyle}
+            style={logoStyle}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-              e.currentTarget.style.color = '#60a5fa';
+              e.currentTarget.style.transform = 'scale(1.05)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.color = '#e2e8f0';
+              e.currentTarget.style.transform = 'scale(1)';
             }}
           >
-            🏠 בית
-          </Link>
-          
-          <Link 
-            href="/products" 
-            style={linkStyle}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-              e.currentTarget.style.color = '#fb923c';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.color = '#e2e8f0';
-            }}
-          >
-            📦 מוצרים
+            <span className="sm:hidden">🥩 בשרומטר</span>
+            <span className="hidden sm:inline">🥩 בשרומטר 2.0</span>
           </Link>
 
-          <Link 
-            href="/compare" 
-            style={linkStyle}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-              e.currentTarget.style.color = '#a78bfa';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.color = '#e2e8f0';
-            }}
-          >
-            📊 השוואת מחירים
-          </Link>
-          
-          {isClient && !isLoading && user ? (
-            <>
-              <Link 
-                href="/report-price" 
-                style={primaryButtonStyle}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 8px 25px 0 rgba(59, 130, 246, 0.35)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 14px 0 rgba(59, 130, 246, 0.25)';
-                }}
-              >
-                💰 דווח מחיר
-              </Link>
-              
-              <span style={userGreetingStyle} className="hidden sm:inline">
-                👋 שלום, {user.name || user.email}!
-              </span>
-              
-              <Link 
-                href="/settings" 
-                style={linkStyle}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                  e.currentTarget.style.color = '#fbbf24';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = '#e2e8f0';
-                }}
-              >
-                ⚙️ הגדרות
-              </Link>
-              
-              <button
-                onClick={logout}
-                style={logoutButtonStyle}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 8px 25px 0 rgba(239, 68, 68, 0.35)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 14px 0 rgba(239, 68, 68, 0.25)';
-                }}
-              >
-                🚪 התנתק
-              </button>
-            </>
-          ) : isClient && !isLoading && !user ? (
-            <>
-              <Link 
-                href="/login" 
-                style={loginButtonStyle}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 8px 25px 0 rgba(59, 130, 246, 0.35)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 14px 0 rgba(59, 130, 246, 0.25)';
-                }}
-              >
-                🔐 התחברות
-              </Link>
-              
-              <Link 
-                href="/register" 
-                style={secondaryButtonStyle}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 8px 25px 0 rgba(249, 115, 22, 0.35)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 14px 0 rgba(249, 115, 22, 0.25)';
-                }}
-              >
-                📝 הרשמה
-              </Link>
-            </>
-          ) : null}
-        </div>
-
-        {/* Mobile Menu */}
-        <div style={mobileMenuStyle} className="md:hidden">
-          <Link 
-            href="/" 
-            style={{
-              ...linkStyle,
-              padding: '0.75rem 1rem',
-              borderRadius: '8px',
-              width: '100%',
-              textAlign: 'center',
-            }}
-            onClick={() => setIsMobileMenuOpen(false)}
-          >
-            🏠 בית
-          </Link>
-          
-          <Link 
-            href="/products" 
-            style={{
-              ...linkStyle,
-              padding: '0.75rem 1rem',
-              borderRadius: '8px',
-              width: '100%',
-              textAlign: 'center',
-            }}
-            onClick={() => setIsMobileMenuOpen(false)}
-          >
-            📦 מוצרים
-          </Link>
-
-          <Link 
-            href="/compare" 
-            style={{
-              ...linkStyle,
-              padding: '0.75rem 1rem',
-              borderRadius: '8px',
-              width: '100%',
-              textAlign: 'center',
-            }}
-            onClick={() => setIsMobileMenuOpen(false)}
-          >
-            📊 השוואת מחירים
-          </Link>
-          
-          {isClient && !isLoading && user ? (
-            <>
-              <Link 
-                href="/report-price" 
-                style={{
-                  ...primaryButtonStyle,
-                  width: '100%',
-                  textAlign: 'center',
-                  fontSize: '1rem',
-                  padding: '0.875rem 1rem',
-                }}
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                💰 דווח מחיר
-              </Link>
-              
-              <div style={{
-                ...userGreetingStyle,
-                textAlign: 'center',
-                padding: '0.5rem',
-              }}>
-                👋 שלום, {user.name || user.email}!
-              </div>
-              
-              <Link 
-                href="/settings" 
-                style={{
-                  ...linkStyle,
-                  padding: '0.75rem 1rem',
-                  borderRadius: '8px',
-                  width: '100%',
-                  textAlign: 'center',
-                }}
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                ⚙️ הגדרות
-              </Link>
-              
-              <button
-                onClick={() => {
-                  logout();
-                  setIsMobileMenuOpen(false);
-                }}
-                style={{
-                  ...logoutButtonStyle,
-                  width: '100%',
-                  fontSize: '1rem',
-                }}
-              >
-                🚪 התנתק
-              </button>
-            </>
-          ) : isClient && !isLoading && !user ? (
-            <>
-              <Link 
-                href="/login" 
-                style={{
-                  ...loginButtonStyle,
-                  width: '100%',
-                  textAlign: 'center',
-                  fontSize: '1rem',
-                  padding: '0.875rem 1rem',
-                }}
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                🔐 התחברות
-              </Link>
-              
-              <Link 
-                href="/register" 
-                style={{
-                  ...secondaryButtonStyle,
-                  width: '100%',
-                  textAlign: 'center',
-                  fontSize: '1rem',
-                  padding: '0.875rem 1rem',
-                }}
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                📝 הרשמה
-              </Link>
-            </>
-          ) : null}
+          {/* Right side - Auth buttons */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+          }}>
+            {isClient && !isLoading && user ? (
+              <>
+                <span style={userGreetingStyle}>
+                  👋 שלום, {user.name || user.email}!
+                </span>
+                <Link 
+                  href="/settings" 
+                  style={linkStyle}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                    e.currentTarget.style.color = '#fbbf24';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = '#e2e8f0';
+                  }}
+                >
+                  <span className="sm:hidden">⚙️</span>
+                  <span className="hidden sm:inline">⚙️ הגדרות</span>
+                </Link>
+                <button
+                  onClick={logout}
+                  style={logoutButtonStyle}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 14px rgba(239, 68, 68, 0.35)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(239, 68, 68, 0.25)';
+                  }}
+                >
+                  <span className="sm:hidden">יציאה</span>
+                  <span className="hidden sm:inline">🚪 התנתק</span>
+                </button>
+              </>
+            ) : isClient && !isLoading && !user ? (
+              <>
+                <Link 
+                  href="/register" 
+                  style={linkStyle}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                    e.currentTarget.style.color = '#fb923c';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = '#e2e8f0';
+                  }}
+                >
+                  <span className="sm:hidden">📝</span>
+                  <span className="hidden sm:inline">📝 הרשמה</span>
+                </Link>
+                <Link 
+                  href="/login" 
+                  style={loginButtonStyle}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 14px rgba(59, 130, 246, 0.35)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(59, 130, 246, 0.25)';
+                  }}
+                >
+                  <span className="sm:hidden">כניסה</span>
+                  <span className="hidden sm:inline">🔐 התחברות</span>
+                </Link>
+              </>
+            ) : null}
+          </div>
         </div>
       </div>
     </nav>
