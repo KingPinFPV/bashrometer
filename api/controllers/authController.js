@@ -65,10 +65,17 @@ const register = async (req, res, next) => { // הוספת next
     const password_hash = await bcrypt.hash(password, 10); 
     console.log('Password hashed successfully, length:', password_hash.length);
     
-    const result = await pool.query(
-      'INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role, created_at',
-      [name, email.toLowerCase(), password_hash, finalRole] // שימוש ב-finalRole
-    );
+    const insertQuery = `
+      INSERT INTO users (email, password_hash, role, created_at) 
+      VALUES ($1, $2, $3, NOW()) 
+      RETURNING id, email, role, created_at
+    `;
+    const insertValues = [email.toLowerCase(), password_hash, finalRole];
+    
+    console.log('Executing query:', insertQuery);
+    console.log('With values:', insertValues);
+    
+    const result = await pool.query(insertQuery, insertValues);
     const newUser = result.rows[0]; // שנה את שם המשתנה ל-newUser כדי למנוע בלבול עם user מהטוקן
 
     // Generate JWT
@@ -83,7 +90,7 @@ const register = async (req, res, next) => { // הוספת next
     // לצורך בדיקות, זה יכול להיות נוח להחזיר את הטוקן.
     res.status(201).json({ 
       message: 'User registered successfully.', // עם נקודה, כפי שהבדיקות מצפות עכשיו
-      user: { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role, created_at: newUser.created_at }, 
+      user: { id: newUser.id, name: name, email: newUser.email, role: newUser.role, created_at: newUser.created_at }, 
       token // החזרת הטוקן יכולה להיות שימושית אם אתה רוצה שהמשתמש יהיה מחובר מיד
     });
 
