@@ -88,7 +88,14 @@ const register = async (req, res, next) => { // הוספת next
     });
 
   } catch (err) {
-    console.error('Error in register controller:', err.message); // הסר את err.stack מכאן, הוא יודפס מה-Global Error Handler
+    console.error('Error in register controller:', {
+      message: err.message,
+      code: err.code,
+      detail: err.detail,
+      constraint: err.constraint,
+      query: err.query,
+      parameters: err.parameters
+    });
     next(err); // העבר ל-Global Error Handler
   }
 };
