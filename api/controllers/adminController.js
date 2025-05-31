@@ -337,7 +337,7 @@ const approveProduct = async (req, res) => {
     }
     
     const result = await pool.query(
-      'UPDATE products SET status = $1, approved_by = $2, approved_at = NOW() WHERE id = $3 RETURNING *',
+      'UPDATE products SET status = $1, approved_by_user_id = $2, approved_at = NOW() WHERE id = $3 RETURNING *',
       ['approved', req.user.id, parseInt(id)]
     );
     
@@ -365,8 +365,8 @@ const rejectProduct = async (req, res) => {
     }
     
     const result = await pool.query(
-      'UPDATE products SET status = $1, rejection_reason = $2, rejected_by = $3, rejected_at = NOW() WHERE id = $4 RETURNING *',
-      ['rejected', reason || null, req.user.id, parseInt(id)]
+      'UPDATE products SET status = $1, rejection_reason = $2 WHERE id = $3 RETURNING *',
+      ['rejected', reason || null, parseInt(id)]
     );
     
     if (result.rows.length === 0) {
@@ -394,7 +394,7 @@ const updateProduct = async (req, res) => {
     
     const result = await pool.query(
       `UPDATE products 
-       SET name = $1, category = $2, cut_id = $3, subtype_id = $4, description = $5, updated_at = NOW()
+       SET name = $1, category = $2, cut_id = $3, product_subtype_id = $4, description = $5, updated_at = NOW()
        WHERE id = $6 RETURNING *`,
       [name, category, cut_id, subtype_id, description, parseInt(id)]
     );
@@ -422,8 +422,8 @@ const getAllUsers = async (req, res) => {
         COUNT(p.id) as products_count,
         COUNT(pr.id) as reports_count
       FROM users u
-      LEFT JOIN products p ON u.id = p.created_by
-      LEFT JOIN prices pr ON u.id = pr.reported_by
+      LEFT JOIN products p ON u.id = p.created_by_user_id
+      LEFT JOIN prices pr ON u.id = pr.user_id
     `;
     
     const params = [];
