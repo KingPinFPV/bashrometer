@@ -2,7 +2,6 @@
 "use client";
 
 import Link from "next/link";
-import ApiHealthCheck from '@/components/ApiHealthCheck';
 
 export default function HomePage() {
   const containerStyle = {
@@ -120,20 +119,28 @@ export default function HomePage() {
     overflow: 'hidden',
   };
 
+  const tertiaryButtonStyle = {
+    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    color: 'white',
+    padding: '1rem 2rem',
+    borderRadius: '12px',
+    fontWeight: 'bold',
+    fontSize: '1.1rem',
+    border: 'none',
+    cursor: 'pointer',
+    textDecoration: 'none',
+    display: 'inline-block',
+    boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    transform: 'translateY(0)',
+    position: 'relative' as const,
+    overflow: 'hidden',
+  };
+
   return (
     <main style={containerStyle}>
       <div style={overlayStyle}></div>
       
-      {/* Debug Info */}
-      <div className="mb-4 p-4 bg-gray-900 bg-opacity-50 rounded-lg backdrop-blur-sm border border-gray-700">
-        <h3 className="font-semibold text-gray-200 mb-2">🔧 Debug Information</h3>
-        <div className="space-y-1 text-sm text-gray-300">
-          <div>Environment: {process.env.NODE_ENV}</div>
-          <div>API URL: {process.env.NEXT_PUBLIC_API_URL || 'Not set'}</div>
-          <div>API Base: {process.env.NEXT_PUBLIC_API_BASE_URL || 'Not set'}</div>
-          <ApiHealthCheck />
-        </div>
-      </div>
       
       <div style={contentStyle}>
         <h1 
@@ -152,6 +159,82 @@ export default function HomePage() {
           <br />
           הפלטפורמה החדשה והמתקדמת לחיסכון חכם בקניות בשר
         </p>
+
+        {/* הסבר על השימוש */}
+        <div style={{
+          maxWidth: '800px',
+          margin: '0 auto 2rem auto',
+          textAlign: 'center' as const,
+          padding: '0 1rem'
+        }}>
+          <div style={{
+            background: 'rgba(59, 130, 246, 0.1)',
+            border: '1px solid rgba(59, 130, 246, 0.3)',
+            borderRadius: '16px',
+            padding: '1.5rem',
+            marginBottom: '1rem',
+            backdropFilter: 'blur(10px)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+          }}>
+            <h3 style={{
+              fontSize: '1.25rem',
+              fontWeight: 'bold',
+              color: '#60a5fa',
+              marginBottom: '1rem',
+              '@media (min-width: 640px)': {
+                fontSize: '1.5rem'
+              }
+            }}>
+              💡 איך להשתמש במערכת?
+            </h3>
+            <p style={{
+              color: '#e2e8f0',
+              lineHeight: '1.6',
+              fontSize: '1rem',
+              margin: '0'
+            }}>
+              השוו מחירי בשר בין הרשתות המובילות בישראל. חפשו מוצרים ספציפיים, 
+              צפו במחירי מבצע עדכניים, וקבלו את המידע הכי מדויק על מחירים ל-1 ק״ג.
+              דווחו על מחירים חדשים ועזרו לקהילה לחסוך כסף!
+            </p>
+          </div>
+
+          {/* אזהרה על התחברות */}
+          <div style={{
+            background: 'rgba(249, 115, 22, 0.1)',
+            border: '1px solid rgba(249, 115, 22, 0.3)',
+            borderRadius: '16px',
+            padding: '1.5rem',
+            backdropFilter: 'blur(10px)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+          }}>
+            <h3 style={{
+              fontSize: '1.125rem',
+              fontWeight: 'bold',
+              color: '#fb923c',
+              marginBottom: '1rem',
+              '@media (min-width: 640px)': {
+                fontSize: '1.25rem'
+              }
+            }}>
+              ⚠️ הודעה חשובה
+            </h3>
+            <p style={{
+              color: '#e2e8f0',
+              lineHeight: '1.6',
+              fontSize: '0.9rem',
+              margin: '0',
+              '@media (min-width: 640px)': {
+                fontSize: '1rem'
+              }
+            }}>
+              על מנת למנוע תקלות במערכת, מומלץ להתחבר למערכת. 
+              לא כל הפונקציות זמינות למשתמשים שלא מחוברים. 
+              אם נתקלתם בבעיות, נסו להתנתק ולהתחבר מחדש.
+            </p>
+          </div>
+        </div>
+
         <div style={buttonContainerStyle}>
           <Link href="/products" style={{textDecoration: 'none'}}>
             <button 
@@ -181,6 +264,21 @@ export default function HomePage() {
               }}
             >
               💰 דווח מחיר
+            </button>
+          </Link>
+          <Link href="/compare" style={{textDecoration: 'none'}}>
+            <button 
+              style={tertiaryButtonStyle}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 8px 25px 0 rgba(16, 185, 129, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.15)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 14px 0 rgba(16, 185, 129, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1)';
+              }}
+            >
+              📊 השוואת מוצרים
             </button>
           </Link>
         </div>
