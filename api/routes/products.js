@@ -31,37 +31,7 @@ router.get('/filter-options', productController.getFilterOptions);
 // GET /api/products/subtypes/:cutId - שליפת תת-סוגים לפי נתח
 router.get('/subtypes/:cutId', productController.getSubtypesByCut);
 
-// GET /api/products/:id - שליפת מוצר יחיד לפי ID (חייב להיות אחרון)
-router.get('/:id', productController.getProductById);
-
-
-// === נתיבי CRUD חדשים למוצרים (דורשים הרשאות אדמין) ===
-
-// POST /api/products - יצירת מוצר חדש (אדמין בלבד)
-router.post(
-    '/', 
-    authenticateToken, // ודא שהמשתמש מחובר
-    authorizeRole(['admin']), // ודא שהמשתמש הוא אדמין
-    productController.createProduct 
-);
-
-// PUT /api/products/:id - עדכון מוצר קיים (אדמין בלבד)
-router.put(
-    '/:id', 
-    authenticateToken, 
-    authorizeRole(['admin']), 
-    productController.updateProduct
-);
-
-// DELETE /api/products/:id - מחיקת מוצר קיים (אדמין בלבד)
-router.delete(
-    '/:id', 
-    authenticateToken, 
-    authorizeRole(['admin']), 
-    productController.deleteProduct
-);
-
-// === נתיבים חדשים למערכת ניהול מוצרים ===
+// === נתיבים ספציפיים (חייבים להיות לפני /:id) ===
 
 // POST /api/products/create-by-user - יצירת מוצר על ידי משתמש רגיל (דורש אישור)
 router.post('/create-by-user', authenticateToken, productController.createProductByUser);
@@ -80,5 +50,19 @@ router.get('/:id/analytics', authenticateToken, authorizeRole(['admin']), produc
 
 // PUT /api/products/:id/admin - עדכון מוצר עם הרשאות מלאות (אדמין בלבד)
 router.put('/:id/admin', authenticateToken, authorizeRole(['admin']), productController.updateProductAdmin);
+
+// === נתיבי CRUD בסיסיים ===
+
+// GET /api/products/:id - שליפת מוצר יחיד לפי ID (חייב להיות אחרון!)
+router.get('/:id', productController.getProductById);
+
+// POST /api/products - יצירת מוצר חדש (אדמין בלבד)
+router.post('/', authenticateToken, authorizeRole(['admin']), productController.createProduct);
+
+// PUT /api/products/:id - עדכון מוצר קיים (אדמין בלבד)
+router.put('/:id', authenticateToken, authorizeRole(['admin']), productController.updateProduct);
+
+// DELETE /api/products/:id - מחיקת מוצר קיים (אדמין בלבד)
+router.delete('/:id', authenticateToken, authorizeRole(['admin']), productController.deleteProduct);
 
 module.exports = router;
