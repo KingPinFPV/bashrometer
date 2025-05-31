@@ -251,6 +251,21 @@ export default function HomePage() {
               🥩 מוצרים
             </button>
           </Link>
+          <Link href="/add-product" style={{textDecoration: 'none'}}>
+            <button 
+              style={secondaryButtonStyle}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 8px 25px 0 rgba(34, 197, 94, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.15)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 14px 0 rgba(34, 197, 94, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1)';
+              }}
+            >
+              ➕ הוסף מוצר
+            </button>
+          </Link>
           <Link href="/report-price" style={{textDecoration: 'none'}}>
             <button 
               style={secondaryButtonStyle}
