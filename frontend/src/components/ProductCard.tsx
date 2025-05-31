@@ -2,6 +2,10 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import PriceDisplay from './PriceDisplay';
+import { 
+  formatSaleEndDate, 
+  isSaleExpired
+} from '@/lib/priceColorUtils';
 
 interface Product {
   id: number;
@@ -111,19 +115,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
   const hasSales = currentPrices.some(price => price.is_currently_on_sale);
   const bestSale = currentPrices.find(price => price.is_currently_on_sale);
 
-  // Calculate days until sale ends
-  const getDaysUntilSaleEnds = (saleEndDate?: string): number | null => {
-    if (!saleEndDate) return null;
-    try {
-      const endDate = new Date(saleEndDate);
-      const now = new Date();
-      const diffTime = endDate.getTime() - now.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return diffDays > 0 ? diffDays : null;
-    } catch (error) {
-      return null;
-    }
-  };
 
   // Helper function to safely format prices
   const formatPrice = (price: number | string | null | undefined): string => {
@@ -132,14 +123,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
     return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2);
   };
 
-  // Helper function to format date
-  const formatDate = (dateString: string): string => {
-    try {
-      return new Date(dateString).toLocaleDateString('he-IL');
-    } catch (error) {
-      return dateString;
-    }
-  };
   const cardStyle = {
     background: 'rgba(255, 255, 255, 0.1)',
     backdropFilter: 'blur(20px)',
@@ -372,28 +355,38 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
           </div>
         ) : currentPrices.length > 0 ? (
           <div style={{ marginTop: '0.75rem' }}>
-            {/* Sale Badge */}
-            {hasSales && (
-              <div style={{
-                backgroundColor: '#dc2626',
-                color: 'white',
-                fontSize: '0.75rem',
-                fontWeight: '600',
-                padding: '0.25rem 0.75rem',
-                borderRadius: '1rem',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                marginBottom: '0.5rem',
-                animation: 'pulse 2s infinite'
-              }}>
-                🔥 מבצע!
-                {bestSale?.sale_end_date && (
-                  <span style={{ opacity: 0.9 }}>
-                    נותרו {getDaysUntilSaleEnds(bestSale.sale_end_date)} ימים
-                  </span>
-                )}
-              </div>
+            {/* Enhanced Sale Badge with Expiration */}
+            {hasSales && bestSale && (
+              (() => {
+                const saleEndInfo = bestSale.sale_end_date ? formatSaleEndDate(bestSale.sale_end_date) : null;
+                const isExpired = isSaleExpired(bestSale);
+                
+                return (
+                  <div style={{
+                    backgroundColor: isExpired ? '#dc2626' : (saleEndInfo?.color.includes('red') ? '#dc2626' : 
+                                      saleEndInfo?.color.includes('orange') ? '#ea580c' : 
+                                      saleEndInfo?.color.includes('yellow') ? '#ca8a04' : '#dc2626'),
+                    color: 'white',
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '1rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                    marginBottom: '0.5rem',
+                    animation: isExpired ? 'none' : 'pulse 2s infinite',
+                    opacity: isExpired ? 0.7 : 1
+                  }}>
+                    {isExpired ? '⚠️ המבצע פג' : '🔥 מבצע!'}
+                    {saleEndInfo && !isExpired && (
+                      <span style={{ opacity: 0.9 }}>
+                        {saleEndInfo.icon} {saleEndInfo.text}
+                      </span>
+                    )}
+                  </div>
+                );
+              })()
             )}
             
             {/* Best Price Display */}

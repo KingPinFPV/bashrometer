@@ -2,6 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { AlertTriangle, RefreshCw, Clock, WifiOff, Wifi } from 'lucide-react';
+import { 
+  getPriceBackgroundColor, 
+  getPriceTextColor, 
+  getSaleBadgeText,
+  formatSaleEndDate, 
+  isSaleExpired,
+  isLowestPriceItem
+} from '@/lib/priceColorUtils';
 
 interface Product {
   id: number;
@@ -200,26 +208,19 @@ export default function ComparePage() {
     return matrix;
   };
 
-  // Get price color based on position in range
-  const getPriceColor = (price: number, allPricesForProduct: number[], isOnSale: boolean): string => {
-    if (isOnSale) return 'bg-blue-100 text-blue-800 border-blue-300'; // מבצע
+  // Get price color based on new logic - GREEN for lowest price has HIGHEST priority
+  const getUpdatedPriceColor = (priceData: Record<string, unknown>, allPricesForProduct: Record<string, unknown>[]): string => {
+    // Check if this is the lowest price among all products for this item
+    const isLowest = isLowestPriceItem(priceData, allPricesForProduct);
     
-    if (allPricesForProduct.length < 2) return 'bg-gray-100 text-gray-800 border-gray-300';
-    
-    const sortedPrices = [...allPricesForProduct].sort((a, b) => a - b);
-    const minPrice = sortedPrices[0];
-    const maxPrice = sortedPrices[sortedPrices.length - 1];
-    
-    if (price === minPrice) return 'bg-green-100 text-green-800 border-green-300'; // הכי זול
-    if (price === maxPrice) return 'bg-red-100 text-red-800 border-red-300'; // הכי יקר
-    
-    // ביניים
-    const range = maxPrice - minPrice;
-    const position = (price - minPrice) / range;
-    
-    if (position <= 0.33) return 'bg-green-50 text-green-700 border-green-200';
-    if (position >= 0.67) return 'bg-red-50 text-red-700 border-red-200';
-    return 'bg-yellow-50 text-yellow-700 border-yellow-200';
+    // Use our centralized color logic
+    return getPriceBackgroundColor(priceData, isLowest);
+  };
+
+  // Get price text color based on new logic
+  const getUpdatedPriceTextColor = (priceData: Record<string, unknown>, allPricesForProduct: Record<string, unknown>[]): string => {
+    const isLowest = isLowestPriceItem(priceData, allPricesForProduct);
+    return getPriceTextColor(priceData, isLowest);
   };
 
   // Helper function to safely format price
@@ -232,18 +233,42 @@ export default function ComparePage() {
     return (numPrice || 0).toFixed(0);
   };
 
-  // Format price display
-  const formatPrice = (priceData: { price: number; isOnSale: boolean; originalPrice?: number; reportedAt: string }) => {
-    const { price, isOnSale, originalPrice, reportedAt } = priceData;
+  // Enhanced format price display with sale expiration
+  const formatPrice = (priceData: { price: number; isOnSale: boolean; originalPrice?: number; reportedAt: string; sale_end_date?: string }, allPricesForProduct: Record<string, unknown>[]) => {
+    const { price, isOnSale, originalPrice, reportedAt, sale_end_date } = priceData;
     const reportDate = new Date(reportedAt);
     const isRecent = (Date.now() - reportDate.getTime()) < (7 * 24 * 60 * 60 * 1000); // Within 7 days
+    const isLowest = isLowestPriceItem(priceData, allPricesForProduct);
+    const saleEndInfo = sale_end_date ? formatSaleEndDate(sale_end_date) : null;
+    const expired = isSaleExpired(priceData);
     
     if (isOnSale && originalPrice) {
       return (
-        <div className="space-y-1">
+        <div className="space-y-1 relative">
+          {/* Sale expiration overlay for expired sales */}
+          {expired && (
+            <div className="absolute inset-0 bg-red-100 bg-opacity-75 flex items-center justify-center rounded text-xs">
+              <span className="text-red-600 font-bold">המבצע פג</span>
+            </div>
+          )}
+          
           <div className="font-bold">₪{formatPriceValue(price)}</div>
           <div className="text-xs line-through opacity-60">₪{formatPriceValue(originalPrice)}</div>
-          <div className="text-xs font-medium">מבצע!</div>
+          
+          {/* Sale badge with priority logic */}
+          <div className={`text-xs font-medium px-2 py-1 rounded ${
+            isLowest ? 'bg-green-500 text-white' : 'bg-blue-500 text-white'
+          }`}>
+            {getSaleBadgeText(priceData, isLowest) || 'מבצע!'}
+          </div>
+          
+          {/* Sale expiration info */}
+          {saleEndInfo && (
+            <div className={`text-xs p-1 rounded bg-gray-50 ${saleEndInfo.color}`}>
+              {saleEndInfo.icon} {saleEndInfo.text}
+            </div>
+          )}
+          
           <div className={`text-xs ${isRecent ? 'text-green-600' : 'text-gray-500'}`}>
             {reportDate.toLocaleDateString('he-IL')}
           </div>
@@ -254,6 +279,14 @@ export default function ComparePage() {
     return (
       <div className="space-y-1">
         <div className="font-bold">₪{formatPriceValue(price)}</div>
+        
+        {/* Best price badge for non-sale items */}
+        {isLowest && (
+          <div className="text-xs font-medium px-2 py-1 rounded bg-green-500 text-white">
+            🏆 המחיר הטוב ביותר
+          </div>
+        )}
+        
         <div className={`text-xs ${isRecent ? 'text-green-600' : 'text-gray-500'}`}>
           {reportDate.toLocaleDateString('he-IL')}
         </div>
@@ -808,10 +841,10 @@ export default function ComparePage() {
               {/* Table Body */}
               <tbody>
                 {productsWithPrices.map((product, index) => {
-                  // Get all prices for this product to determine color coding
-                  const productPrices = retailers
-                    .map(retailer => priceMatrix[product.id]?.[retailer.id]?.price)
-                    .filter(Boolean) as number[];
+                  // Get all price data for this product to determine color coding with proper comparison
+                  const allProductPrices = retailers
+                    .map(retailer => priceMatrix[product.id]?.[retailer.id])
+                    .filter(Boolean);
 
                   return (
                     <tr key={product.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
@@ -837,12 +870,21 @@ export default function ComparePage() {
                           );
                         }
 
-                        const colorClass = getPriceColor(priceData.price, productPrices, priceData.isOnSale);
+                        // Use new color logic with proper comparison
+                        const colorClass = getUpdatedPriceColor(priceData, allProductPrices);
+                        const textColorClass = getUpdatedPriceTextColor(priceData, allProductPrices);
+                        const isExpired = isSaleExpired(priceData);
 
                         return (
                           <td key={retailer.id} className="px-3 py-3 text-center border-l border-gray-300">
-                            <div className={`rounded px-2 py-1 text-sm border ${colorClass}`}>
-                              {formatPrice(priceData)}
+                            <div className={`rounded px-2 py-1 text-sm border ${colorClass} ${textColorClass} transition-all duration-300 hover:shadow-lg relative`}>
+                              {/* Expired sale overlay */}
+                              {isExpired && (
+                                <div className="absolute inset-0 bg-red-100 bg-opacity-75 flex items-center justify-center rounded text-xs">
+                                  <span className="text-red-600 font-bold">פג תוקף</span>
+                                </div>
+                              )}
+                              {formatPrice(priceData, allProductPrices)}
                             </div>
                           </td>
                         );

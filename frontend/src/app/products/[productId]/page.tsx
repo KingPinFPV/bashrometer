@@ -7,6 +7,13 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useReport } from '@/contexts/ReportContext';
 import PriceDisplay from '@/components/PriceDisplay';
+import { 
+  getSaleBadgeText,
+  formatSaleEndDate, 
+  isSaleExpired,
+  isLowestPriceItem,
+  getPriceStyleObject
+} from '@/lib/priceColorUtils';
 
 // Interfaces (כפי שהיו אצלך)
 interface PriceExample {
@@ -808,20 +815,19 @@ export default function ProductDetailPage() {
                   </h3>
                   
                   <div style={{display: 'grid', gap: '1rem'}}>
-                    {uniqueLatestPrices.slice(0, 5).map((price, index) => {
-                      const isLowest = index === 0;
-                      const isSale = price.is_on_sale && price.sale_price;
+                    {uniqueLatestPrices.slice(0, 5).map((price) => {
+                      const isLowest = isLowestPriceItem(price, uniqueLatestPrices);
+                      const isSale = price.is_on_sale || price.sale_price;
+                      const saleEndInfo = price.valid_to ? formatSaleEndDate(price.valid_to) : null;
+                      const isExpired = isSaleExpired(price);
+                      const badgeText = getSaleBadgeText(price, isLowest);
+                      const priceStyleObj = getPriceStyleObject(price, isLowest);
                 
                 return (
                   <div
                     key={price.price_id}
                     style={{
-                      background: isLowest 
-                        ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.1) 100%)'
-                        : 'rgba(255, 255, 255, 0.05)',
-                      border: isLowest 
-                        ? '2px solid rgba(16, 185, 129, 0.5)'
-                        : '1px solid rgba(255, 255, 255, 0.1)',
+                      ...priceStyleObj,
                       borderRadius: '16px',
                       padding: '1.5rem',
                       position: 'relative',
@@ -836,37 +842,68 @@ export default function ProductDetailPage() {
                       e.currentTarget.style.boxShadow = 'none';
                     }}
                   >
-                    {isLowest && (
+                    {/* Sale expiration overlay for expired sales */}
+                    {isExpired && (
+                      <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        backdropFilter: 'blur(2px)',
+                        borderRadius: '16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 10
+                      }}>
+                        <span style={{ color: '#dc2626', fontWeight: 'bold', fontSize: '1.25rem' }}>
+                          ⚠️ המבצע פג
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Price badge with proper logic */}
+                    {badgeText && (
                       <div style={{
                         position: 'absolute',
                         top: '-10px',
                         right: '20px',
-                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        background: isLowest 
+                          ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                          : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
                         color: 'white',
                         padding: '0.5rem 1rem',
                         borderRadius: '20px',
                         fontSize: '0.75rem',
                         fontWeight: 'bold',
-                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+                        boxShadow: isLowest 
+                          ? '0 4px 12px rgba(16, 185, 129, 0.3)'
+                          : '0 4px 12px rgba(59, 130, 246, 0.3)'
                       }}>
-                        🏆 המחיר הזול ביותר!
+                        {badgeText}
                       </div>
                     )}
 
-                    {isSale && (
+                    {/* Sale expiration info */}
+                    {saleEndInfo && isSale && !isExpired && (
                       <div style={{
                         position: 'absolute',
                         top: '-10px',
                         left: '20px',
-                        background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                        color: 'white',
-                        padding: '0.5rem 1rem',
-                        borderRadius: '20px',
-                        fontSize: '0.75rem',
+                        background: 'rgba(255, 255, 255, 0.95)',
+                        color: saleEndInfo.color.includes('red') ? '#dc2626' : 
+                               saleEndInfo.color.includes('orange') ? '#ea580c' :
+                               saleEndInfo.color.includes('yellow') ? '#ca8a04' : '#6b7280',
+                        padding: '0.5rem 0.75rem',
+                        borderRadius: '16px',
+                        fontSize: '0.65rem',
                         fontWeight: 'bold',
-                        boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)'
+                        border: '1px solid rgba(0, 0, 0, 0.1)',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
                       }}>
-                        🏷️ במבצע!
+                        {saleEndInfo.icon} {saleEndInfo.text}
                       </div>
                     )}
 
@@ -928,6 +965,36 @@ export default function ProductDetailPage() {
                             size="sm"
                           />
                         </div>
+                        
+                        {/* Sale expiration details */}
+                        {isSale && price.valid_to && !isExpired && (
+                          <div style={{
+                            marginTop: '0.75rem',
+                            padding: '0.75rem',
+                            background: 'rgba(255, 255, 255, 0.1)',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            fontSize: '0.875rem'
+                          }}>
+                            <div style={{
+                              color: '#ffffff',
+                              fontWeight: 'bold',
+                              marginBottom: '0.25rem'
+                            }}>
+                              🏷️ תוקף המבצע:
+                            </div>
+                            {saleEndInfo && (
+                              <div style={{
+                                color: saleEndInfo.color.includes('red') ? '#fca5a5' : 
+                                       saleEndInfo.color.includes('orange') ? '#fdba74' :
+                                       saleEndInfo.color.includes('yellow') ? '#fde047' : '#cbd5e1',
+                                fontWeight: '600'
+                              }}>
+                                {saleEndInfo.icon} {saleEndInfo.text}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Action Buttons */}

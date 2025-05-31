@@ -138,6 +138,22 @@ export const isSaleActive = (item: PriceItem): boolean => {
   }
 };
 
+// פונקציה לבדיקה אם מבצע פג תוקף
+export const isSaleExpired = (item: PriceItem): boolean => {
+  const saleEndDate = item.sale_end_date || item.valid_to;
+  if (!saleEndDate) return false;
+  
+  try {
+    const endDate = new Date(saleEndDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // תחילת היום
+    
+    return endDate < today;
+  } catch {
+    return false;
+  }
+};
+
 // פונקציה למציאת המחיר הנמוך ביותר ברשימה
 export const findLowestPrice = (prices: PriceItem[]): number | null => {
   if (!prices || prices.length === 0) return null;
