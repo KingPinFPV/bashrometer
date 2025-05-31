@@ -27,7 +27,19 @@ export const apiCall = async (endpoint: string, options?: RequestInit) => {
 
 // פונקציה עזר לקריאות מאומתות
 export const authenticatedApiCall = async (endpoint: string, options?: RequestInit) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('authToken'); // תיקון: להשתמש באותו מפתח כמו ב-AuthContext
+  
+  if (!token) {
+    console.error('🔐 No authentication token found in localStorage');
+    throw new Error('No authentication token found');
+  }
+  
+  console.log('🔐 Sending authenticated request:', {
+    endpoint,
+    tokenPresent: !!token,
+    tokenLength: token.length,
+    tokenStart: token.substring(0, 20) + '...'
+  });
   
   return apiCall(endpoint, {
     ...options,

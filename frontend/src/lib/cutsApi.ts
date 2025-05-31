@@ -51,7 +51,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
 // Helper function to get auth headers
 function getAuthHeaders(): HeadersInit {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
   
   return {
     'Content-Type': 'application/json',
