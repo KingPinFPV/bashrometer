@@ -139,4 +139,4 @@ INSERT INTO brands (name, type) VALUES
 ('ברכת שמואל', 'supplier'),
 ('שושני', 'brand'),
 ('פרה פרה', 'brand'),
-('עיראקי עאסי', 'supplier');
+('עיראקי עאסלי', 'supplier');

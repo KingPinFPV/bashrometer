@@ -13,7 +13,19 @@ const { authenticateToken, authorizeRole } = require('../middleware/authMiddlewa
 // GET /api/products - שליפת כל המוצרים (עם פילטור, מיון, עימוד)
 router.get('/', productController.getAllProducts);
 
-// GET /api/products/:id - שליפת מוצר יחיד לפי ID
+// GET /api/products/search - חיפוש מתקדם עם פילטרים (חייב להיות לפני /:id)
+router.get('/search', productController.searchProducts);
+
+// GET /api/products/cuts - שליפת כל הנתחים מקובצים לפי קטגוריה
+router.get('/cuts', productController.getAllCuts);
+
+// GET /api/products/filter-options - שליפת אפשרויות לסינון (קטגוריות, כשרות וכו')
+router.get('/filter-options', productController.getFilterOptions);
+
+// GET /api/products/subtypes/:cutId - שליפת תת-סוגים לפי נתח
+router.get('/subtypes/:cutId', productController.getSubtypesByCut);
+
+// GET /api/products/:id - שליפת מוצר יחיד לפי ID (חייב להיות אחרון)
 router.get('/:id', productController.getProductById);
 
 

@@ -187,7 +187,7 @@ const createProduct = async (req, res, next) => {
     name, brand, origin_country, kosher_level, animal_type, cut_type, 
     description, category, unit_of_measure = 'kg', // ברירת מחדל אם לא נשלח
     default_weight_per_unit_grams, image_url, short_description, is_active = true,
-    cut_id // Support for new cut_id field
+    cut_id, product_subtype_id, processing_state, has_bone, quality_grade // Support for new fields
   } = req.body;
 
   if (!name || !unit_of_measure) {
@@ -201,13 +201,15 @@ const createProduct = async (req, res, next) => {
       `INSERT INTO products 
         (name, brand, origin_country, kosher_level, animal_type, cut_type, 
          description, category, unit_of_measure, default_weight_per_unit_grams, 
-         image_url, short_description, is_active, cut_id) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
+         image_url, short_description, is_active, cut_id, product_subtype_id,
+         processing_state, has_bone, quality_grade) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) 
        RETURNING *`,
       [
         name, brand, origin_country, kosher_level, animal_type, cut_type, 
         description, category, unit_of_measure, default_weight_per_unit_grams, 
-        image_url, short_description, is_active, cut_id || null
+        image_url, short_description, is_active, cut_id || null, product_subtype_id || null,
+        processing_state || null, has_bone || null, quality_grade || null
       ]
     );
     
@@ -248,7 +250,8 @@ const updateProduct = async (req, res, next) => {
   const { 
     name, brand, origin_country, kosher_level, animal_type, cut_type, 
     description, category, unit_of_measure, default_weight_per_unit_grams, 
-    image_url, short_description, is_active, cut_id 
+    image_url, short_description, is_active, cut_id, product_subtype_id,
+    processing_state, has_bone, quality_grade 
   } = req.body;
 
   // הרכב שאילתת עדכון דינמית כדי לעדכן רק שדות שנשלחו
@@ -270,6 +273,10 @@ const updateProduct = async (req, res, next) => {
   if (short_description !== undefined) { fields.push(`short_description = $${paramCount++}`); values.push(short_description); }
   if (is_active !== undefined) { fields.push(`is_active = $${paramCount++}`); values.push(is_active); }
   if (cut_id !== undefined) { fields.push(`cut_id = $${paramCount++}`); values.push(cut_id); }
+  if (product_subtype_id !== undefined) { fields.push(`product_subtype_id = $${paramCount++}`); values.push(product_subtype_id); }
+  if (processing_state !== undefined) { fields.push(`processing_state = $${paramCount++}`); values.push(processing_state); }
+  if (has_bone !== undefined) { fields.push(`has_bone = $${paramCount++}`); values.push(has_bone); }
+  if (quality_grade !== undefined) { fields.push(`quality_grade = $${paramCount++}`); values.push(quality_grade); }
 
   if (fields.length === 0) {
     return res.status(400).json({ error: 'No fields provided for update.' });
@@ -319,10 +326,278 @@ const deleteProduct = async (req, res, next) => {
   }
 };
 
+// Advanced search function with filtering, sorting, and pagination
+const searchProducts = async (req, res, next) => {
+  const { 
+    search, category, cut_id, subtype_id, price_min, price_max,
+    sort_by = 'name', order = 'ASC', page = 1, limit = 20,
+    kosher_level, processing_state, has_bone, quality_grade
+  } = req.query;
+  
+  const offset = (parseInt(page) - 1) * parseInt(limit);
+  const queryParams = [];
+  let paramIndex = 1;
+  let whereClauses = " WHERE p.is_active = TRUE ";
+  
+  // Text search across multiple fields
+  if (search) {
+    whereClauses += ` AND (
+      LOWER(p.name) LIKE LOWER($${paramIndex}) OR 
+      LOWER(p.brand) LIKE LOWER($${paramIndex}) OR
+      LOWER(p.description) LIKE LOWER($${paramIndex}) OR
+      LOWER(c.hebrew_name) LIKE LOWER($${paramIndex}) OR
+      LOWER(ps.hebrew_description) LIKE LOWER($${paramIndex})
+    )`;
+    queryParams.push(`%${search}%`);
+    paramIndex++;
+  }
+  
+  // Category filter
+  if (category) {
+    whereClauses += ` AND c.category = $${paramIndex}`;
+    queryParams.push(category);
+    paramIndex++;
+  }
+  
+  // Cut filter
+  if (cut_id) {
+    whereClauses += ` AND p.cut_id = $${paramIndex}`;
+    queryParams.push(parseInt(cut_id));
+    paramIndex++;
+  }
+  
+  // Subtype filter
+  if (subtype_id) {
+    whereClauses += ` AND p.product_subtype_id = $${paramIndex}`;
+    queryParams.push(parseInt(subtype_id));
+    paramIndex++;
+  }
+  
+  // Additional filters
+  if (kosher_level) {
+    whereClauses += ` AND p.kosher_level = $${paramIndex}`;
+    queryParams.push(kosher_level);
+    paramIndex++;
+  }
+  
+  if (processing_state) {
+    whereClauses += ` AND p.processing_state = $${paramIndex}`;
+    queryParams.push(processing_state);
+    paramIndex++;
+  }
+  
+  if (has_bone !== undefined) {
+    whereClauses += ` AND p.has_bone = $${paramIndex}`;
+    queryParams.push(has_bone === 'true');
+    paramIndex++;
+  }
+  
+  if (quality_grade) {
+    whereClauses += ` AND p.quality_grade = $${paramIndex}`;
+    queryParams.push(quality_grade);
+    paramIndex++;
+  }
+  
+  // Build main query with joins
+  let mainQuery = `
+    SELECT 
+      p.id, p.name, p.brand, p.short_description, p.image_url, 
+      p.category, p.unit_of_measure, p.processing_state, p.has_bone, p.quality_grade,
+      c.hebrew_name as cut_name, c.category as cut_category,
+      ps.hebrew_description as subtype_name,
+      (
+        SELECT ROUND(AVG(
+          CASE 
+            WHEN pr.unit_for_price = 'kg' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price)
+            WHEN pr.unit_for_price = '100g' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price) * 10
+            WHEN pr.unit_for_price = 'g' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price) * 1000
+            WHEN pr.unit_for_price IN ('unit', 'package') AND p.default_weight_per_unit_grams > 0 
+              THEN (COALESCE(pr.sale_price, pr.regular_price) / (pr.quantity_for_price * p.default_weight_per_unit_grams / 1000))
+            ELSE NULL 
+          END
+        ), 2)
+        FROM prices pr 
+        WHERE pr.product_id = p.id 
+          AND pr.status = 'approved' 
+          AND (pr.price_valid_to IS NULL OR pr.price_valid_to >= CURRENT_DATE)
+      ) as avg_price_per_1kg,
+      (
+        SELECT MIN(
+          CASE 
+            WHEN pr.unit_for_price = 'kg' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price)
+            WHEN pr.unit_for_price = '100g' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price) * 10
+            WHEN pr.unit_for_price = 'g' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price) * 1000
+            WHEN pr.unit_for_price IN ('unit', 'package') AND p.default_weight_per_unit_grams > 0 
+              THEN (COALESCE(pr.sale_price, pr.regular_price) / (pr.quantity_for_price * p.default_weight_per_unit_grams / 1000))
+            ELSE NULL 
+          END
+        )
+        FROM prices pr 
+        WHERE pr.product_id = p.id 
+          AND pr.status = 'approved' 
+          AND (pr.price_valid_to IS NULL OR pr.price_valid_to >= CURRENT_DATE)
+      ) as min_price_per_1kg
+    FROM products p
+    LEFT JOIN cuts c ON p.cut_id = c.id
+    LEFT JOIN product_subtypes ps ON p.product_subtype_id = ps.id
+    ${whereClauses}
+  `;
+  
+  // Price range filters (applied after calculating normalized prices)
+  if (price_min || price_max) {
+    const havingClauses = [];
+    if (price_min) {
+      havingClauses.push(`min_price_per_1kg >= ${parseFloat(price_min)}`);
+    }
+    if (price_max) {
+      havingClauses.push(`min_price_per_1kg <= ${parseFloat(price_max)}`);
+    }
+    mainQuery = `SELECT * FROM (${mainQuery}) filtered_products WHERE ${havingClauses.join(' AND ')}`;
+  }
+  
+  // Sorting
+  const validSortColumns = {
+    'name': 'name', 'brand': 'brand', 'category': 'cut_category',
+    'price': 'min_price_per_1kg', 'avg_price': 'avg_price_per_1kg'
+  };
+  const sortColumn = validSortColumns[sort_by] || 'name';
+  const sortOrder = order.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+  
+  // Handle NULL values in price sorting
+  if (sortColumn.includes('price')) {
+    mainQuery += ` ORDER BY ${sortColumn} ${sortOrder} NULLS LAST`;
+  } else {
+    mainQuery += ` ORDER BY ${sortColumn} ${sortOrder}`;
+  }
+  
+  // Count query for pagination
+  const countQuery = `SELECT COUNT(*) FROM (${mainQuery.split('ORDER BY')[0]}) as count_query`;
+  
+  // Add pagination
+  mainQuery += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+  queryParams.push(parseInt(limit), offset);
+  
+  try {
+    const countResult = await pool.query(countQuery, queryParams.slice(0, -2));
+    const totalItems = parseInt(countResult.rows[0].count, 10);
+    
+    const result = await pool.query(mainQuery, queryParams);
+    
+    const products = result.rows.map(p => ({
+      ...p,
+      avg_price_per_1kg: p.avg_price_per_1kg ? parseFloat(p.avg_price_per_1kg) : null,
+      min_price_per_1kg: p.min_price_per_1kg ? parseFloat(p.min_price_per_1kg) : null
+    }));
+    
+    res.json({
+      data: products,
+      page_info: {
+        total_items: totalItems,
+        limit: parseInt(limit),
+        offset: offset,
+        current_page: parseInt(page),
+        total_pages: Math.ceil(totalItems / parseInt(limit)),
+        has_next: offset + parseInt(limit) < totalItems,
+        has_previous: offset > 0
+      }
+    });
+  } catch (err) {
+    console.error('Error in searchProducts:', err.message);
+    next(err);
+  }
+};
+
+// Get subtypes for a specific cut
+const getSubtypesByCut = async (req, res, next) => {
+  const { cutId } = req.params;
+  const numericCutId = parseInt(cutId, 10);
+  
+  if (isNaN(numericCutId)) {
+    return res.status(400).json({ error: 'Invalid cut ID format' });
+  }
+  
+  try {
+    const query = `
+      SELECT id, name, hebrew_description, purpose, price_range, is_active
+      FROM product_subtypes 
+      WHERE cut_id = $1 AND is_active = TRUE
+      ORDER BY hebrew_description ASC
+    `;
+    
+    const result = await pool.query(query, [numericCutId]);
+    res.json({ data: result.rows });
+  } catch (err) {
+    console.error('Error in getSubtypesByCut:', err.message);
+    next(err);
+  }
+};
+
+// Get all cuts grouped by category
+const getAllCuts = async (req, res, next) => {
+  try {
+    const query = `
+      SELECT 
+        id, name, hebrew_name, category, description,
+        (SELECT COUNT(*) FROM product_subtypes ps WHERE ps.cut_id = c.id AND ps.is_active = TRUE) as subtypes_count,
+        (SELECT COUNT(*) FROM products p WHERE p.cut_id = c.id AND p.is_active = TRUE) as products_count
+      FROM cuts c 
+      ORDER BY category ASC, hebrew_name ASC
+    `;
+    
+    const result = await pool.query(query);
+    
+    // Group by category
+    const cutsByCategory = {};
+    result.rows.forEach(cut => {
+      if (!cutsByCategory[cut.category]) {
+        cutsByCategory[cut.category] = [];
+      }
+      cutsByCategory[cut.category].push({
+        ...cut,
+        subtypes_count: parseInt(cut.subtypes_count),
+        products_count: parseInt(cut.products_count)
+      });
+    });
+    
+    res.json({ data: cutsByCategory });
+  } catch (err) {
+    console.error('Error in getAllCuts:', err.message);
+    next(err);
+  }
+};
+
+// Get filter options for dropdowns
+const getFilterOptions = async (req, res, next) => {
+  try {
+    const queries = await Promise.all([
+      pool.query('SELECT DISTINCT category FROM cuts WHERE category IS NOT NULL ORDER BY category'),
+      pool.query('SELECT DISTINCT kosher_level FROM products WHERE kosher_level IS NOT NULL ORDER BY kosher_level'),
+      pool.query('SELECT DISTINCT processing_state FROM products WHERE processing_state IS NOT NULL ORDER BY processing_state'),
+      pool.query('SELECT DISTINCT quality_grade FROM products WHERE quality_grade IS NOT NULL ORDER BY quality_grade'),
+      pool.query('SELECT DISTINCT brand FROM products WHERE brand IS NOT NULL ORDER BY brand LIMIT 50')
+    ]);
+    
+    res.json({
+      categories: queries[0].rows.map(r => r.category),
+      kosher_levels: queries[1].rows.map(r => r.kosher_level),
+      processing_states: queries[2].rows.map(r => r.processing_state),
+      quality_grades: queries[3].rows.map(r => r.quality_grade),
+      brands: queries[4].rows.map(r => r.brand)
+    });
+  } catch (err) {
+    console.error('Error in getFilterOptions:', err.message);
+    next(err);
+  }
+};
+
 module.exports = {
   getAllProducts,
   getProductById,
-  createProduct,   // הוספנו
-  updateProduct,   // הוספנו
-  deleteProduct    // הוספנו
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  searchProducts,       // New
+  getSubtypesByCut,    // New
+  getAllCuts,          // New
+  getFilterOptions     // New
 };
