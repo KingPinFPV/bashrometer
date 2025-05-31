@@ -922,6 +922,267 @@ const updateProductAdmin = async (req, res) => {
   }
 };
 
+// Smart search using name variants mapping
+const smartProductSearch = async (req, res, next) => {
+  try {
+    const { search, ...otherFilters } = req.query;
+
+    if (!search) {
+      // אם אין חיפוש, השתמש בחיפוש הרגיל
+      return searchProducts(req, res, next);
+    }
+
+    // חיפוש בשמות מנורמלים ווריאנטים
+    const variantQuery = `
+      SELECT DISTINCT pnv.normalized_name, pnv.confidence_score
+      FROM product_name_variants pnv
+      WHERE pnv.variant_name ILIKE $1 
+         OR pnv.normalized_name ILIKE $1
+      ORDER BY pnv.confidence_score DESC
+      LIMIT 10
+    `;
+
+    const variantResult = await pool.query(variantQuery, [`%${search}%`]);
+    
+    if (variantResult.rows.length === 0) {
+      // אם לא נמצא, חזור לחיפוש רגיל
+      return searchProducts(req, res, next);
+    }
+
+    // חפש מוצרים לפי השמות המנורמלים שנמצאו
+    const normalizedNames = variantResult.rows.map(row => row.normalized_name);
+    
+    const { 
+      category, cut_id, subtype_id, price_min, price_max,
+      sort_by = 'match_confidence', order = 'DESC', page = 1, limit = 20,
+      kosher_level, processing_state, has_bone, quality_grade
+    } = otherFilters;
+    
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const queryParams = [normalizedNames, `%${search}%`];
+    let paramIndex = 3;
+    let whereClauses = " WHERE p.is_active = TRUE ";
+    
+    // הוסף תנאי חיפוש חכם
+    whereClauses += ` AND (
+      p.name = ANY($1) OR
+      p.name ILIKE $2 OR
+      EXISTS (
+        SELECT 1 FROM product_name_variants pnv 
+        WHERE pnv.normalized_name = ANY($1) 
+        AND (p.name ILIKE '%' || pnv.normalized_name || '%' OR p.name ILIKE '%' || pnv.variant_name || '%')
+      )
+    )`;
+
+    // Apply additional filters
+    if (category) {
+      whereClauses += ` AND c.category = $${paramIndex}`;
+      queryParams.push(category);
+      paramIndex++;
+    }
+    
+    if (cut_id) {
+      whereClauses += ` AND p.cut_id = $${paramIndex}`;
+      queryParams.push(parseInt(cut_id));
+      paramIndex++;
+    }
+    
+    if (subtype_id) {
+      whereClauses += ` AND p.product_subtype_id = $${paramIndex}`;
+      queryParams.push(parseInt(subtype_id));
+      paramIndex++;
+    }
+    
+    if (kosher_level) {
+      whereClauses += ` AND p.kosher_level = $${paramIndex}`;
+      queryParams.push(kosher_level);
+      paramIndex++;
+    }
+    
+    if (processing_state) {
+      whereClauses += ` AND p.processing_state = $${paramIndex}`;
+      queryParams.push(processing_state);
+      paramIndex++;
+    }
+    
+    if (has_bone !== undefined) {
+      whereClauses += ` AND p.has_bone = $${paramIndex}`;
+      queryParams.push(has_bone === 'true');
+      paramIndex++;
+    }
+    
+    if (quality_grade) {
+      whereClauses += ` AND p.quality_grade = $${paramIndex}`;
+      queryParams.push(quality_grade);
+      paramIndex++;
+    }
+
+    let mainQuery = `
+      SELECT DISTINCT
+        p.id, p.name, p.brand, p.short_description, p.image_url, 
+        p.category, p.unit_of_measure, p.processing_state, p.has_bone, p.quality_grade,
+        c.hebrew_name as cut_name, c.category as cut_category,
+        ps.hebrew_description as subtype_name,
+        (
+          SELECT ROUND(AVG(
+            CASE 
+              WHEN pr.unit_for_price = 'kg' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price)
+              WHEN pr.unit_for_price = '100g' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price) * 10
+              WHEN pr.unit_for_price = 'g' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price) * 1000
+              WHEN pr.unit_for_price IN ('unit', 'package') AND p.default_weight_per_unit_grams > 0 
+                THEN (COALESCE(pr.sale_price, pr.regular_price) / (pr.quantity_for_price * p.default_weight_per_unit_grams / 1000))
+              ELSE NULL 
+            END
+          ), 2)
+          FROM prices pr 
+          WHERE pr.product_id = p.id 
+            AND pr.status = 'approved' 
+            AND (pr.price_valid_to IS NULL OR pr.price_valid_to >= CURRENT_DATE)
+        ) as avg_price_per_1kg,
+        (
+          SELECT MIN(
+            CASE 
+              WHEN pr.unit_for_price = 'kg' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price)
+              WHEN pr.unit_for_price = '100g' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price) * 10
+              WHEN pr.unit_for_price = 'g' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price) * 1000
+              WHEN pr.unit_for_price IN ('unit', 'package') AND p.default_weight_per_unit_grams > 0 
+                THEN (COALESCE(pr.sale_price, pr.regular_price) / (pr.quantity_for_price * p.default_weight_per_unit_grams / 1000))
+              ELSE NULL 
+            END
+          )
+          FROM prices pr 
+          WHERE pr.product_id = p.id 
+            AND pr.status = 'approved' 
+            AND (pr.price_valid_to IS NULL OR pr.price_valid_to >= CURRENT_DATE)
+        ) as min_price_per_1kg,
+        COALESCE(
+          (SELECT MAX(pnv.confidence_score) 
+           FROM product_name_variants pnv 
+           WHERE pnv.normalized_name = ANY($1) 
+           AND (p.name ILIKE '%' || pnv.normalized_name || '%' OR p.name ILIKE '%' || pnv.variant_name || '%')),
+          CASE 
+            WHEN p.name ILIKE $2 THEN 0.9
+            ELSE 0.5
+          END
+        ) as match_confidence
+      FROM products p
+      LEFT JOIN cuts c ON p.cut_id = c.id
+      LEFT JOIN product_subtypes ps ON p.product_subtype_id = ps.id
+      ${whereClauses}
+    `;
+
+    // Price range filters
+    if (price_min || price_max) {
+      const havingClauses = [];
+      if (price_min) {
+        havingClauses.push(`min_price_per_1kg >= ${parseFloat(price_min)}`);
+      }
+      if (price_max) {
+        havingClauses.push(`min_price_per_1kg <= ${parseFloat(price_max)}`);
+      }
+      mainQuery = `SELECT * FROM (${mainQuery}) filtered_products WHERE ${havingClauses.join(' AND ')}`;
+    }
+
+    // Sorting
+    const validSortColumns = {
+      'name': 'name', 'brand': 'brand', 'category': 'cut_category',
+      'price': 'min_price_per_1kg', 'avg_price': 'avg_price_per_1kg', 'match_confidence': 'match_confidence'
+    };
+    const sortColumn = validSortColumns[sort_by] || 'match_confidence';
+    const sortOrder = order.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+    
+    if (sortColumn.includes('price')) {
+      mainQuery += ` ORDER BY ${sortColumn} ${sortOrder} NULLS LAST`;
+    } else {
+      mainQuery += ` ORDER BY ${sortColumn} ${sortOrder}`;
+    }
+
+    // Count query
+    const countQuery = `SELECT COUNT(*) FROM (${mainQuery.split('ORDER BY')[0]}) as count_query`;
+    
+    // Add pagination
+    mainQuery += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    queryParams.push(parseInt(limit), offset);
+
+    const countResult = await pool.query(countQuery, queryParams.slice(0, -2));
+    const totalItems = parseInt(countResult.rows[0].count, 10);
+    
+    const result = await pool.query(mainQuery, queryParams);
+
+    const products = result.rows.map(p => ({
+      ...p,
+      avg_price_per_1kg: p.avg_price_per_1kg ? parseFloat(p.avg_price_per_1kg) : null,
+      min_price_per_1kg: p.min_price_per_1kg ? parseFloat(p.min_price_per_1kg) : null,
+      match_confidence: p.match_confidence ? parseFloat(p.match_confidence) : null
+    }));
+
+    res.json({
+      success: true,
+      products: products,
+      searchSuggestions: variantResult.rows,
+      searchTerm: search,
+      matchType: 'smart_search',
+      data: products,
+      page_info: {
+        total_items: totalItems,
+        limit: parseInt(limit),
+        offset: offset,
+        current_page: parseInt(page),
+        total_pages: Math.ceil(totalItems / parseInt(limit)),
+        has_next: offset + parseInt(limit) < totalItems,
+        has_previous: offset > 0
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in smart product search:', error);
+    res.status(500).json({
+      success: false,
+      error: 'שגיאה בחיפוש חכם'
+    });
+  }
+};
+
+// Autocomplete suggestions endpoint
+const getSearchSuggestions = async (req, res, next) => {
+  try {
+    const { q } = req.query;
+    
+    if (!q || q.length < 2) {
+      return res.json({ success: true, suggestions: [] });
+    }
+
+    const query = `
+      SELECT DISTINCT 
+        pnv.variant_name as suggestion,
+        pnv.normalized_name,
+        pnv.confidence_score,
+        COUNT(p.id) as product_count
+      FROM product_name_variants pnv
+      LEFT JOIN products p ON p.name ILIKE '%' || pnv.normalized_name || '%'
+      WHERE pnv.variant_name ILIKE $1 AND p.is_active = TRUE
+      GROUP BY pnv.variant_name, pnv.normalized_name, pnv.confidence_score
+      HAVING COUNT(p.id) > 0
+      ORDER BY pnv.confidence_score DESC, COUNT(p.id) DESC
+      LIMIT 10
+    `;
+
+    const result = await pool.query(query, [`%${q}%`]);
+
+    res.json({
+      success: true,
+      suggestions: result.rows
+    });
+
+  } catch (error) {
+    console.error('Error getting search suggestions:', error);
+    res.status(500).json({
+      success: false,
+      error: 'שגיאה בהצעות חיפוש'
+    });
+  }
+};
+
 // פונקציית עזר לרישום פעולות אדמין
 const logAdminAction = async (adminId, actionType, targetType, targetId, details = {}) => {
   try {
@@ -940,7 +1201,9 @@ module.exports = {
   createProduct,
   updateProduct,
   deleteProduct,
-  searchProducts,       // New
+  searchProducts,       // Standard search
+  smartProductSearch,   // Smart search with name variants
+  getSearchSuggestions, // Autocomplete suggestions
   getSubtypesByCut,    // New
   getAllCuts,          // New
   getFilterOptions,     // New

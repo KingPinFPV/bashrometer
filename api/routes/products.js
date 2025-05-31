@@ -16,6 +16,12 @@ router.get('/', productController.getAllProducts);
 // GET /api/products/search - חיפוש מתקדם עם פילטרים (חייב להיות לפני /:id)
 router.get('/search', productController.searchProducts);
 
+// GET /api/products/smart-search - חיפוש חכם עם מיפוי שמות
+router.get('/smart-search', productController.smartProductSearch);
+
+// GET /api/products/search-suggestions - הצעות השלמה אוטומטית
+router.get('/search-suggestions', productController.getSearchSuggestions);
+
 // GET /api/products/cuts - שליפת כל הנתחים מקובצים לפי קטגוריה
 router.get('/cuts', productController.getAllCuts);
 

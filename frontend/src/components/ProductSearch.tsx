@@ -137,7 +137,9 @@ const ProductSearch: React.FC<ProductSearchProps> = ({ onResults, onLoading, api
         }
       });
 
-      const response = await fetch(`${apiUrl}/api/products/search?${params.toString()}`);
+      // Use smart search if there's a search term, otherwise use regular search
+      const endpoint = filters.search ? 'smart-search' : 'search';
+      const response = await fetch(`${apiUrl}/api/products/${endpoint}?${params.toString()}`);
       const data = await response.json();
       onResults(data);
     } catch (error) {
