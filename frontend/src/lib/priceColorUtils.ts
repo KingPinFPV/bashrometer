@@ -49,9 +49,35 @@ export const getAdvancedPriceColor = (prices: PriceItem[], currentItem: PriceIte
     return { bg: "bg-gray-200", border: "border-gray-300", text: "text-gray-600", label: "אין מידע", badgeColor: "bg-gray-500" };
   }
 
-  const isOnSale = currentItem.is_sale || currentItem.is_on_sale || currentItem.sale_price;
+  // בדיקת מבצע מפורטת יותר
+  const isOnSale = !!(
+    currentItem.is_sale || 
+    currentItem.is_on_sale || 
+    currentItem.is_currently_on_sale ||
+    currentItem.sale_price ||
+    (currentItem.sale_price && currentItem.regular_price && currentItem.sale_price < currentItem.regular_price)
+  );
+  
   const isLowest = Math.abs(currentNumericPrice - lowestPrice) < 0.01;
   const isHighest = Math.abs(currentNumericPrice - highestPrice) < 0.01;
+
+  // Debug logging (only in development)
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`🎯 Price Analysis:`, {
+      item: currentItem.retailer || currentItem.retailer_name || 'Unknown',
+      price: currentNumericPrice,
+      isLowest,
+      isHighest,
+      isOnSale,
+      saleFields: {
+        is_sale: currentItem.is_sale,
+        is_on_sale: currentItem.is_on_sale,
+        is_currently_on_sale: currentItem.is_currently_on_sale,
+        sale_price: currentItem.sale_price,
+        regular_price: currentItem.regular_price
+      }
+    });
+  }
 
   // 1. ירוק - המחיר הכי זול (עדיפות עליונה)
   if (isLowest) {
@@ -86,12 +112,12 @@ export const getAdvancedPriceColor = (prices: PriceItem[], currentItem: PriceIte
     };
   }
 
-  // 4. צהוב - מחיר רגיל (בין הזול לגבוה)
+  // 4. צהוב - מחיר רגיל (בין הזול לגבוה, לא במבצע)
   return { 
     bg: "bg-yellow-50", 
     border: "border-yellow-300", 
     text: "text-yellow-800", 
-    label: "מחיר רגיל",
+    label: "📊 מחיר רגיל",
     badgeColor: "bg-yellow-500"
   };
 };

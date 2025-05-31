@@ -831,15 +831,15 @@ export default function ProductDetailPage() {
                       </div>
                       <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
                         <div style={{width: '12px', height: '12px', background: 'rgba(59, 130, 246, 0.3)', borderRadius: '3px', border: '1px solid rgba(59, 130, 246, 0.5)'}}></div>
-                        <span style={{color: '#93c5fd'}}>🏷️ מבצע</span>
+                        <span style={{color: '#93c5fd'}}>🏷️ מבצע (לא קיצוני)</span>
+                      </div>
+                      <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                        <div style={{width: '12px', height: '12px', background: 'rgba(252, 211, 77, 0.3)', borderRadius: '3px', border: '1px solid rgba(252, 211, 77, 0.5)'}}></div>
+                        <span style={{color: '#fde68a'}}>📊 רגיל (לא קיצוני)</span>
                       </div>
                       <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
                         <div style={{width: '12px', height: '12px', background: 'rgba(239, 68, 68, 0.3)', borderRadius: '3px', border: '1px solid rgba(239, 68, 68, 0.5)'}}></div>
                         <span style={{color: '#fca5a5'}}>💸 הכי יקר</span>
-                      </div>
-                      <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-                        <div style={{width: '12px', height: '12px', background: 'rgba(252, 211, 77, 0.3)', borderRadius: '3px', border: '1px solid rgba(252, 211, 77, 0.5)'}}></div>
-                        <span style={{color: '#fde68a'}}>📊 רגיל</span>
                       </div>
                     </div>
                   </div>

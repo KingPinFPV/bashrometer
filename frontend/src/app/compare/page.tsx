@@ -191,8 +191,14 @@ export default function ComparePage() {
         matrix[product_id][retailer_id] = {
           price: effectivePrice, // Now guaranteed to be a number
           isOnSale: !!(salePriceNum && salePriceNum < regularPriceNum),
+          is_sale: !!(salePriceNum && salePriceNum < regularPriceNum),
+          is_on_sale: !!(salePriceNum && salePriceNum < regularPriceNum),
+          sale_price: salePriceNum,
+          regular_price: regularPriceNum,
           originalPrice: salePriceNum && salePriceNum < regularPriceNum ? regularPriceNum : undefined,
-          reportedAt: reportDate.toISOString() // Store as ISO string
+          reportedAt: reportDate.toISOString(), // Store as ISO string
+          retailer_id: retailer_id,
+          retailer_name: report.retailer_name || `Retailer ${retailer_id}`
         };
       } else {
         const reportDateStr = reportDate.toISOString();
@@ -763,12 +769,12 @@ export default function ComparePage() {
             <span>🏆 המחיר הטוב ביותר</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-yellow-50 rounded border border-yellow-300"></div>
-            <span>📊 מחיר רגיל</span>
+            <div className="w-4 h-4 bg-blue-100 rounded border border-blue-400"></div>
+            <span>🏷️ מבצע (לא קיצוני)</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-blue-100 rounded border border-blue-400"></div>
-            <span>🏷️ מבצע</span>
+            <div className="w-4 h-4 bg-yellow-50 rounded border border-yellow-300"></div>
+            <span>📊 מחיר רגיל (לא קיצוני)</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-red-100 rounded border border-red-400"></div>
