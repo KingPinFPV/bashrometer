@@ -134,6 +134,48 @@ export default function AdminDashboardPage() {
         />
       </div>
 
+      {/* Action Buttons */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <a
+          href="/admin/products"
+          className="bg-blue-600 hover:bg-blue-700 text-white p-6 rounded-lg shadow-lg transition-colors"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">ניהול מוצרים</h3>
+              <p className="text-blue-100">אישור ועריכת מוצרים</p>
+            </div>
+            <div className="text-3xl">📦</div>
+          </div>
+        </a>
+        
+        <a
+          href="/admin/users"
+          className="bg-purple-600 hover:bg-purple-700 text-white p-6 rounded-lg shadow-lg transition-colors"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">ניהול משתמשים</h3>
+              <p className="text-purple-100">תפקידים ומחיקות</p>
+            </div>
+            <div className="text-3xl">👥</div>
+          </div>
+        </a>
+        
+        <a
+          href="/admin/reports"
+          className="bg-green-600 hover:bg-green-700 text-white p-6 rounded-lg shadow-lg transition-colors"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">דיווחי מחיר</h3>
+              <p className="text-green-100">ניהול ובקרת דיווחים</p>
+            </div>
+            <div className="text-3xl">📊</div>
+          </div>
+        </a>
+      </div>
+
       {/* Detailed Stats Grid */}
       <div className="grid lg:grid-cols-2 gap-6 mb-8">
         {/* Products Overview */}

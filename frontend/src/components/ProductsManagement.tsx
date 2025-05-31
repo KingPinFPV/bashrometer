@@ -8,6 +8,7 @@ import PendingProductsManagement from '@/components/PendingProductsManagement';
 import TabButtons from '@/components/TabButtons';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import EditProductModal from '@/components/EditProductModal';
+import { authenticatedApiCall } from '@/config/api';
 import { 
   Plus,
   Search,
@@ -68,67 +69,57 @@ const ProductsManagement: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
   const ITEMS_PER_PAGE = 10;
 
   const loadPendingProducts = async () => {
     if (!token) return;
     
     try {
-      const response = await fetch(`${API_URL}/api/products/pending`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      setLoading(true);
+      setError(null);
       
-      if (response.ok) {
-        const data = await response.json();
-        setPendingProducts(data.pendingProducts || []);
-      }
+      const data = await authenticatedApiCall('/api/products/pending');
+      setPendingProducts(data.products || []);
+      
     } catch (error) {
       console.error('Error loading pending products:', error);
+      setError('שגיאה בטעינת מוצרים ממתינים');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleApproveProduct = async (productId: number) => {
-    if (!token) return;
-    
     try {
-      const response = await fetch(`${API_URL}/api/admin/products/${productId}/approve`, {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+      await authenticatedApiCall(`/api/admin/products/${productId}/approve`, {
+        method: 'POST'
       });
       
-      if (response.ok) {
-        setPendingProducts(prev => prev.filter(p => p.id !== productId));
-        fetchProducts(); // Refresh approved products
-      }
+      setPendingProducts(prev => prev.filter(p => p.id !== productId));
+      
     } catch (error) {
       console.error('Error approving product:', error);
+      alert('שגיאה באישור המוצר');
     }
   };
 
-  const handleRejectProduct = async () => {
-    if (!token || !rejectModal.productId) return;
+  const handleRejectProduct = async (productId?: number) => {
+    const targetId = productId || rejectModal.productId;
+    if (!targetId) return;
     
     try {
-      const response = await fetch(`${API_URL}/api/admin/products/${rejectModal.productId}/reject`, {
+      await authenticatedApiCall(`/api/admin/products/${targetId}/reject`, {
         method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({ reason: rejectReason || null })
       });
       
-      if (response.ok) {
-        setPendingProducts(prev => prev.filter(p => p.id !== rejectModal.productId));
-        setRejectModal({ show: false, productId: 0, productName: '' });
-        setRejectReason('');
-      }
+      setPendingProducts(prev => prev.filter(p => p.id !== targetId));
+      setRejectModal({ show: false, productId: 0, productName: '' });
+      setRejectReason('');
+      
     } catch (error) {
       console.error('Error rejecting product:', error);
+      alert('שגיאה בדחיית המוצר');
     }
   };
 
@@ -137,22 +128,20 @@ const ProductsManagement: React.FC = () => {
 
     try {
       setLoading(true);
-      const offset = (currentPage - 1) * ITEMS_PER_PAGE;
-      const searchQuery = searchTerm ? `&name_like=${encodeURIComponent(searchTerm)}` : '';
+      setError(null);
       
-      const response = await fetch(
-        `${API_URL}/api/products?limit=${ITEMS_PER_PAGE}&offset=${offset}${searchQuery}`,
-        {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('שגיאה בטעינת המוצרים');
+      const params = new URLSearchParams({
+        status: 'approved',
+        limit: ITEMS_PER_PAGE.toString(),
+        offset: ((currentPage - 1) * ITEMS_PER_PAGE).toString()
+      });
+      
+      if (searchTerm) {
+        params.append('name_like', searchTerm);
       }
-
-      const data = await response.json();
-      setProducts(data.products || []);
+      
+      const data = await authenticatedApiCall(`/api/products?${params.toString()}`);
+      setProducts(Array.isArray(data) ? data : data.products || []);
       
       if (data.total_items) {
         setTotalPages(data.total_pages || Math.ceil(data.total_items / ITEMS_PER_PAGE));
@@ -237,25 +226,20 @@ const ProductsManagement: React.FC = () => {
 
   const handleSaveProduct = async (updatedProduct: any) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_URL}/api/admin/products/${updatedProduct.id}`, {
+      await authenticatedApiCall(`/api/admin/products/${updatedProduct.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify(updatedProduct)
       });
       
-      if (response.ok) {
-        setShowEditModal(false);
-        setEditingProduct(null);
-        if (activeTab === 'approved') fetchProducts();
-        else if (activeTab === 'pending') loadPendingProducts();
-      }
+      setShowEditModal(false);
+      setEditingProduct(null);
+      
+      // רענן את הרשימה הממתינה
+      loadPendingProducts();
       
     } catch (error) {
       console.error('Error saving product:', error);
+      alert('שגיאה בשמירת המוצר');
     }
   };
 
@@ -350,9 +334,55 @@ const ProductsManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Pending Products - Use dedicated component */}
+      {/* Pending Products */}
       {activeTab === 'pending' ? (
-        <PendingProductsManagement />
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">מוצרים ממתינים לאישור</h2>
+          
+          {pendingProducts.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              אין מוצרים ממתינים לאישור
+            </div>
+          ) : (
+            pendingProducts.map(product => (
+              <div key={product.id} className="border rounded-lg p-4 bg-white shadow-sm">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h3 className="font-bold text-lg">{product.name}</h3>
+                    <p className="text-gray-600">{product.category}</p>
+                    {product.cut_name && (
+                      <p className="text-sm text-gray-500">נתח: {product.cut_name}</p>
+                    )}
+                    <p className="text-xs text-gray-400">
+                      נוצר ב: {new Date(product.created_at).toLocaleDateString('he-IL')}
+                    </p>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEditProduct(product)}
+                      className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
+                    >
+                      ערוך
+                    </button>
+                    <button
+                      onClick={() => handleApproveProduct(product.id)}
+                      className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors"
+                    >
+                      אשר
+                    </button>
+                    <button
+                      onClick={() => handleRejectProduct(product.id)}
+                      className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors"
+                    >
+                      דחה
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       ) : (
         /* Products Table */
         <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">

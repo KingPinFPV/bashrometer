@@ -292,21 +292,6 @@ const Navbar = () => {
                   <span className="hidden sm:inline">📦 ניהול מוצרים</span>
                 </Link>
                 
-                <Link 
-                  href="/admin/users" 
-                  style={linkStyle}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                    e.currentTarget.style.color = '#ec4899';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = '#e2e8f0';
-                  }}
-                >
-                  <span className="sm:hidden">👥</span>
-                  <span className="hidden sm:inline">👥 ניהול משתמשים</span>
-                </Link>
               </>
             )}
           </div>
@@ -539,23 +524,6 @@ const Navbar = () => {
                   📦 ניהול מוצרים
                 </Link>
                 
-                <Link 
-                  href="/admin/users" 
-                  style={{
-                    color: '#ec4899',
-                    textDecoration: 'none',
-                    padding: '1rem',
-                    fontSize: '1rem',
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    minHeight: '44px',
-                    fontWeight: 'bold'
-                  }}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  👥 ניהול משתמשים
-                </Link>
               </>
             )}
 
