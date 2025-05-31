@@ -1,5 +1,29 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // API rewrites for production
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'https://bashrometer-api.onrender.com/:path*',
+      },
+    ];
+  },
+  
+  // CORS headers for API routes
+  async headers() {
+    return [
+      {
+        source: '/api/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET, POST, PUT, DELETE, OPTIONS' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization' },
+        ],
+      },
+    ];
+  },
+  
   // הסר standalone אם גורם לבעיות
   // output: 'standalone',
   

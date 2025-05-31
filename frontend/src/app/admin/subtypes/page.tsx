@@ -1,5 +1,7 @@
 'use client';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plus, Edit, Trash2, Search, Filter } from 'lucide-react';
@@ -34,8 +36,6 @@ export default function AdminSubtypesPage() {
   const [editingSubtype, setEditingSubtype] = useState<Subtype | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
   const loadSubtypes = async () => {
     if (!token) return;
@@ -270,8 +270,6 @@ const SubtypeModal: React.FC<{
     typical_price_range_max: subtype?.typical_price_range_max || ''
   });
   const [loading, setLoading] = useState(false);
-
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,5 +1,7 @@
 'use client';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -51,8 +53,6 @@ export default function AddProductPage() {
     origin_country: '',
   });
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
-
   const steps = [
     { id: 'basic', title: 'מידע בסיסי', description: 'שם, מותג ותיאור' },
     { id: 'classification', title: 'סיווג', description: 'נתח וסוג' },
@@ -79,7 +79,7 @@ export default function AddProductPage() {
     };
 
     loadCuts();
-  }, [API_URL]);
+  }, []);
 
   // Load subtypes when cut is selected
   useEffect(() => {
@@ -101,7 +101,7 @@ export default function AddProductPage() {
     };
 
     loadSubtypes();
-  }, [formData.cut_id, API_URL]);
+  }, [formData.cut_id]);
 
   const updateFormData = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));

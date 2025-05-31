@@ -1,5 +1,7 @@
 'use client';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+
 import React, { useState, useEffect } from 'react';
 import { X, Plus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,8 +32,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ onClose, onSuccess })
     category: '',
     unit_of_measure: 'kg'
   });
-
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
   useEffect(() => {
     fetchCuts();

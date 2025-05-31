@@ -1,6 +1,8 @@
 // src/components/AdminDashboard.tsx
 "use client";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
@@ -41,8 +43,6 @@ const AdminDashboard: React.FC = () => {
   const [recentReports, setRecentReports] = useState<RecentReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -108,7 +108,7 @@ const AdminDashboard: React.FC = () => {
     };
 
     fetchDashboardData();
-  }, [token, API_URL]);
+  }, [token]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

@@ -1,5 +1,7 @@
 'use client';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import ProductCard from './ProductCard';
@@ -51,8 +53,6 @@ const PendingProductsManagement: React.FC = () => {
   });
   const [selectedProduct, setSelectedProduct] = useState<PendingProduct | null>(null);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
-
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
   useEffect(() => {
     fetchPendingProducts();

@@ -1,6 +1,8 @@
 // src/components/ProductsManagement.tsx
 "use client";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import AddProductModal from '@/components/admin/AddProductModal';
@@ -158,7 +160,7 @@ const ProductsManagement: React.FC = () => {
   useEffect(() => {
     fetchProducts();
     loadPendingProducts();
-  }, [token, API_URL, currentPage, searchTerm]);
+  }, [token, currentPage, searchTerm]);
 
   useEffect(() => {
     if (activeTab === 'pending') {

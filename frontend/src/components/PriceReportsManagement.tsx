@@ -1,6 +1,8 @@
 // src/components/PriceReportsManagement.tsx
 "use client";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { filterValidReports, safeParseNumber, safeParseString } from '@/lib/typeGuards';
@@ -41,8 +43,6 @@ const PriceReportsManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [mounted, setMounted] = useState(false);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
-
   // Fix hydration mismatch
   useEffect(() => {
     setMounted(true);
@@ -76,7 +76,7 @@ const PriceReportsManagement: React.FC = () => {
     };
 
     fetchReports();
-  }, [token, API_URL, mounted]);
+  }, [token, mounted]);
 
   // Filter reports with null checks
   useEffect(() => {
