@@ -29,6 +29,7 @@ const getAllProducts = async (req, res, next) => {
       p.unit_of_measure, p.is_active, p.origin_country, p.kosher_level, p.animal_type,
       p.cut_type, p.description, p.default_weight_per_unit_grams, p.cut_id,
       c.hebrew_name as cut_hebrew_name,
+      c.name as cut_english_name,
       c.category as cut_category,
       (
         SELECT ROUND(MIN(
@@ -110,7 +111,7 @@ const getProductById = async (req, res, next) => {
         p.cut_type, p.description, p.category, p.unit_of_measure, 
         p.default_weight_per_unit_grams, p.image_url, p.short_description, p.is_active, p.cut_id,
         c.hebrew_name as cut_hebrew_name,
-        c.english_name as cut_english_name,
+        c.name as cut_english_name,
         c.category as cut_category
       FROM products p
       LEFT JOIN cuts c ON p.cut_id = c.id

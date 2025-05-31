@@ -59,7 +59,7 @@ beforeAll(async () => {
         .set('Authorization', `Bearer ${adminUserToken}`)
         .send(initialProductData);
     expect(initialProductRes.statusCode).toEqual(201); // ודא שהיצירה הראשונית מצליחה
-    testProductId = initialProductRes.body.id;
+    testProductId = initialProductRes.body.data.id;
     expect(testProductId).toBeDefined();
 });
 
@@ -134,10 +134,11 @@ describe('Products API Endpoints', () => {
                 .set('Authorization', `Bearer ${adminUserToken}`)
                 .send(newProductData);
             expect(res.statusCode).toEqual(201);
-            expect(res.body).toHaveProperty('id');
-            expect(res.body.name).toEqual(newProductData.name);
-            expect(res.body.brand).toEqual(newProductData.brand);
-            createdProductId = res.body.id; // שמור את ה-ID לבדיקות הבאות
+            expect(res.body).toHaveProperty('success', true);
+            expect(res.body.data).toHaveProperty('id');
+            expect(res.body.data.name).toEqual(newProductData.name);
+            expect(res.body.data.brand).toEqual(newProductData.brand);
+            createdProductId = res.body.data.id; // שמור את ה-ID לבדיקות הבאות
         });
 
         it('should prevent non-admin from creating a product', async () => {
