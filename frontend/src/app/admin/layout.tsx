@@ -17,8 +17,7 @@ import {
   Bell,
   LogOut,
   Home,
-  AlertCircle,
-  Scissors
+  AlertCircle
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -62,13 +61,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       badge: null
     },
     { 
-      id: 'cuts', 
-      name: 'נתחי בשר', 
-      icon: Scissors, 
-      href: '/admin/cuts',
-      badge: null
-    },
-    { 
       id: 'price-reports', 
       name: 'דיווחי מחיר', 
       icon: FileText, 
@@ -106,7 +98,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     if (pathname === '/admin') return 'dashboard';
     if (pathname.includes('/admin/products')) return 'products';
     if (pathname.includes('/admin/retailers')) return 'retailers';
-    if (pathname.includes('/admin/cuts')) return 'cuts';
     if (pathname.includes('/admin/reports')) return 'price-reports';
     if (pathname.includes('/admin/users')) return 'users';
     if (pathname.includes('/admin/analytics')) return 'analytics';
