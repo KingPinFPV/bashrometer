@@ -8,7 +8,8 @@ import {
   getSaleBadgeText,
   formatSaleEndDate, 
   isSaleExpired,
-  isLowestPriceItem
+  isLowestPriceItem,
+  getAdvancedPriceColor
 } from '@/lib/priceColorUtils';
 
 interface Product {
@@ -208,90 +209,63 @@ export default function ComparePage() {
     return matrix;
   };
 
-  // Get price color based on new logic - GREEN for lowest price has HIGHEST priority
-  const getUpdatedPriceColor = (priceData: Record<string, unknown>, allPricesForProduct: Record<string, unknown>[]): string => {
-    // Check if this is the lowest price among all products for this item
-    const isLowest = isLowestPriceItem(priceData, allPricesForProduct);
-    
-    // Use our centralized color logic
-    return getPriceBackgroundColor(priceData, isLowest);
-  };
+  // Render price cell with advanced color system
+  const renderPriceCell = (priceData: any, allPricesForProduct: any[]) => {
+    if (!priceData) {
+      return (
+        <div className="bg-gray-200 border-2 border-gray-300 p-3 rounded-lg text-center">
+          <div className="text-gray-600 text-sm">❌</div>
+          <div className="text-xs mt-1 text-gray-600">אין מידע</div>
+        </div>
+      );
+    }
 
-  // Get price text color based on new logic
-  const getUpdatedPriceTextColor = (priceData: Record<string, unknown>, allPricesForProduct: Record<string, unknown>[]): string => {
-    const isLowest = isLowestPriceItem(priceData, allPricesForProduct);
-    return getPriceTextColor(priceData, isLowest);
+    const price = priceData.price;
+    const colorScheme = getAdvancedPriceColor(allPricesForProduct, priceData, price);
+
+    return (
+      <div className={`p-3 rounded-lg border-2 transition-all duration-300 hover:shadow-lg ${colorScheme.bg} ${colorScheme.border}`}>
+        {/* המחיר */}
+        <div className={`text-xl font-bold ${colorScheme.text}`}>
+          ₪{parseFloat(price).toFixed(2)}
+        </div>
+        <div className="text-xs text-gray-600">לק״ג</div>
+
+        {/* Badge סטטוס */}
+        <div className={`inline-block px-2 py-1 rounded text-white text-xs mt-2 ${colorScheme.badgeColor}`}>
+          {colorScheme.label}
+        </div>
+
+        {/* תוקף מבצע אם רלוונטי */}
+        {(priceData.isOnSale || priceData.is_sale) && priceData.sale_end_date && (
+          <div className="text-xs mt-2 text-gray-600">
+            📅 עד: {new Date(priceData.sale_end_date).toLocaleDateString('he-IL')}
+          </div>
+        )}
+
+        {/* מחיר מקורי אם במבצע */}
+        {(priceData.isOnSale || priceData.is_sale) && priceData.originalPrice && (
+          <div className="text-xs text-gray-500 line-through mt-1">
+            מחיר רגיל: ₪{priceData.originalPrice}
+          </div>
+        )}
+
+        {/* תאריך דיווח */}
+        <div className="text-xs text-gray-500 mt-1">
+          {new Date(priceData.reportedAt).toLocaleDateString('he-IL')}
+        </div>
+      </div>
+    );
   };
 
   // Helper function to safely format price
   const formatPriceValue = (price: number | string | undefined): string => {
-    const numPrice = parseFloat(price);
+    const numPrice = parseFloat(price?.toString() || '0');
     if (isNaN(numPrice)) {
       console.warn('Invalid price value:', price);
       return 'N/A';
     }
     return (numPrice || 0).toFixed(0);
-  };
-
-  // Enhanced format price display with sale expiration
-  const formatPrice = (priceData: { price: number; isOnSale: boolean; originalPrice?: number; reportedAt: string; sale_end_date?: string }, allPricesForProduct: Record<string, unknown>[]) => {
-    const { price, isOnSale, originalPrice, reportedAt, sale_end_date } = priceData;
-    const reportDate = new Date(reportedAt);
-    const isRecent = (Date.now() - reportDate.getTime()) < (7 * 24 * 60 * 60 * 1000); // Within 7 days
-    const isLowest = isLowestPriceItem(priceData, allPricesForProduct);
-    const saleEndInfo = sale_end_date ? formatSaleEndDate(sale_end_date) : null;
-    const expired = isSaleExpired(priceData);
-    
-    if (isOnSale && originalPrice) {
-      return (
-        <div className="space-y-1 relative">
-          {/* Sale expiration overlay for expired sales */}
-          {expired && (
-            <div className="absolute inset-0 bg-red-100 bg-opacity-75 flex items-center justify-center rounded text-xs">
-              <span className="text-red-600 font-bold">המבצע פג</span>
-            </div>
-          )}
-          
-          <div className="font-bold">₪{formatPriceValue(price)}</div>
-          <div className="text-xs line-through opacity-60">₪{formatPriceValue(originalPrice)}</div>
-          
-          {/* Sale badge with priority logic */}
-          <div className={`text-xs font-medium px-2 py-1 rounded ${
-            isLowest ? 'bg-green-500 text-white' : 'bg-blue-500 text-white'
-          }`}>
-            {getSaleBadgeText(priceData, isLowest) || 'מבצע!'}
-          </div>
-          
-          {/* Sale expiration info */}
-          {saleEndInfo && (
-            <div className={`text-xs p-1 rounded bg-gray-50 ${saleEndInfo.color}`}>
-              {saleEndInfo.icon} {saleEndInfo.text}
-            </div>
-          )}
-          
-          <div className={`text-xs ${isRecent ? 'text-green-600' : 'text-gray-500'}`}>
-            {reportDate.toLocaleDateString('he-IL')}
-          </div>
-        </div>
-      );
-    }
-    
-    return (
-      <div className="space-y-1">
-        <div className="font-bold">₪{formatPriceValue(price)}</div>
-        
-        {/* Best price badge for non-sale items */}
-        {isLowest && (
-          <div className="text-xs font-medium px-2 py-1 rounded bg-green-500 text-white">
-            🏆 המחיר הטוב ביותר
-          </div>
-        )}
-        
-        <div className={`text-xs ${isRecent ? 'text-green-600' : 'text-gray-500'}`}>
-          {reportDate.toLocaleDateString('he-IL')}
-        </div>
-      </div>
-    );
   };
 
   // Fetch data
@@ -780,29 +754,29 @@ export default function ComparePage() {
         </div>
       )}
 
-      {/* Legend */}
-      <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-        <h3 className="font-semibold mb-3">מקרא צבעים:</h3>
-        <div className="flex flex-wrap gap-4 text-sm">
+      {/* מקרא צבעים מתקדם */}
+      <div className="mb-6 p-4 bg-white rounded-lg shadow-sm border">
+        <h3 className="text-lg font-bold mb-3 text-center">מקרא צבעים:</h3>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-green-100 border border-green-300 rounded"></div>
-            <span>הכי זול</span>
+            <div className="w-4 h-4 bg-green-100 rounded border border-green-400"></div>
+            <span>🏆 המחיר הטוב ביותר</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-yellow-50 border border-yellow-200 rounded"></div>
-            <span>ממוצע</span>
+            <div className="w-4 h-4 bg-yellow-50 rounded border border-yellow-300"></div>
+            <span>📊 מחיר רגיל</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-red-100 border border-red-300 rounded"></div>
-            <span>הכי יקר</span>
+            <div className="w-4 h-4 bg-blue-100 rounded border border-blue-400"></div>
+            <span>🏷️ מבצע</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-blue-100 border border-blue-300 rounded"></div>
-            <span>מבצע</span>
+            <div className="w-4 h-4 bg-red-100 rounded border border-red-400"></div>
+            <span>💸 המחיר הגבוה ביותר</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-gray-100 border border-gray-300 rounded"></div>
-            <span>אין מידע</span>
+            <div className="w-4 h-4 bg-gray-200 rounded border border-gray-300"></div>
+            <span>❌ אין מידע</span>
           </div>
         </div>
       </div>
@@ -860,32 +834,9 @@ export default function ComparePage() {
                       {retailers.map(retailer => {
                         const priceData = priceMatrix[product.id]?.[retailer.id];
                         
-                        if (!priceData) {
-                          return (
-                            <td key={retailer.id} className="px-3 py-3 text-center border-l border-gray-300">
-                              <div className="bg-gray-100 text-gray-400 rounded px-2 py-1 text-sm">
-                                אין מידע
-                              </div>
-                            </td>
-                          );
-                        }
-
-                        // Use new color logic with proper comparison
-                        const colorClass = getUpdatedPriceColor(priceData, allProductPrices);
-                        const textColorClass = getUpdatedPriceTextColor(priceData, allProductPrices);
-                        const isExpired = isSaleExpired(priceData);
-
                         return (
-                          <td key={retailer.id} className="px-3 py-3 text-center border-l border-gray-300">
-                            <div className={`rounded px-2 py-1 text-sm border ${colorClass} ${textColorClass} transition-all duration-300 hover:shadow-lg relative`}>
-                              {/* Expired sale overlay */}
-                              {isExpired && (
-                                <div className="absolute inset-0 bg-red-100 bg-opacity-75 flex items-center justify-center rounded text-xs">
-                                  <span className="text-red-600 font-bold">פג תוקף</span>
-                                </div>
-                              )}
-                              {formatPrice(priceData, allProductPrices)}
-                            </div>
+                          <td key={retailer.id} className="px-2 py-3 text-center border-l border-gray-300">
+                            {renderPriceCell(priceData, allProductPrices)}
                           </td>
                         );
                       })}

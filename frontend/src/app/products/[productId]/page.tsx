@@ -8,11 +8,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useReport } from '@/contexts/ReportContext';
 import PriceDisplay from '@/components/PriceDisplay';
 import { 
-  getSaleBadgeText,
   formatSaleEndDate, 
   isSaleExpired,
-  isLowestPriceItem,
-  getPriceStyleObject
+  getAdvancedPriceColor
 } from '@/lib/priceColorUtils';
 
 // Interfaces (כפי שהיו אצלך)
@@ -805,6 +803,47 @@ export default function ProductDetailPage() {
                     </div>
                   )}
                   
+                  {/* מקרא צבעים קטן */}
+                  <div style={{
+                    marginBottom: '1.5rem',
+                    padding: '1rem',
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(255, 255, 255, 0.2)'
+                  }}>
+                    <div style={{
+                      fontSize: '0.875rem',
+                      color: '#cbd5e1',
+                      marginBottom: '0.75rem',
+                      fontWeight: '600'
+                    }}>
+                      מקרא צבעים:
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '1rem',
+                      fontSize: '0.75rem'
+                    }}>
+                      <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                        <div style={{width: '12px', height: '12px', background: 'rgba(16, 185, 129, 0.3)', borderRadius: '3px', border: '1px solid rgba(16, 185, 129, 0.5)'}}></div>
+                        <span style={{color: '#a7f3d0'}}>🏆 הטוב ביותר</span>
+                      </div>
+                      <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                        <div style={{width: '12px', height: '12px', background: 'rgba(59, 130, 246, 0.3)', borderRadius: '3px', border: '1px solid rgba(59, 130, 246, 0.5)'}}></div>
+                        <span style={{color: '#93c5fd'}}>🏷️ מבצע</span>
+                      </div>
+                      <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                        <div style={{width: '12px', height: '12px', background: 'rgba(239, 68, 68, 0.3)', borderRadius: '3px', border: '1px solid rgba(239, 68, 68, 0.5)'}}></div>
+                        <span style={{color: '#fca5a5'}}>💸 הכי יקר</span>
+                      </div>
+                      <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                        <div style={{width: '12px', height: '12px', background: 'rgba(252, 211, 77, 0.3)', borderRadius: '3px', border: '1px solid rgba(252, 211, 77, 0.5)'}}></div>
+                        <span style={{color: '#fde68a'}}>📊 רגיל</span>
+                      </div>
+                    </div>
+                  </div>
+
                   <h3 style={{
                     fontSize: '1.5rem',
                     fontWeight: 'bold',
@@ -816,18 +855,25 @@ export default function ProductDetailPage() {
                   
                   <div style={{display: 'grid', gap: '1rem'}}>
                     {uniqueLatestPrices.slice(0, 5).map((price) => {
-                      const isLowest = isLowestPriceItem(price, uniqueLatestPrices);
+                      const colorScheme = getAdvancedPriceColor(uniqueLatestPrices, price, price.calculated_price_per_1kg);
                       const isSale = price.is_on_sale || price.sale_price;
                       const saleEndInfo = price.valid_to ? formatSaleEndDate(price.valid_to) : null;
                       const isExpired = isSaleExpired(price);
-                      const badgeText = getSaleBadgeText(price, isLowest);
-                      const priceStyleObj = getPriceStyleObject(price, isLowest);
                 
                 return (
                   <div
                     key={price.price_id}
                     style={{
-                      ...priceStyleObj,
+                      background: colorScheme.bg === 'bg-green-100' ? 'rgba(16, 185, 129, 0.15)' :
+                                 colorScheme.bg === 'bg-blue-100' ? 'rgba(59, 130, 246, 0.15)' :
+                                 colorScheme.bg === 'bg-red-100' ? 'rgba(239, 68, 68, 0.15)' :
+                                 colorScheme.bg === 'bg-yellow-50' ? 'rgba(252, 211, 77, 0.15)' :
+                                 'rgba(107, 114, 128, 0.15)',
+                      border: colorScheme.bg === 'bg-green-100' ? '2px solid rgba(16, 185, 129, 0.5)' :
+                             colorScheme.bg === 'bg-blue-100' ? '2px solid rgba(59, 130, 246, 0.5)' :
+                             colorScheme.bg === 'bg-red-100' ? '2px solid rgba(239, 68, 68, 0.5)' :
+                             colorScheme.bg === 'bg-yellow-50' ? '2px solid rgba(252, 211, 77, 0.5)' :
+                             '2px solid rgba(107, 114, 128, 0.5)',
                       borderRadius: '16px',
                       padding: '1.5rem',
                       position: 'relative',
@@ -864,27 +910,29 @@ export default function ProductDetailPage() {
                       </div>
                     )}
 
-                    {/* Price badge with proper logic */}
-                    {badgeText && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '-10px',
-                        right: '20px',
-                        background: isLowest 
-                          ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-                          : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                        color: 'white',
-                        padding: '0.5rem 1rem',
-                        borderRadius: '20px',
-                        fontSize: '0.75rem',
-                        fontWeight: 'bold',
-                        boxShadow: isLowest 
-                          ? '0 4px 12px rgba(16, 185, 129, 0.3)'
-                          : '0 4px 12px rgba(59, 130, 246, 0.3)'
-                      }}>
-                        {badgeText}
-                      </div>
-                    )}
+                    {/* Price badge with advanced color logic */}
+                    <div style={{
+                      position: 'absolute',
+                      top: '-10px',
+                      right: '20px',
+                      background: colorScheme.bg === 'bg-green-100' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' :
+                                 colorScheme.bg === 'bg-blue-100' ? 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' :
+                                 colorScheme.bg === 'bg-red-100' ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' :
+                                 colorScheme.bg === 'bg-yellow-50' ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' :
+                                 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)',
+                      color: 'white',
+                      padding: '0.5rem 1rem',
+                      borderRadius: '20px',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold',
+                      boxShadow: colorScheme.bg === 'bg-green-100' ? '0 4px 12px rgba(16, 185, 129, 0.3)' :
+                                colorScheme.bg === 'bg-blue-100' ? '0 4px 12px rgba(59, 130, 246, 0.3)' :
+                                colorScheme.bg === 'bg-red-100' ? '0 4px 12px rgba(239, 68, 68, 0.3)' :
+                                colorScheme.bg === 'bg-yellow-50' ? '0 4px 12px rgba(245, 158, 11, 0.3)' :
+                                '0 4px 12px rgba(107, 114, 128, 0.3)'
+                    }}>
+                      {colorScheme.label}
+                    </div>
 
                     {/* Sale expiration info */}
                     {saleEndInfo && isSale && !isExpired && (
@@ -944,7 +992,10 @@ export default function ProductDetailPage() {
                         <div style={{
                           fontSize: '2rem',
                           fontWeight: 'bold',
-                          color: isLowest ? '#10b981' : '#ffffff',
+                          color: colorScheme.bg === 'bg-green-100' ? '#10b981' :
+                                colorScheme.bg === 'bg-blue-100' ? '#3b82f6' :
+                                colorScheme.bg === 'bg-red-100' ? '#ef4444' :
+                                colorScheme.bg === 'bg-yellow-50' ? '#f59e0b' : '#ffffff',
                           marginBottom: '0.25rem'
                         }}>
                           ₪{(price.calculated_price_per_1kg != null ? Number(price.calculated_price_per_1kg).toFixed(2) : '0.00')}

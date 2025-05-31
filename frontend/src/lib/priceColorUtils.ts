@@ -18,7 +18,85 @@ export interface PriceItem {
   store_name?: string;
 }
 
-// פונקציה לקביעת צבע הרקע - עדיפות לירוק למחיר הנמוך ביותר
+// מערכת צבעים מתקדמת עם 5 סטטוסים שונים
+export const getAdvancedPriceColor = (prices: PriceItem[], currentItem: PriceItem, currentPrice?: number) => {
+  // סינון מחירים תקפים (לא null/undefined)
+  const validPrices = prices
+    .filter(item => {
+      const price = item.price || item.calculated_price_per_1kg || item.regular_price;
+      return price && !isNaN(parseFloat(price.toString()));
+    })
+    .map(item => ({
+      ...item,
+      numericPrice: parseFloat((item.price || item.calculated_price_per_1kg || item.regular_price || 0).toString())
+    }))
+    .sort((a, b) => a.numericPrice - b.numericPrice);
+
+  if (validPrices.length === 0) {
+    return { bg: "bg-gray-200", border: "border-gray-300", text: "text-gray-600", label: "אין מידע", badgeColor: "bg-gray-500" };
+  }
+
+  const lowestPrice = validPrices[0].numericPrice;
+  const highestPrice = validPrices[validPrices.length - 1].numericPrice;
+  const currentNumericPrice = parseFloat((currentPrice || currentItem.price || currentItem.calculated_price_per_1kg || currentItem.regular_price || 0).toString());
+
+  // אם אין מחיר תקף לפריט הנוכחי
+  if (!currentPrice && !currentItem.price && !currentItem.calculated_price_per_1kg && !currentItem.regular_price) {
+    return { bg: "bg-gray-200", border: "border-gray-300", text: "text-gray-600", label: "אין מידע", badgeColor: "bg-gray-500" };
+  }
+
+  if (isNaN(currentNumericPrice)) {
+    return { bg: "bg-gray-200", border: "border-gray-300", text: "text-gray-600", label: "אין מידע", badgeColor: "bg-gray-500" };
+  }
+
+  const isOnSale = currentItem.is_sale || currentItem.is_on_sale || currentItem.sale_price;
+  const isLowest = Math.abs(currentNumericPrice - lowestPrice) < 0.01;
+  const isHighest = Math.abs(currentNumericPrice - highestPrice) < 0.01;
+
+  // 1. ירוק - המחיר הכי זול (עדיפות עליונה)
+  if (isLowest) {
+    return { 
+      bg: "bg-green-100", 
+      border: "border-green-400", 
+      text: "text-green-800", 
+      label: "🏆 המחיר הטוב ביותר",
+      badgeColor: "bg-green-500"
+    };
+  }
+
+  // 2. אדום - המחיר הכי יקר (גם אם במבצע)
+  if (isHighest) {
+    return { 
+      bg: "bg-red-100", 
+      border: "border-red-400", 
+      text: "text-red-800", 
+      label: "💸 המחיר הגבוה ביותר",
+      badgeColor: "bg-red-500"
+    };
+  }
+
+  // 3. כחול - במבצע (אבל לא הכי זול ולא הכי יקר)
+  if (isOnSale) {
+    return { 
+      bg: "bg-blue-100", 
+      border: "border-blue-400", 
+      text: "text-blue-800", 
+      label: "🏷️ מבצע",
+      badgeColor: "bg-blue-500"
+    };
+  }
+
+  // 4. צהוב - מחיר רגיל (בין הזול לגבוה)
+  return { 
+    bg: "bg-yellow-50", 
+    border: "border-yellow-300", 
+    text: "text-yellow-800", 
+    label: "מחיר רגיל",
+    badgeColor: "bg-yellow-500"
+  };
+};
+
+// פונקציה לקביעת צבע הרקע - עדיפות לירוק למחיר הנמוך ביותר (נשמרת לתאימות לאחור)
 export const getPriceBackgroundColor = (item: PriceItem, isLowestPrice: boolean): string => {
   // אם זה המחיר הכי נמוך - תמיד ירוק (עדיפות עליונה)
   if (isLowestPrice) {
