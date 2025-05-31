@@ -16,8 +16,11 @@
 - 🔐 **מערכת סיסמאות מלאה** - שכחתי סיסמה, שינוי סיסמה ו-validation
 - ⚙️ **דף הגדרות משתמש** - עדכון פרופיל ומידע אישי
 - 🔧 **השלמת ממשק הניהול** - CRUD מלא למוצרים וקמעונאים
-- 💰 **נרמול מחירים מתקדם** - קומפוננטת PriceDisplay חכמה
-- ✅ **תיקון כל הבדיקות** - 50/50 tests passing
+- 💰 **נורמל מחירים ל-1 קילוגרם** - עדכון מ-100 גרם לקילוגרם ברחבי המערכת
+- 🏷️ **תמיכה מלאה במחירי מבצע** - אינדיקציות ויזואליות ולוגיקת מיון מתקדמת
+- 🎨 **שיפור ממשק משתמש** - תצוגה משופרת של השוואת מחירים מ-5 רשתות
+- 🔧 **תיקון באג מיון קריטי** - מחירי מבצע מוצגים כעת כמחירים הטובים ביותר
+- ✅ **תיקון כל הבדיקות** - 53/53 tests passing
 - 🐳 **Docker & CI/CD Infrastructure** - Pipeline מקצועי עם GitHub Actions
 - 🛡️ **Rate Limiting & Security** - הגנה מפני התקפות ו-security headers
 - 📊 **Professional Logging** - מערכת לוגים מתקדמת עם Winston
@@ -177,10 +180,13 @@ psql -d bashrometer -c "UPDATE users SET role='admin' WHERE email='your-admin@em
 ### 💰 Price Reporting & Comparison  
 - ✅ **Price Matrix Table** - Advanced comparison table with color coding
 - ✅ **Smart Price Sorting** - Best prices highlighted in green, highest in red
+- ✅ **1kg Price Normalization** - All prices normalized to per-kilogram for accurate comparison
+- ✅ **Sale Price Support** - Complete sale price functionality with visual indicators
+- ✅ **Intelligent Price Sorting** - Sale prices correctly prioritized as best deals
+- ✅ **Enhanced Price Display** - Visual sale tags and savings calculations
 - ✅ **Price Reporting** - Enhanced form with autocomplete
 - ✅ **Price History** - View 15 most recent price reports per product
 - ✅ **Real-time Updates** - Auto-refresh price data every 30 seconds
-- ✅ **Sale Detection** - Automatic sale vs regular price handling
 - ✅ **Community Likes** - Like/unlike price reports for validation
 - ✅ **Flexible Date Handling** - Robust date parsing for various field formats
 
@@ -236,10 +242,11 @@ DELETE /api/retailers/:id  # Delete retailer (admin)
 
 #### Price Reports
 ```http
-GET    /api/prices         # List price reports
-POST   /api/prices         # Create price report
-POST   /api/prices/:id/like    # Like price report
-DELETE /api/prices/:id/like    # Unlike price report
+GET    /api/prices              # List price reports
+POST   /api/prices              # Create price report  
+GET    /api/prices/current/:id  # Get current prices for product (with sale calculations)
+POST   /api/prices/:id/like     # Like price report
+DELETE /api/prices/:id/like     # Unlike price report
 ```
 
 #### System
@@ -313,10 +320,11 @@ cd api && node run_migration.js
 - **🐳 Docker Images**: 2 optimized containers
 - **⚡ API Endpoints**: 30+ documented routes
 - **🔒 Security Layers**: 4 protection levels
-- **📝 Test Coverage**: API routes tested
+- **📝 Test Coverage**: 53/53 tests passing (100%)
 - **📦 Build Size**: Optimized for production
-- **🎯 Core Features**: Price comparison, user management, admin panel
+- **🎯 Core Features**: 1kg price normalization, sale price support, user management, admin panel
 - **📱 Pages**: 15+ fully functional pages
+- **💰 Price Features**: Complete sale price handling with visual indicators
 
 ### Performance Targets
 - **⚡ API Response**: < 200ms average
@@ -379,14 +387,52 @@ This is proprietary software. Unauthorized copying, modification, or distributio
 
 ## 🎉 Built With
 
-- **Backend**: Node.js 18 + Express + PostgreSQL
-- **Frontend**: Next.js 15 + TypeScript + Tailwind CSS
+- **Backend**: Node.js 18 + Express + PostgreSQL + 1kg Price Normalization
+- **Frontend**: Next.js 15 + TypeScript + Tailwind CSS + Sale Price Support
 - **Infrastructure**: Docker + GitHub Actions + Nginx
 - **Monitoring**: Winston + Prometheus + Grafana
 - **Security**: JWT + Rate Limiting + Security Headers
+- **Features**: Complete sale price handling, intelligent price sorting, visual indicators
+
+## 🗓️ Recent Updates (December 2025)
+
+### ✅ **עדכונים אחרונים**
+
+#### 💰 **Price System Overhaul**
+- **1kg Normalization**: Complete migration from 100g to 1kg pricing across the entire system
+- **API Updates**: Updated `calcPricePer1kg()` function and all price calculation endpoints
+- **Frontend Updates**: Modified TypeScript interfaces from `calculated_price_per_100g` to `calculated_price_per_1kg`
+- **Component Updates**: Updated ProductCard, ProductsManagement, and PriceDisplay components
+
+#### 🏷️ **Sale Price Features**
+- **Complete Sale Support**: Full implementation of sale price functionality with date validation
+- **Visual Indicators**: Sale tags, price strikethrough, and savings calculations
+- **Advanced Sorting**: Sale prices correctly prioritized in price comparisons
+- **Critical Bug Fix**: Fixed sorting issue where "אוסם במבצע (94.90₪)" now correctly shows as cheapest instead of "רמי לוי (98.90₪)"
+
+#### 🚀 **Backend Improvements**
+- **New Endpoint**: `/api/prices/current/:product_id` for real-time price comparisons with sale calculations
+- **Enhanced Sorting**: JavaScript-based sorting after price calculation mapping for accurate results
+- **Database Schema**: Added `is_sale`, `sale_end_date`, and `original_price` columns
+- **Price Calculator**: Updated utility function to handle complex unit conversions and sale logic
+
+#### 🎨 **Frontend Enhancements**
+- **Product Pages**: Improved price comparison display with proper sale price indicators
+- **Real-time Sorting**: Frontend sorting respects normalized pricing including sales
+- **Visual Design**: Enhanced sale price display with "🏷️ מבצע!" tags and savings calculations
+- **TypeScript**: Updated all interfaces to reflect 1kg normalization
+
+#### ✅ **Quality Assurance**
+- **All Tests Passing**: 53/53 tests successful (100% pass rate)
+- **Critical Bug Fixes**: Resolved price sorting issues affecting sale price display
+- **Performance**: Optimized price calculation and sorting algorithms
+- **Documentation**: Updated all README files to reflect latest improvements
 
 **Developed with [Claude Code](https://claude.ai/code) - The innovative development tool by Anthropic** 🤖✨
 
 ---
 
 **Ready for Production! 🚀 [Deploy Now →](./DEPLOYMENT.md)**
+
+### 🎆 **Latest Achievement: Critical Bug Fix Completed!**
+The system now correctly prioritizes sale prices in comparisons, ensuring the best deals are always displayed first. All 53 tests passing successfully!

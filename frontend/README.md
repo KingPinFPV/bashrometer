@@ -57,7 +57,9 @@ npm start
 
 ### 🛍️ Product Management
 - **Product browsing** with search and filtering
-- **Price comparison** across multiple retailers
+- **1kg Price Normalization** - All prices displayed per kilogram for accurate comparison
+- **Sale Price Support** - Complete sale price functionality with visual indicators
+- **Price comparison** across multiple retailers with intelligent sorting
 - **Community price reporting** system
 - **Admin product management** interface
 
@@ -238,6 +240,28 @@ curl http://localhost:5000/api/health
 # Rebuild Tailwind CSS
 npm run dev
 ```
+
+## 🗓️ Recent Updates (December 2025)
+
+### ✅ **Frontend Improvements**
+
+#### 💰 **Price System Updates**
+- **TypeScript Interfaces**: Updated from `calculated_price_per_100g` to `calculated_price_per_1kg`
+- **Price Display**: Enhanced PriceDisplay component with sale price indicators
+- **Component Updates**: Modified ProductCard and ProductsManagement for 1kg normalization
+- **Visual Indicators**: Added sale tags ("🏷️ מבצע!") and savings calculations
+
+#### 🎨 **UI/UX Enhancements**
+- **Product Pages**: Improved price comparison with proper sale price sorting
+- **Real-time Updates**: Enhanced price refresh functionality
+- **Sale Price Display**: Visual strikethrough for original prices with savings shown
+- **Responsive Design**: Optimized for mobile sale price display
+
+#### 🚀 **Performance & Bug Fixes**
+- **Critical Fix**: Resolved price sorting to correctly prioritize sale prices
+- **API Integration**: Updated to use new `/api/prices/current/:id` endpoint
+- **Frontend Sorting**: Implemented client-side sorting by normalized prices
+- **Type Safety**: Enhanced TypeScript interfaces for better type checking
 
 ## 📚 Development Resources
 

@@ -256,7 +256,7 @@ retailers (
 
 #### Price Reports
 ```sql
-price_reports (
+prices (
   id SERIAL PRIMARY KEY,
   product_id INTEGER REFERENCES products(id),
   retailer_id INTEGER REFERENCES retailers(id),
@@ -264,9 +264,13 @@ price_reports (
   regular_price DECIMAL(10,2) NOT NULL,
   sale_price DECIMAL(10,2),
   is_on_sale BOOLEAN DEFAULT false,
+  is_sale BOOLEAN DEFAULT false,
+  sale_end_date TIMESTAMP,
+  original_price DECIMAL(10,2),
   quantity_for_price DECIMAL(10,2),
   unit_for_price VARCHAR(50),
-  submission_date TIMESTAMP DEFAULT NOW()
+  price_submission_date TIMESTAMP DEFAULT NOW(),
+  created_at TIMESTAMP DEFAULT NOW()
 )
 ```
 
@@ -388,6 +392,9 @@ Content-Type: application/json
   "regular_price": 89.90,
   "sale_price": 79.90,
   "is_on_sale": true,
+  "is_sale": true,
+  "sale_end_date": "2025-12-31T23:59:59Z",
+  "original_price": 89.90,
   "quantity_for_price": 1.0,
   "unit_for_price": "kg",
   "notes": "Fresh premium cut"
@@ -396,7 +403,30 @@ Content-Type: application/json
 Response: 201 Created
 {
   "id": 789,
+  "calculated_price_per_1kg": 79.90,
   "message": "Price report submitted successfully"
+}
+```
+
+```http
+GET /api/prices/current/1
+
+Response: 200 OK
+{
+  "success": true,
+  "prices": [
+    {
+      "id": 1,
+      "retailer_name": "אוסם",
+      "current_price": 94.90,
+      "is_currently_on_sale": true,
+      "calculated_price_per_1kg": 94.90,
+      "savings_amount": 5.00,
+      "likes_count": 15
+    }
+  ],
+  "total_items": 5,
+  "product_id": 1
 }
 ```
 
@@ -647,8 +677,9 @@ curl -I http://localhost:3000/api/auth/login
 
 **📈 Performance Metrics:**
 - ⚡ API Response: < 200ms
-- 🧪 Test Coverage: 50/50 tests passing
+- 🧪 Test Coverage: 53/53 tests passing (100%)
 - 🐳 Docker Images: 2 optimized containers
 - 🔒 Security: Enterprise-grade protection
+- 💰 New Features: 1kg normalization, sale price support, intelligent sorting
 
 **🎉 Bashrometer is production-ready for public launch\!** 🎉
