@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { Plus, Edit, Trash2 } from 'lucide-react';
 
 interface Product {
   id: number;
@@ -56,9 +56,6 @@ const AdminProductsManager: React.FC = () => {
         cutsRes.json()
       ]);
       
-      console.log('Products data:', productsData);
-      console.log('Cuts data:', cutsData);
-      
       if (productsData.products || productsData.data) {
         setProducts(productsData.products || productsData.data || []);
       }
@@ -108,6 +105,7 @@ const AdminProductsManager: React.FC = () => {
         setNewProduct({ name: '', brand: '', cut_id: '', short_description: '' });
         setShowAddForm(false);
         alert('מוצר נוסף בהצלחה!');
+        fetchData(); // רענון הנתונים לקבלת פרטי הנתח
       } else {
         throw new Error(data.error || 'שגיאה ביצירת מוצר');
       }
@@ -145,6 +143,7 @@ const AdminProductsManager: React.FC = () => {
         setProducts(products.map(p => p.id === editingProduct.id ? {...editingProduct, ...data} : p));
         setEditingProduct(null);
         alert('מוצר עודכן בהצלחה!');
+        fetchData(); // רענון הנתונים
       } else {
         throw new Error(data.error || 'שגיאה בעדכון מוצר');
       }
@@ -192,7 +191,7 @@ const AdminProductsManager: React.FC = () => {
           onClick={() => setShowAddForm(true)}
           className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-600"
         >
-          <PlusIcon className="w-5 h-5" />
+          <Plus className="w-5 h-5" />
           הוסף מוצר חדש
         </button>
       </div>
@@ -339,15 +338,17 @@ const AdminProductsManager: React.FC = () => {
                       <div className="flex gap-2">
                         <button
                           onClick={() => setEditingProduct(product)}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="text-blue-600 hover:text-blue-900 p-1"
+                          title="ערוך מוצר"
                         >
-                          <PencilIcon className="w-4 h-4" />
+                          <Edit className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteProduct(product.id)}
-                          className="text-red-600 hover:text-red-900"
+                          className="text-red-600 hover:text-red-900 p-1"
+                          title="מחק מוצר"
                         >
-                          <TrashIcon className="w-4 h-4" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
