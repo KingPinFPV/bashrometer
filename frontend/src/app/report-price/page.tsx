@@ -75,17 +75,15 @@ function ReportPriceContent() {
   const [localSelectedProduct, setLocalSelectedProduct] = useState<Product | null>(null);
   const [retailerInput, setRetailerInput] = useState<string>('');
   const [localSelectedRetailer, setLocalSelectedRetailer] = useState<Retailer | null>(null);
-  const [regularPrice, setRegularPrice] = useState<string>('');
-  const [salePrice, setSalePrice] = useState<string>('');
-  const [isOnSale, setIsOnSale] = useState<boolean>(false);
   const [notes, setNotes] = useState<string>('');
   const [quantity, setQuantity] = useState<string>('1');
   const [unit, setUnit] = useState<string>('kg');
   
-  // Enhanced sale price states
-  const [isSale, setIsSale] = useState<boolean>(false);
-  const [saleEndDate, setSaleEndDate] = useState<string>('');
-  const [originalPrice, setOriginalPrice] = useState<string>('');
+  // Simplified price states
+  const [price, setPrice] = useState<string>(''); // המחיר הבסיסי
+  const [isOnSale, setIsOnSale] = useState<boolean>(false); // האם במבצע
+  const [salePrice, setSalePrice] = useState<string>(''); // מחיר מבצע
+  const [saleEndDate, setSaleEndDate] = useState<string>(''); // תוקף
   
   // Product creation states
   const [showProductCreation, setShowProductCreation] = useState<boolean>(false);
@@ -343,11 +341,11 @@ function ReportPriceContent() {
 
   // Calculate savings
   const calculateSavings = () => {
-    if (!isSale || !originalPrice || !regularPrice) return { amount: 0, percentage: 0 };
+    if (!isOnSale || !price || !salePrice) return { amount: 0, percentage: 0 };
     
-    const original = parseFloat(originalPrice);
-    const current = parseFloat(regularPrice);
-    const amount = original - current;
+    const original = parseFloat(price);
+    const sale = parseFloat(salePrice);
+    const amount = original - sale;
     const percentage = ((amount / original) * 100);
     
     return { amount, percentage };
@@ -359,18 +357,16 @@ function ReportPriceContent() {
     setLocalSelectedProduct(null);
     setRetailerInput('');
     setLocalSelectedRetailer(null);
-    setRegularPrice('');
-    setSalePrice('');
-    setIsOnSale(false);
     setNotes('');
     setQuantity('1');
     setUnit('kg');
     setMessage('');
     
-    // Reset enhanced sale price states
-    setIsSale(false);
+    // Reset simplified price states
+    setPrice('');
+    setIsOnSale(false);
+    setSalePrice('');
     setSaleEndDate('');
-    setOriginalPrice('');
     
     // Reset product creation states
     setShowProductCreation(false);
@@ -386,23 +382,51 @@ function ReportPriceContent() {
     setIsSubmitting(true);
     setMessage('');
 
+    // Simple validation
+    if (!localSelectedProduct && !productInput) {
+      alert('נא למלא את שם המוצר');
+      setIsSubmitting(false);
+      return;
+    }
+    
+    if (!localSelectedRetailer && !retailerInput) {
+      alert('נא למלא את שם הקמעונאי');
+      setIsSubmitting(false);
+      return;
+    }
+    
+    if (!price) {
+      alert('נא למלא את המחיר');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (isOnSale && (!salePrice || !saleEndDate)) {
+      alert('נא למלא את פרטי המבצע');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const priceData = {
         product_id: localSelectedProduct?.id,
         product_name: localSelectedProduct?.name || productInput,
         retailer_id: localSelectedRetailer?.id,
         retailer_name: localSelectedRetailer?.name || retailerInput,
-        regular_price: parseFloat(regularPrice),
-        sale_price: isOnSale && salePrice ? parseFloat(salePrice) : null,
-        is_on_sale: isOnSale,
         quantity: parseFloat(quantity),
         unit: unit,
         notes: notes.trim() || null,
         
-        // Enhanced sale price fields
-        is_sale: isSale,
-        sale_end_date: saleEndDate || null,
-        original_price: originalPrice ? parseFloat(originalPrice) : null,
+        // Simplified price logic
+        regular_price: parseFloat(price), // המחיר הבסיסי
+        is_on_sale: isOnSale,
+        sale_price: isOnSale ? parseFloat(salePrice) : null,
+        price_valid_to: isOnSale ? saleEndDate : null,
+        
+        // Support for new structure
+        is_sale: isOnSale,
+        sale_end_date: isOnSale ? saleEndDate : null,
+        original_price: parseFloat(price), // המחיר המקורי
         
         // Product creation data
         ...(showProductCreation && selectedCut && {
@@ -999,150 +1023,106 @@ function ReportPriceContent() {
               </div>
             </div>
 
-            <div>
-              <label htmlFor="regularPrice" style={labelStyle}>
-                מחיר רגיל (₪) <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
-              </label>
-              <input
-                type="number"
-                id="regularPrice"
-                value={regularPrice}
-                onChange={(e) => setRegularPrice(e.target.value)}
-                required
-                step="0.01"
-                min="0.01"
-                placeholder="הזן מחיר במטבע ישראלי"
-                style={inputStyle}
-              />
-            </div>
-            
-            {/* Enhanced Sale Price Section */}
-            <div style={{
-              border: '2px solid #f3f4f6',
-              borderRadius: '0.75rem',
-              padding: '1.5rem',
-              backgroundColor: '#fafafa'
-            }}>
-              <h3 style={{
-                fontSize: '1.125rem',
-                fontWeight: '600',
-                color: '#374151',
-                marginBottom: '1rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                🏷️ פרטי מחיר ומבצעים
-              </h3>
-              
-              {/* Legacy Sale Checkbox */}
-              <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem'}}>
+            {/* Simplified Price Section */}
+            <div className="space-y-4">
+              {/* Basic Price */}
+              <div>
+                <label htmlFor="price" style={labelStyle}>
+                  מחיר (₪) <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
+                </label>
                 <input
-                  id="isOnSale"
-                  type="checkbox"
-                  checked={isOnSale}
-                  onChange={(e) => {
-                    setIsOnSale(e.target.checked);
-                    if (!e.target.checked) {
-                      setSalePrice('');
-                    }
-                  }}
-                  style={checkboxStyle}
+                  type="number"
+                  id="price"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  required
+                  step="0.01"
+                  min="0.01"
+                  placeholder="0.00"
+                  style={inputStyle}
                 />
-                <label htmlFor="isOnSale" style={{...labelStyle, marginBottom: 0, cursor: 'pointer'}}>
-                  המוצר במבצע (מחיר מוזל זמנית)
+              </div>
+
+              {/* Is On Sale Checkbox */}
+              <div>
+                <label style={{display: 'flex', alignItems: 'center', cursor: 'pointer'}}>
+                  <input
+                    type="checkbox"
+                    checked={isOnSale}
+                    onChange={(e) => {
+                      setIsOnSale(e.target.checked);
+                      if (!e.target.checked) {
+                        setSalePrice('');
+                        setSaleEndDate('');
+                      }
+                    }}
+                    style={{...checkboxStyle, marginLeft: '0.5rem'}}
+                  />
+                  <span>המוצר במבצע</span>
                 </label>
               </div>
 
+              {/* Sale Fields - Only if checked */}
               {isOnSale && (
-                <div style={{ marginBottom: '1rem' }}>
-                  <label htmlFor="salePrice" style={labelStyle}>
-                    מחיר מבצע (₪) <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
-                  </label>
-                  <input
-                    type="number"
-                    id="salePrice"
-                    value={salePrice}
-                    onChange={(e) => setSalePrice(e.target.value)}
-                    required={isOnSale}
-                    step="0.01"
-                    min="0.01"
-                    placeholder="הזן מחיר המבצע"
-                    style={inputStyle}
-                  />
-                </div>
-              )}
-              
-              {/* Enhanced Sale Checkbox */}
-              <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem'}}>
-                <input
-                  id="isSale"
-                  type="checkbox"
-                  checked={isSale}
-                  onChange={(e) => {
-                    setIsSale(e.target.checked);
-                    if (!e.target.checked) {
-                      setSaleEndDate('');
-                      setOriginalPrice('');
-                    }
-                  }}
-                  style={checkboxStyle}
-                />
-                <label htmlFor="isSale" style={{...labelStyle, marginBottom: 0, cursor: 'pointer'}}>
-                  המוצר הוזל ממחירו המקורי
-                </label>
-              </div>
-              
-              {isSale && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div>
-                    <label htmlFor="originalPrice" style={labelStyle}>
-                      מחיר מקורי (₪) <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
+                <div style={{
+                  backgroundColor: '#fef3c7',
+                  padding: '1rem',
+                  borderRadius: '0.75rem',
+                  border: '1px solid #fbbf24',
+                  marginTop: '1rem'
+                }}>
+                  <h4 style={{
+                    fontWeight: '600',
+                    marginBottom: '0.75rem',
+                    color: '#92400e'
+                  }}>
+                    פרטי מבצע:
+                  </h4>
+                  
+                  <div style={{marginBottom: '1rem'}}>
+                    <label htmlFor="salePrice" style={labelStyle}>
+                      מחיר במבצע (₪) <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
                     </label>
                     <input
                       type="number"
-                      id="originalPrice"
-                      value={originalPrice}
-                      onChange={(e) => setOriginalPrice(e.target.value)}
-                      required={isSale}
+                      id="salePrice"
+                      value={salePrice}
+                      onChange={(e) => setSalePrice(e.target.value)}
+                      required
                       step="0.01"
                       min="0.01"
-                      placeholder="מחיר לפני ההנחה"
+                      placeholder="מחיר אחרי הנחה"
                       style={inputStyle}
                     />
                   </div>
                   
-                  <div>
+                  <div style={{marginBottom: '1rem'}}>
                     <label htmlFor="saleEndDate" style={labelStyle}>
-                      תאריך סיום מבצע (אופציונלי)
+                      תוקף מבצע עד <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
                     </label>
                     <input
                       type="date"
                       id="saleEndDate"
                       value={saleEndDate}
                       onChange={(e) => setSaleEndDate(e.target.value)}
+                      required
+                      min={new Date().toISOString().split('T')[0]}
                       style={inputStyle}
                     />
                   </div>
-                </div>
-              )}
-              
-              {/* Savings Display */}
-              {isSale && originalPrice && regularPrice && (
-                <div style={{
-                  marginTop: '1rem',
-                  padding: '1rem',
-                  backgroundColor: '#dcfce7',
-                  borderRadius: '0.5rem',
-                  border: '1px solid #bbf7d0'
-                }}>
-                  <div style={{ color: '#166534', fontWeight: '600', fontSize: '0.875rem' }}>
-                    💰 חיסכון: {calculateSavings().amount.toFixed(2)}₪ 
-                    ({calculateSavings().percentage.toFixed(1)}% הנחה)
-                  </div>
-                  {saleEndDate && (
-                    <div style={{ color: '#166534', fontSize: '0.75rem', marginTop: '0.25rem' }}>
-                      ⏰ מבצע עד: {new Date(saleEndDate).toLocaleDateString('he-IL')}
+                  
+                  {/* Show savings */}
+                  {price && salePrice && (
+                    <div style={{
+                      fontSize: '0.875rem',
+                      color: '#166534',
+                      backgroundColor: '#dcfce7',
+                      padding: '0.5rem',
+                      borderRadius: '0.5rem',
+                      border: '1px solid #bbf7d0'
+                    }}>
+                      חיסכון: ₪{(parseFloat(price) - parseFloat(salePrice)).toFixed(2)} 
+                      ({Math.round((1 - parseFloat(salePrice) / parseFloat(price)) * 100)}% הנחה)
                     </div>
                   )}
                 </div>
