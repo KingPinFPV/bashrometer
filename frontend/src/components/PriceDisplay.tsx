@@ -6,7 +6,7 @@ import React from 'react';
 interface PriceDisplayProps {
   /** המחיר המקורי */
   price: number | null | undefined;
-  /** המחיר המנורמל ל-100 גרם */
+  /** המחיר המנורמל לקילוגרם */
   normalizedPrice?: number | null;
   /** יחידת המידה */
   unit: string;
@@ -81,7 +81,7 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
         </span>
         {normalizedPrice != null && (
           <span className={`text-gray-500 ${classes.secondary}`}>
-            (₪{Number(normalizedPrice).toFixed(2)}/100גר&apos;)
+            (₪{Number(normalizedPrice).toFixed(2)}/ק״ג)
           </span>
         )}
         {isOnSale && (
@@ -113,7 +113,7 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
                 ₪{Number(normalizedPrice).toFixed(2)}
               </div>
               <div className={`text-gray-500 ${classes.secondary}`}>
-                ל-100 גרם
+                לקילוגרם
               </div>
             </div>
           )}
@@ -157,7 +157,7 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
       {/* מחיר מנורמל */}
       {normalizedPrice != null && (
         <div className={`text-green-600 font-medium ${classes.secondary}`}>
-          ₪{Number(normalizedPrice).toFixed(2)} ל-100 גרם
+          ₪{Number(normalizedPrice).toFixed(2)} לקילוגרם
         </div>
       )}
 

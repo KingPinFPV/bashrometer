@@ -21,7 +21,7 @@ interface PriceExample {
   submission_date: string;
   valid_to: string | null;
   notes: string | null;
-  calculated_price_per_100g: number | null;
+  calculated_price_per_1kg: number | null;
   likes_count: number;
   current_user_liked: boolean;
 }
@@ -90,8 +90,9 @@ export default function ProductDetailPage() {
   // פונקציה למיון לפי מחיר (כולל מבצעים)
   const sortByEffectivePrice = (prices: PriceExample[]) => {
     return prices.sort((a, b) => {
-      const priceA = (a.sale_price && a.sale_price < a.regular_price) ? a.sale_price : a.regular_price;
-      const priceB = (b.sale_price && b.sale_price < b.regular_price) ? b.sale_price : b.regular_price;
+      // השתמש במחיר המנורמל ל-1kg לצורך השוואה נכונה
+      const priceA = a.calculated_price_per_1kg || 0;
+      const priceB = b.calculated_price_per_1kg || 0;
       return priceA - priceB;
     });
   };
@@ -174,7 +175,7 @@ export default function ProductDetailPage() {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/prices?product_id=${productId}&sort_by=reported_at&order=DESC&limit=100`;
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/prices/current/${productId}`;
       console.log(`fetchPrices: Fetching from URL: ${apiUrl}`);
 
       const response = await fetch(apiUrl, { headers });
@@ -187,24 +188,24 @@ export default function ProductDetailPage() {
       const pricesData = await response.json();
       console.log(`fetchPrices: Received prices data:`, pricesData);
 
-      // Extract prices array from response
-      const pricesArray = pricesData.prices || pricesData.data || [];
+      // Extract prices array from response - getCurrentPrices returns prices directly
+      const pricesArray = pricesData.prices || [];
       console.log(`fetchPrices: Extracted ${pricesArray.length} prices`);
 
-      // Convert API response to PriceExample format
+      // Convert API response to PriceExample format for getCurrentPrices endpoint
       const formattedPrices: PriceExample[] = pricesArray.map((price: any) => ({
         price_id: price.id,
         retailer_id: price.retailer_id,
         retailer: price.retailer_name || `Retailer ${price.retailer_id}`,
         regular_price: parseFloat(price.regular_price),
         sale_price: price.sale_price ? parseFloat(price.sale_price) : null,
-        is_on_sale: price.is_on_sale || false,
-        unit_for_price: price.unit_for_price || '100g',
+        is_on_sale: price.is_currently_on_sale || false,
+        unit_for_price: price.unit_for_price || 'kg',
         quantity_for_price: parseFloat(price.quantity_for_price || 1),
-        submission_date: price.reported_at || price.created_at,
-        valid_to: price.price_valid_to,
+        submission_date: price.created_at,
+        valid_to: price.sale_end_date || price.price_valid_to,
         notes: price.notes,
-        calculated_price_per_100g: parseFloat(price.regular_price), // Will be calculated properly
+        calculated_price_per_1kg: parseFloat(price.calculated_price_per_1kg || 0), // Use the calculated price from API
         likes_count: price.likes_count || 0,
         current_user_liked: false // Will be updated if needed
       }));
@@ -579,9 +580,9 @@ export default function ProductDetailPage() {
                     }}>
                       <strong>Debug:</strong> {prices.length} דיווחים כולל, {uniqueLatestPrices.length} ייחודיים עדכניים
                       <br />
-                      <strong>Best Price:</strong> {bestPrice ? `₪${(bestPrice.calculated_price_per_100g != null ? Number(bestPrice.calculated_price_per_100g).toFixed(2) : '0.00')} at ${bestPrice.retailer}` : 'None'}
+                      <strong>Best Price:</strong> {bestPrice ? `₪${(bestPrice.calculated_price_per_1kg != null ? Number(bestPrice.calculated_price_per_1kg).toFixed(2) : '0.00')} at ${bestPrice.retailer}` : 'None'}
                       <br />
-                      <strong>Latest Price:</strong> {latestPrice ? `₪${(latestPrice.calculated_price_per_100g != null ? Number(latestPrice.calculated_price_per_100g).toFixed(2) : '0.00')} at ${latestPrice.retailer} (${new Date(latestPrice.submission_date).toLocaleDateString()})` : 'None'}
+                      <strong>Latest Price:</strong> {latestPrice ? `₪${(latestPrice.calculated_price_per_1kg != null ? Number(latestPrice.calculated_price_per_1kg).toFixed(2) : '0.00')} at ${latestPrice.retailer} (${new Date(latestPrice.submission_date).toLocaleDateString()})` : 'None'}
                     </div>
                   )}
 
@@ -612,7 +613,7 @@ export default function ProductDetailPage() {
                       
                       <div style={{display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem'}}>
                         <span style={{fontSize: '2rem', fontWeight: 'bold', color: '#3b82f6'}}>
-                          ₪{(latestPrice.calculated_price_per_100g != null ? Number(latestPrice.calculated_price_per_100g).toFixed(2) : '0.00')}
+                          ₪{(latestPrice.calculated_price_per_1kg != null ? Number(latestPrice.calculated_price_per_1kg).toFixed(2) : '0.00')}
                         </span>
                         <span style={{color: '#ffffff', fontSize: '1.25rem'}}>
                           ב{latestPrice.retailer}
@@ -663,7 +664,7 @@ export default function ProductDetailPage() {
                       
                       <div style={{display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem'}}>
                         <span style={{fontSize: '2rem', fontWeight: 'bold', color: '#10b981'}}>
-                          ₪{(bestPrice.calculated_price_per_100g != null ? Number(bestPrice.calculated_price_per_100g).toFixed(2) : '0.00')}
+                          ₪{(bestPrice.calculated_price_per_1kg != null ? Number(bestPrice.calculated_price_per_1kg).toFixed(2) : '0.00')}
                         </span>
                         <span style={{color: '#ffffff', fontSize: '1.25rem'}}>
                           ב{bestPrice.retailer}
@@ -799,16 +800,16 @@ export default function ProductDetailPage() {
                           color: isLowest ? '#10b981' : '#ffffff',
                           marginBottom: '0.25rem'
                         }}>
-                          ₪{(price.calculated_price_per_100g != null ? Number(price.calculated_price_per_100g).toFixed(2) : '0.00')}
+                          ₪{(price.calculated_price_per_1kg != null ? Number(price.calculated_price_per_1kg).toFixed(2) : '0.00')}
                         </div>
                         <div style={{color: '#cbd5e1', fontSize: '0.875rem', marginBottom: '0.5rem'}}>
-                          למאה גרם
+                          לקילוגרם
                         </div>
                         
                         <div style={{fontSize: '0.875rem'}}>
                           <PriceDisplay
                             price={Number(price.regular_price)}
-                            normalizedPrice={price.calculated_price_per_100g}
+                            normalizedPrice={price.calculated_price_per_1kg}
                             unit={price.unit_for_price}
                             quantity={Number(price.quantity_for_price)}
                             isOnSale={isSale}
@@ -988,7 +989,7 @@ export default function ProductDetailPage() {
                 }}>
                   <div>🏪 קמעונאי</div>
                   <div>📅 תאריך דיווח</div>
-                  <div>💰 מחיר למ״ג</div>
+                  <div>💰 מחיר לק״ג</div>
                   <div>🏷️ מבצע</div>
                   <div>👍 לייקים</div>
                 </div>
@@ -1038,12 +1039,12 @@ export default function ProductDetailPage() {
                       })}
                     </div>
 
-                    {/* Price per 100g */}
+                    {/* Price per 1kg */}
                     <div style={{
                       fontWeight: 'bold',
                       color: index === 0 ? '#10b981' : '#ffffff'
                     }}>
-                      ₪{(price.calculated_price_per_100g != null ? Number(price.calculated_price_per_100g).toFixed(2) : '0.00')}
+                      ₪{(price.calculated_price_per_1kg != null ? Number(price.calculated_price_per_1kg).toFixed(2) : '0.00')}
                     </div>
 
                     {/* Sale status */}
