@@ -27,7 +27,7 @@ interface Product {
   unit_of_measure: string;
   is_active: boolean;
   created_at: string;
-  min_price_per_100g?: number;
+  min_price_per_1kg?: number;
 }
 
 const ProductsManagement: React.FC = () => {
@@ -266,7 +266,7 @@ const ProductsManagement: React.FC = () => {
                     {product.unit_of_measure}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {product.min_price_per_100g ? `₪${product.min_price_per_100g}/100g` : '-'}
+                    {product.min_price_per_1kg ? `₪${product.min_price_per_1kg}/ק״ג` : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${

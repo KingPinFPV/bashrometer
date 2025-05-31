@@ -11,7 +11,7 @@ interface Product {
   image_url?: string | null;
   category?: string | null;
   unit_of_measure?: string;
-  min_price_per_100g?: number | null;
+  min_price_per_1kg?: number | null;
   price?: number | null;
   retailer?: string | null;
   cut_type?: string | null;
@@ -29,7 +29,7 @@ interface CurrentPrice {
   display_original_price: number | string;
   savings_amount: number | string;
   sale_end_date?: string;
-  calculated_price_per_100g: number | string;
+  calculated_price_per_1kg: number | string;
   likes_count: number;
   created_at: string;
 }
@@ -82,7 +82,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
               regular_price: parseFloat(price.regular_price?.toString() || '0') || 0,
               display_original_price: parseFloat(price.display_original_price?.toString() || price.regular_price?.toString() || '0') || 0,
               savings_amount: parseFloat(price.savings_amount?.toString() || '0') || 0,
-              calculated_price_per_100g: parseFloat(price.calculated_price_per_100g?.toString() || '0') || 0,
+              calculated_price_per_1kg: parseFloat(price.calculated_price_per_1kg?.toString() || '0') || 0,
               likes_count: parseInt(price.likes_count?.toString() || '0') || 0
             };
             console.log(`Processed price:`, processed);
@@ -410,7 +410,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
                     fontSize: '0.75rem',
                     color: '#94a3b8'
                   }}>
-                    ב{bestSale.retailer_name} • ₪{formatPrice(bestSale.calculated_price_per_100g)}/100g
+                    ב{bestSale.retailer_name} • ₪{formatPrice(bestSale.calculated_price_per_1kg)}/ק״ג
                   </div>
                 </div>
               ) : (
@@ -425,7 +425,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
                     fontSize: '0.75rem',
                     color: '#94a3b8'
                   }}>
-                    ב{bestPrice?.retailer_name} • ₪{formatPrice(bestPrice?.calculated_price_per_100g)}/100g
+                    ב{bestPrice?.retailer_name} • ₪{formatPrice(bestPrice?.calculated_price_per_1kg)}/ק״ג
                   </div>
                 </div>
               )}
@@ -443,23 +443,23 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, viewMode = 'grid' })
               </div>
             )}
           </div>
-        ) : (product.price != null || product.min_price_per_100g != null) ? (
+        ) : (product.price != null || product.min_price_per_1kg != null) ? (
           <div style={priceStyle}>
             {product.price != null && (
               <PriceDisplay
                 price={product.price}
-                normalizedPrice={product.min_price_per_100g}
+                normalizedPrice={product.min_price_per_1kg}
                 unit={product.unit_of_measure || 'יחידה'}
                 quantity={1}
                 displayMode="compact"
                 size="sm"
               />
             )}
-            {product.price == null && product.min_price_per_100g != null && (
+            {product.price == null && product.min_price_per_1kg != null && (
               <PriceDisplay
-                price={product.min_price_per_100g}
-                normalizedPrice={product.min_price_per_100g}
-                unit="100g"
+                price={product.min_price_per_1kg}
+                normalizedPrice={product.min_price_per_1kg}
+                unit="ק״ג"
                 quantity={1}
                 displayMode="compact"
                 size="sm"

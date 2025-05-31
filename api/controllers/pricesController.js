@@ -1,6 +1,6 @@
 // controllers/pricesController.js
 const pool = require('../db'); 
-const { calcPricePer100g } = require('../utils/priceCalculator'); 
+const { calcPricePer1kg } = require('../utils/priceCalculator'); 
 
 // אם אתה משתמש במחלקות שגיאה מותאמות אישית, ודא שהן מיובאות כראוי
 // const { NotFoundError, BadRequestError, ApplicationError } = require('../utils/errors');
@@ -162,7 +162,7 @@ const getAllPrices = async (req, res, next) => {
     const result = await pool.query(mainQuery, queryParamsForMainQuery);
 
     const pricesWithCalc = result.rows.map(row => {
-      const calculatedPrice = calcPricePer100g({
+      const calculatedPrice = calcPricePer1kg({
         regular_price: row.regular_price,
         sale_price: row.sale_price,
         unit_for_price: row.unit_for_price,
@@ -172,7 +172,7 @@ const getAllPrices = async (req, res, next) => {
       
       return {
         ...row,
-        calculated_price_per_100g: calculatedPrice,
+        calculated_price_per_1kg: calculatedPrice,
         likes_count: parseInt(row.likes_count, 10) || 0
       };
     });
@@ -638,7 +638,7 @@ const getCurrentPrices = async (req, res, next) => {
     `, [product_id]);
     
     const prices = result.rows.map(row => {
-      const calculatedPrice = calcPricePer100g({
+      const calculatedPrice = calcPricePer1kg({
         regular_price: parseFloat(row.current_price),
         sale_price: row.is_currently_on_sale ? parseFloat(row.regular_price) : null,
         unit_for_price: row.unit_for_price,
@@ -648,7 +648,7 @@ const getCurrentPrices = async (req, res, next) => {
       
       return {
         ...row,
-        calculated_price_per_100g: calculatedPrice,
+        calculated_price_per_1kg: calculatedPrice,
         likes_count: parseInt(row.likes_count, 10) || 0
       };
     });

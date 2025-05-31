@@ -1,6 +1,6 @@
 // controllers/productsController.js
 const pool = require('../db');
-const { calcPricePer100g } = require('../utils/priceCalculator');
+const { calcPricePer1kg } = require('../utils/priceCalculator');
 // אם תחליט להשתמש במחלקות שגיאה מותאמות, תצטרך לייבא אותן:
 // const { NotFoundError, BadRequestError, ApplicationError } = require('../utils/errors');
 
@@ -34,11 +34,11 @@ const getAllProducts = async (req, res, next) => {
       (
         SELECT ROUND(MIN(
             CASE 
-                WHEN pr.unit_for_price = 'kg' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price) / 10
-                WHEN pr.unit_for_price = '100g' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price)
-                WHEN pr.unit_for_price = 'g' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price) * 100
+                WHEN pr.unit_for_price = 'kg' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price)
+                WHEN pr.unit_for_price = '100g' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price) * 10
+                WHEN pr.unit_for_price = 'g' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price) * 1000
                 WHEN pr.unit_for_price IN ('unit', 'package') AND p.default_weight_per_unit_grams > 0 AND p.default_weight_per_unit_grams IS NOT NULL THEN 
-                     (COALESCE(pr.sale_price, pr.regular_price) / (pr.quantity_for_price * p.default_weight_per_unit_grams / 100))
+                     (COALESCE(pr.sale_price, pr.regular_price) / (pr.quantity_for_price * p.default_weight_per_unit_grams / 1000))
                 ELSE NULL 
             END
         ), 2)
@@ -46,7 +46,7 @@ const getAllProducts = async (req, res, next) => {
         WHERE pr.product_id = p.id 
           AND pr.status = 'approved' 
           AND (pr.price_valid_to IS NULL OR pr.price_valid_to >= CURRENT_DATE)
-      ) as min_price_per_100g
+      ) as min_price_per_1kg
     FROM products p
     LEFT JOIN cuts c ON p.cut_id = c.id
     ${whereClauses}
@@ -71,7 +71,7 @@ const getAllProducts = async (req, res, next) => {
     const result = await pool.query(mainQuery, finalQueryParamsForData);
 
     // Frontend-compatible response format
-    const products = result.rows.map(p => ({...p, min_price_per_100g: p.min_price_per_100g ? parseFloat(p.min_price_per_100g) : null }));
+    const products = result.rows.map(p => ({...p, min_price_per_1kg: p.min_price_per_1kg ? parseFloat(p.min_price_per_1kg) : null }));
     
     res.json({
       products: products,
@@ -137,11 +137,11 @@ const getProductById = async (req, res, next) => {
       WHERE pr.product_id = $1 AND pr.status = 'approved' AND r.is_active = TRUE
       ORDER BY (
           CASE 
-              WHEN pr.unit_for_price = 'kg' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price) / 10
-              WHEN pr.unit_for_price = '100g' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price)
-              WHEN pr.unit_for_price = 'g' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price) * 100
+              WHEN pr.unit_for_price = 'kg' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price)
+              WHEN pr.unit_for_price = '100g' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price) * 10
+              WHEN pr.unit_for_price = 'g' THEN (COALESCE(pr.sale_price, pr.regular_price) / pr.quantity_for_price) * 1000
               WHEN pr.unit_for_price IN ('unit', 'package') AND p_for_prices.default_weight_per_unit_grams > 0 AND p_for_prices.default_weight_per_unit_grams IS NOT NULL
-                   THEN (COALESCE(pr.sale_price, pr.regular_price) / (pr.quantity_for_price * p_for_prices.default_weight_per_unit_grams / 100))
+                   THEN (COALESCE(pr.sale_price, pr.regular_price) / (pr.quantity_for_price * p_for_prices.default_weight_per_unit_grams / 1000))
               ELSE NULL 
           END
       ) ASC, 
@@ -150,7 +150,7 @@ const getProductById = async (req, res, next) => {
     `;
     const pricesResult = await pool.query(pricesQuery, [numericProductId, currentUserId]);
     const price_examples = pricesResult.rows.map(priceEntry => {
-      const calculated_price_per_100g_raw = calcPricePer100g({
+      const calculated_price_per_1kg_raw = calcPricePer1kg({
         regular_price: parseFloat(priceEntry.regular_price),
         sale_price: priceEntry.sale_price ? parseFloat(priceEntry.sale_price) : null,
         unit_for_price: priceEntry.unit_for_price,
@@ -164,7 +164,7 @@ const getProductById = async (req, res, next) => {
         quantity_for_price: parseFloat(priceEntry.quantity_for_price), submission_date: priceEntry.price_submission_date,
         valid_to: priceEntry.price_valid_to, notes: priceEntry.price_notes,
         likes_count: parseInt(priceEntry.likes_count, 10) || 0, current_user_liked: priceEntry.current_user_liked,
-        calculated_price_per_100g: calculated_price_per_100g_raw !== null ? parseFloat(calculated_price_per_100g_raw.toFixed(2)) : null
+        calculated_price_per_1kg: calculated_price_per_1kg_raw !== null ? parseFloat(calculated_price_per_1kg_raw.toFixed(2)) : null
       };
     });
     const response = {
