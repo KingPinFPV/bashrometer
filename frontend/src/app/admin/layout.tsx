@@ -43,7 +43,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       id: 'dashboard', 
       name: 'דשבורד', 
       icon: Home, 
-      href: '/admin',
+      href: '/admin/dashboard',
       badge: null
     },
     { 
@@ -51,6 +51,13 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       name: 'מוצרים', 
       icon: Package, 
       href: '/admin/products',
+      badge: null
+    },
+    { 
+      id: 'subtypes', 
+      name: 'תת-סוגים', 
+      icon: FileText, 
+      href: '/admin/subtypes',
       badge: null
     },
     { 
@@ -63,7 +70,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     { 
       id: 'price-reports', 
       name: 'דיווחי מחיר', 
-      icon: FileText, 
+      icon: BarChart3, 
       href: '/admin/reports',
       badge: pendingReports > 0 ? pendingReports : null
     },
@@ -95,8 +102,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     if (typeof window === 'undefined') return 'dashboard';
     const pathname = window.location.pathname;
     
-    if (pathname === '/admin') return 'dashboard';
+    if (pathname === '/admin' || pathname === '/admin/dashboard') return 'dashboard';
     if (pathname.includes('/admin/products')) return 'products';
+    if (pathname.includes('/admin/subtypes')) return 'subtypes';
     if (pathname.includes('/admin/retailers')) return 'retailers';
     if (pathname.includes('/admin/reports')) return 'price-reports';
     if (pathname.includes('/admin/users')) return 'users';

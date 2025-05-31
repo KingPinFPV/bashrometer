@@ -28,11 +28,19 @@ interface Product {
   is_active: boolean;
   created_at: string;
   min_price_per_1kg?: number;
+  status?: string;
+  cut_name?: string;
+  subtype_name?: string;
+  created_by_name?: string;
+  created_by_email?: string;
+  rejection_reason?: string;
 }
 
 const ProductsManagement: React.FC = () => {
   const { token } = useAuth();
+  const [activeTab, setActiveTab] = useState<'approved' | 'pending' | 'all'>('approved');
   const [products, setProducts] = useState<Product[]>([]);
+  const [pendingProducts, setPendingProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -46,47 +54,123 @@ const ProductsManagement: React.FC = () => {
     productName: ''
   });
   const [isDeleting, setIsDeleting] = useState(false);
+  const [rejectModal, setRejectModal] = useState<{show: boolean, productId: number, productName: string}>({
+    show: false,
+    productId: 0,
+    productName: ''
+  });
+  const [rejectReason, setRejectReason] = useState('');
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
   const ITEMS_PER_PAGE = 10;
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      if (!token) return;
-
-      try {
-        setLoading(true);
-        const offset = (currentPage - 1) * ITEMS_PER_PAGE;
-        const searchQuery = searchTerm ? `&name_like=${encodeURIComponent(searchTerm)}` : '';
-        
-        const response = await fetch(
-          `${API_URL}/api/products?limit=${ITEMS_PER_PAGE}&offset=${offset}${searchQuery}`,
-          {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error('שגיאה בטעינת המוצרים');
-        }
-
+  const loadPendingProducts = async () => {
+    if (!token) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/api/products/pending`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
         const data = await response.json();
-        setProducts(data.products || []);
-        
-        if (data.total_items) {
-          setTotalPages(data.total_pages || Math.ceil(data.total_items / ITEMS_PER_PAGE));
-        }
-
-      } catch (err) {
-        console.error('Error fetching products:', err);
-        setError('שגיאה בטעינת המוצרים');
-      } finally {
-        setLoading(false);
+        setPendingProducts(data.pendingProducts || []);
       }
-    };
+    } catch (error) {
+      console.error('Error loading pending products:', error);
+    }
+  };
 
+  const handleApproveProduct = async (productId: number) => {
+    if (!token) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/api/products/${productId}/approve`, {
+        method: 'PATCH',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        loadPendingProducts();
+        fetchProducts(); // Refresh approved products
+        // You could add a toast notification here
+      }
+    } catch (error) {
+      console.error('Error approving product:', error);
+    }
+  };
+
+  const handleRejectProduct = async () => {
+    if (!token || !rejectModal.productId || !rejectReason.trim()) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/api/products/${rejectModal.productId}/reject`, {
+        method: 'PATCH',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason: rejectReason })
+      });
+      
+      if (response.ok) {
+        loadPendingProducts();
+        setRejectModal({ show: false, productId: 0, productName: '' });
+        setRejectReason('');
+        // You could add a toast notification here
+      }
+    } catch (error) {
+      console.error('Error rejecting product:', error);
+    }
+  };
+
+  const fetchProducts = async () => {
+    if (!token) return;
+
+    try {
+      setLoading(true);
+      const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+      const searchQuery = searchTerm ? `&name_like=${encodeURIComponent(searchTerm)}` : '';
+      
+      const response = await fetch(
+        `${API_URL}/api/products?limit=${ITEMS_PER_PAGE}&offset=${offset}${searchQuery}`,
+        {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('שגיאה בטעינת המוצרים');
+      }
+
+      const data = await response.json();
+      setProducts(data.products || []);
+      
+      if (data.total_items) {
+        setTotalPages(data.total_pages || Math.ceil(data.total_items / ITEMS_PER_PAGE));
+      }
+
+    } catch (err) {
+      console.error('Error fetching products:', err);
+      setError('שגיאה בטעינת המוצרים');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchProducts();
+    loadPendingProducts();
   }, [token, API_URL, currentPage, searchTerm]);
+
+  useEffect(() => {
+    if (activeTab === 'pending') {
+      loadPendingProducts();
+    }
+  }, [activeTab]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,38 +221,23 @@ const ProductsManagement: React.FC = () => {
   };
 
   const handleProductAdded = () => {
-    // Refresh the products list after adding a new product
-    const fetchProducts = async () => {
-      if (!token) return;
-
-      try {
-        setLoading(true);
-        const offset = (currentPage - 1) * ITEMS_PER_PAGE;
-        const searchQuery = searchTerm ? `&name_like=${encodeURIComponent(searchTerm)}` : '';
-        
-        const response = await fetch(
-          `${API_URL}/api/products?limit=${ITEMS_PER_PAGE}&offset=${offset}${searchQuery}`,
-          {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          setProducts(data.products || []);
-          
-          if (data.total_items) {
-            setTotalPages(data.total_pages || Math.ceil(data.total_items / ITEMS_PER_PAGE));
-          }
-        }
-      } catch (err) {
-        console.error('Error refreshing products:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchProducts();
+    loadPendingProducts();
+  };
+
+  const getCurrentProducts = () => {
+    switch (activeTab) {
+      case 'pending':
+        return pendingProducts;
+      case 'approved':
+        return products;
+      case 'all':
+        return [...products, ...pendingProducts].sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      default:
+        return products;
+    }
   };
 
 
@@ -196,12 +265,14 @@ const ProductsManagement: React.FC = () => {
     );
   }
 
+  const currentProducts = getCurrentProducts();
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">ניהול מוצרים</h1>
-          <p className="mt-1 text-gray-600">נהל את רשימת המוצרים במערכת ({products.length} מוצרים)</p>
+          <p className="mt-1 text-gray-600">נהל את רשימת המוצרים במערכת</p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
@@ -210,6 +281,34 @@ const ProductsManagement: React.FC = () => {
           <Plus className="w-4 h-4 ml-2" />
           הוסף מוצר חדש
         </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8 space-x-reverse">
+          {[
+            { id: 'approved' as const, label: 'מוצרים מאושרים', count: products.length },
+            { id: 'pending' as const, label: 'ממתינים לאישור', count: pendingProducts.length },
+            { id: 'all' as const, label: 'כל המוצרים', count: products.length + pendingProducts.length }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === tab.id
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {tab.label}
+              {tab.count > 0 && (
+                <span className="mr-2 bg-gray-100 text-gray-900 py-0.5 px-2 rounded-full text-xs">
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
       </div>
 
       {/* Search */}
@@ -242,85 +341,142 @@ const ProductsManagement: React.FC = () => {
               <tr>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">מוצר</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">קטגוריה</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">מותג</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">יחידת מידה</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">מחיר מינימלי</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">נתח</th>
+                {activeTab === 'pending' && (
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">נוצר על ידי</th>
+                )}
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">סטטוס</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">תאריך</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">פעולות</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {products.map((product) => (
+              {currentProducts.map((product) => (
                 <tr key={product.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{product.name}</div>
                     <div className="text-sm text-gray-500">#{product.id}</div>
+                    {product.brand && (
+                      <div className="text-sm text-gray-500">מותג: {product.brand}</div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {product.category || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {product.brand || '-'}
+                    {product.cut_name || '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {product.unit_of_measure}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {product.min_price_per_1kg ? `₪${product.min_price_per_1kg}/ק״ג` : '-'}
-                  </td>
+                  {activeTab === 'pending' && (
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{product.created_by_name || 'לא ידוע'}</div>
+                      <div className="text-sm text-gray-500">{product.created_by_email}</div>
+                    </td>
+                  )}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      product.is_active 
+                      product.status === 'approved'
+                        ? 'bg-green-100 text-green-800'
+                        : product.status === 'pending'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : product.status === 'rejected'
+                        ? 'bg-red-100 text-red-800'
+                        : product.is_active 
                         ? 'bg-green-100 text-green-800' 
                         : 'bg-gray-100 text-gray-800'
                     }`}>
-                      {product.is_active ? (
+                      {product.status === 'approved' && (
                         <>
                           <Check className="w-3 h-3 ml-1" />
-                          פעיל
+                          מאושר
                         </>
-                      ) : (
+                      )}
+                      {product.status === 'pending' && (
+                        <>
+                          <AlertCircle className="w-3 h-3 ml-1" />
+                          ממתין
+                        </>
+                      )}
+                      {product.status === 'rejected' && (
                         <>
                           <X className="w-3 h-3 ml-1" />
-                          לא פעיל
+                          נדחה
+                        </>
+                      )}
+                      {!product.status && (
+                        <>
+                          {product.is_active ? (
+                            <>
+                              <Check className="w-3 h-3 ml-1" />
+                              פעיל
+                            </>
+                          ) : (
+                            <>
+                              <X className="w-3 h-3 ml-1" />
+                              לא פעיל
+                            </>
+                          )}
                         </>
                       )}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium relative">
-                    <button
-                      onClick={() => setShowActionsMenu(showActionsMenu === product.id ? null : product.id)}
-                      className="text-gray-400 hover:text-gray-600 p-1 rounded"
-                    >
-                      <MoreVertical className="w-4 h-4" />
-                    </button>
-                    
-                    {showActionsMenu === product.id && (
-                      <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
-                        <div className="py-1">
-                          <a
-                            href={`/admin/products/edit/${product.id}`}
-                            className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          >
-                            <Edit className="w-4 h-4 ml-2" />
-                            ערוך מוצר
-                          </a>
-                          <a
-                            href={`/products/${product.id}`}
-                            target="_blank"
-                            className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          >
-                            <Eye className="w-4 h-4 ml-2" />
-                            צפה במוצר
-                          </a>
-                          <button
-                            onClick={() => showDeleteModal(product.id, product.name)}
-                            className="w-full flex items-center px-4 py-2 text-sm text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4 ml-2" />
-                            מחק מוצר
-                          </button>
-                        </div>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(product.created_at).toLocaleDateString('he-IL')}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    {activeTab === 'pending' && product.status === 'pending' ? (
+                      <div className="flex space-x-2 space-x-reverse">
+                        <button
+                          onClick={() => handleApproveProduct(product.id)}
+                          className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600"
+                        >
+                          אשר
+                        </button>
+                        <button
+                          onClick={() => setRejectModal({ show: true, productId: product.id, productName: product.name })}
+                          className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600"
+                        >
+                          דחה
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <button
+                          onClick={() => setShowActionsMenu(showActionsMenu === product.id ? null : product.id)}
+                          className="text-gray-400 hover:text-gray-600 p-1 rounded"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                        
+                        {showActionsMenu === product.id && (
+                          <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                            <div className="py-1">
+                              <a
+                                href={`/admin/products/edit/${product.id}`}
+                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              >
+                                <Edit className="w-4 h-4 ml-2" />
+                                ערוך מוצר
+                              </a>
+                              <a
+                                href={`/products/${product.id}`}
+                                target="_blank"
+                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              >
+                                <Eye className="w-4 h-4 ml-2" />
+                                צפה במוצר
+                              </a>
+                              {product.status === 'approved' && (
+                                <button
+                                  onClick={() => showDeleteModal(product.id, product.name)}
+                                  className="w-full flex items-center px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="w-4 h-4 ml-2" />
+                                  מחק מוצר
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </td>
@@ -408,6 +564,42 @@ const ProductsManagement: React.FC = () => {
                     מחק מוצר
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Product Modal */}
+      {rejectModal.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-medium mb-4">דחיית מוצר</h3>
+            <p className="text-gray-600 mb-4">
+              אתה עומד לדחות את המוצר &quot;{rejectModal.productName}&quot;. אנא ציין סיבה:
+            </p>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="סיבת הדחיה..."
+              className="w-full border rounded p-2 h-24 mb-4"
+            />
+            <div className="flex space-x-3 space-x-reverse">
+              <button
+                onClick={handleRejectProduct}
+                disabled={!rejectReason.trim()}
+                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                דחה מוצר
+              </button>
+              <button
+                onClick={() => {
+                  setRejectModal({ show: false, productId: 0, productName: '' });
+                  setRejectReason('');
+                }}
+                className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+              >
+                ביטול
               </button>
             </div>
           </div>
