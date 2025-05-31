@@ -95,7 +95,21 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
       setLoading(true);
       const searchCategory = formData.animal_type || formData.category;
       const data = await authenticatedApiCall(`/api/cuts?category=${encodeURIComponent(searchCategory)}`);
-      setCuts(data.cuts || data.data || []);
+      console.log('🔍 EditProductModal - Cuts API response:', data);
+      
+      let cutsArray = [];
+      if (Array.isArray(data)) {
+        cutsArray = data;
+      } else if (data && Array.isArray(data.cuts)) {
+        cutsArray = data.cuts;
+      } else if (data && Array.isArray(data.data)) {
+        cutsArray = data.data;
+      } else {
+        console.warn('⚠️ EditProductModal - Unexpected cuts API format:', data);
+        cutsArray = [];
+      }
+      
+      setCuts(cutsArray);
     } catch (error) {
       console.error('Error loading cuts:', error);
       setError('שגיאה בטעינת נתחים');
@@ -107,7 +121,20 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
   const loadSubtypes = async () => {
     try {
       const data = await authenticatedApiCall(`/api/admin/subtypes`);
-      const allSubtypes = data.subtypes || data.data || [];
+      console.log('🏷️ EditProductModal - Subtypes API response:', data);
+      
+      let allSubtypes = [];
+      if (Array.isArray(data)) {
+        allSubtypes = data;
+      } else if (data && Array.isArray(data.subtypes)) {
+        allSubtypes = data.subtypes;
+      } else if (data && Array.isArray(data.data)) {
+        allSubtypes = data.data;
+      } else {
+        console.warn('⚠️ EditProductModal - Unexpected subtypes API format:', data);
+        allSubtypes = [];
+      }
+      
       const filteredSubtypes = allSubtypes.filter((st: ProductSubtype) => st.cut_id === formData.cut_id);
       setSubtypes(filteredSubtypes);
     } catch (error) {
@@ -230,9 +257,9 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
                 required
               >
                 <option value="">בחר קטגוריה</option>
-                {categories.map(cat => (
+                {Array.isArray(categories) ? categories.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
-                ))}
+                )) : null}
               </select>
             </div>
             
@@ -245,9 +272,9 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
                 className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">בחר סוג</option>
-                {categories.map(cat => (
+                {Array.isArray(categories) ? categories.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
-                ))}
+                )) : null}
               </select>
             </div>
             
@@ -261,9 +288,9 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
                 disabled={loading || cuts.length === 0}
               >
                 <option value="">בחר נתח</option>
-                {cuts.map(cut => (
+                {Array.isArray(cuts) ? cuts.map(cut => (
                   <option key={cut.id} value={cut.id}>{cut.hebrew_name}</option>
-                ))}
+                )) : null}
               </select>
               {loading && <div className="text-xs text-gray-500 mt-1">טוען נתחים...</div>}
             </div>
@@ -278,9 +305,9 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
                 disabled={!formData.cut_id || subtypes.length === 0}
               >
                 <option value="">בחר תת-נתח</option>
-                {subtypes.map(subtype => (
+                {Array.isArray(subtypes) ? subtypes.map(subtype => (
                   <option key={subtype.id} value={subtype.id}>{subtype.hebrew_description}</option>
-                ))}
+                )) : null}
               </select>
             </div>
             
@@ -292,9 +319,9 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
                 onChange={(e) => handleInputChange('kosher_level', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {kosherLevels.map(level => (
+                {Array.isArray(kosherLevels) ? kosherLevels.map(level => (
                   <option key={level} value={level}>{level}</option>
-                ))}
+                )) : null}
               </select>
             </div>
             
@@ -309,9 +336,9 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
                 className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
-                {unitsOfMeasure.map(unit => (
+                {Array.isArray(unitsOfMeasure) ? unitsOfMeasure.map(unit => (
                   <option key={unit} value={unit}>{unit}</option>
-                ))}
+                )) : null}
               </select>
             </div>
             

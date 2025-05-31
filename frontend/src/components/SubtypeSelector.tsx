@@ -59,7 +59,20 @@ const SubtypeSelector: React.FC<SubtypeSelectorProps> = ({
     setError(null);
     try {
       const data = await authenticatedApiCall('/api/admin/subtypes');
-      const allSubtypes = data.subtypes || data.data || [];
+      console.log('📋 Subtypes API response:', data); // Debug log
+      
+      let allSubtypes = [];
+      if (Array.isArray(data)) {
+        allSubtypes = data;
+      } else if (data && Array.isArray(data.subtypes)) {
+        allSubtypes = data.subtypes;
+      } else if (data && Array.isArray(data.data)) {
+        allSubtypes = data.data;
+      } else {
+        console.warn('⚠️ Unexpected subtypes API response format:', data);
+        allSubtypes = [];
+      }
+      
       const filteredSubtypes = allSubtypes.filter((st: ProductSubtype) => st.cut_id === cutId);
       setSubtypes(filteredSubtypes);
     } catch (error) {
@@ -158,12 +171,12 @@ const SubtypeSelector: React.FC<SubtypeSelectorProps> = ({
           }`}
         >
           <option value="">{placeholder}{required ? ' *' : ''}</option>
-          {subtypes.map(subtype => (
+          {Array.isArray(subtypes) ? subtypes.map(subtype => (
             <option key={subtype.id} value={subtype.id}>
               {subtype.hebrew_description}
               {subtype.purpose && ` - ${subtype.purpose}`}
             </option>
-          ))}
+          )) : null}
         </select>
       </div>
       

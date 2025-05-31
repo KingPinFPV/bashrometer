@@ -56,7 +56,21 @@ const CutSelector: React.FC<CutSelectorProps> = ({
     try {
       const url = `/api/cuts?category=${encodeURIComponent(category)}&limit=100`;
       const data = await authenticatedApiCall(url);
-      setCuts(data.cuts || data.data || []);
+      console.log('🔪 Cuts API response:', data); // Debug log
+      
+      let cutsArray = [];
+      if (Array.isArray(data)) {
+        cutsArray = data;
+      } else if (data && Array.isArray(data.cuts)) {
+        cutsArray = data.cuts;
+      } else if (data && Array.isArray(data.data)) {
+        cutsArray = data.data;
+      } else {
+        console.warn('⚠️ Unexpected cuts API response format:', data);
+        cutsArray = [];
+      }
+      
+      setCuts(cutsArray);
     } catch (error) {
       console.error('Error fetching cuts:', error);
       setError('שגיאה בטעינת רשימת הנתחים');
@@ -160,12 +174,12 @@ const CutSelector: React.FC<CutSelectorProps> = ({
           }`}
         >
           <option value="">{placeholder}{required ? ' *' : ''}</option>
-          {cuts.map(cut => (
+          {Array.isArray(cuts) ? cuts.map(cut => (
             <option key={cut.id} value={cut.id}>
               {cut.hebrew_name || cut.name}
               {cut.description && ` - ${cut.description}`}
             </option>
-          ))}
+          )) : null}
         </select>
       </div>
       
