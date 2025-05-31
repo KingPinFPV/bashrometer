@@ -112,8 +112,8 @@ const PendingProductsManagement: React.FC = () => {
     try {
       setActionLoading(productId);
 
-      const response = await fetch(`${API_URL}/api/admin/products/${productId}/approve`, {
-        method: 'POST',
+      const response = await fetch(`${API_URL}/api/products/${productId}/approve`, {
+        method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -145,8 +145,8 @@ const PendingProductsManagement: React.FC = () => {
     try {
       setActionLoading(productId);
 
-      const response = await fetch(`${API_URL}/api/admin/products/${productId}/reject`, {
-        method: 'POST',
+      const response = await fetch(`${API_URL}/api/products/${productId}/reject`, {
+        method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

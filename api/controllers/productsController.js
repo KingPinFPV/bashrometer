@@ -74,21 +74,15 @@ const getAllProducts = async (req, res, next) => {
     const products = result.rows.map(p => ({...p, min_price_per_1kg: p.min_price_per_1kg ? parseFloat(p.min_price_per_1kg) : null }));
     
     res.json({
-      products: products,
-      total_items: totalItems,
-      total_pages: Math.ceil(totalItems / parseInt(limit)),
-      current_page: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
-      items_per_page: parseInt(limit),
-      has_next: (parseInt(offset) + parseInt(limit)) < totalItems,
-      has_previous: parseInt(offset) > 0,
-      // Keep old format for backward compatibility
       data: products,
       page_info: {
         limit: parseInt(limit),
         offset: parseInt(offset),
         total_items: totalItems,
-        current_page_count: result.rows.length,
-        total_pages: Math.ceil(totalItems / parseInt(limit))
+        current_page: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+        total_pages: Math.ceil(totalItems / parseInt(limit)),
+        has_next: (parseInt(offset) + parseInt(limit)) < totalItems,
+        has_previous: parseInt(offset) > 0
       }
     });
   } catch (err) {

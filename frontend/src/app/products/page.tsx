@@ -118,56 +118,18 @@ export default function ProductsPage() {
         let validProducts: Product[] = [];
         let pageInfo = null;
 
-        // Handle different API response formats
-        if (data.products && Array.isArray(data.products)) {
-          // Old format
-          validProducts = data.products.filter((product: any) => {
-            if (!product || !product.id || !product.name) {
-              console.warn('⚠️ Filtering out invalid product (old format):', product);
-              return false;
-            }
-            return true;
-          });
-          
-          pageInfo = {
-            total_items: data.total_items || validProducts.length,
-            total_pages: data.total_pages || 1,
-            current_page: data.current_page || 1,
-            limit: data.items_per_page || 20,
-            offset: 0,
-            has_next: data.has_next || false,
-            has_previous: data.has_previous || false
-          };
-        } else if (data.data && Array.isArray(data.data)) {
-          // New format
+        // Handle API response format
+        if (data.data && Array.isArray(data.data)) {
+          // Standard format
           validProducts = data.data.filter((product: any) => {
             if (!product || !product.id || !product.name) {
-              console.warn('⚠️ Filtering out invalid product (new format):', product);
+              console.warn('⚠️ Filtering out invalid product:', product);
               return false;
             }
             return true;
           });
           
           pageInfo = data.page_info || {
-            total_items: validProducts.length,
-            total_pages: 1,
-            current_page: 1,
-            limit: 20,
-            offset: 0,
-            has_next: false,
-            has_previous: false
-          };
-        } else if (Array.isArray(data)) {
-          // Direct array format
-          validProducts = data.filter((product: any) => {
-            if (!product || !product.id || !product.name) {
-              console.warn('⚠️ Filtering out invalid product (array format):', product);
-              return false;
-            }
-            return true;
-          });
-          
-          pageInfo = {
             total_items: validProducts.length,
             total_pages: 1,
             current_page: 1,
@@ -376,8 +338,18 @@ export default function ProductsPage() {
           {products.map((product) => (
             <ProductCard 
               key={product.id} 
-              product={product} 
-              viewMode={viewMode}
+              id={product.id}
+              name={product.name}
+              category={product.category}
+              brand={product.brand}
+              cut_name={product.cut_name}
+              subtype_name={product.subtype_name}
+              min_price_per_1kg={product.min_price_per_1kg}
+              avg_price_per_1kg={product.avg_price_per_1kg}
+              status={product.status}
+              created_at={product.created_at}
+              reports_count={product.reports_count}
+              compact={viewMode === 'list'}
             />
           ))}
         </div>
