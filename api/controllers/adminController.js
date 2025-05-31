@@ -327,6 +327,171 @@ const updateUserRole = async (req, res) => {
   }
 };
 
+// אישור מוצר
+const approveProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!id || isNaN(parseInt(id))) {
+      return res.status(400).json({ error: 'Invalid product ID' });
+    }
+    
+    const result = await pool.query(
+      'UPDATE products SET status = $1, approved_by = $2, approved_at = NOW() WHERE id = $3 RETURNING *',
+      ['approved', req.user.id, parseInt(id)]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    console.log(`✅ Product ${id} approved by admin ${req.user.id}`);
+    res.json({ success: true, product: result.rows[0] });
+    
+  } catch (error) {
+    console.error('❌ Error approving product:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// דחיית מוצר
+const rejectProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    
+    if (!id || isNaN(parseInt(id))) {
+      return res.status(400).json({ error: 'Invalid product ID' });
+    }
+    
+    const result = await pool.query(
+      'UPDATE products SET status = $1, rejection_reason = $2, rejected_by = $3, rejected_at = NOW() WHERE id = $4 RETURNING *',
+      ['rejected', reason || null, req.user.id, parseInt(id)]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    console.log(`❌ Product ${id} rejected by admin ${req.user.id}`);
+    res.json({ success: true, product: result.rows[0] });
+    
+  } catch (error) {
+    console.error('❌ Error rejecting product:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// עדכון מוצר
+const updateProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, category, cut_id, subtype_id, description } = req.body;
+    
+    if (!id || isNaN(parseInt(id))) {
+      return res.status(400).json({ error: 'Invalid product ID' });
+    }
+    
+    const result = await pool.query(
+      `UPDATE products 
+       SET name = $1, category = $2, cut_id = $3, subtype_id = $4, description = $5, updated_at = NOW()
+       WHERE id = $6 RETURNING *`,
+      [name, category, cut_id, subtype_id, description, parseInt(id)]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    res.json({ success: true, product: result.rows[0] });
+    
+  } catch (error) {
+    console.error('❌ Error updating product:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// קבלת כל המשתמשים עם סטטיסטיקות
+const getAllUsers = async (req, res) => {
+  try {
+    const { limit = 20, offset = 0, search = '' } = req.query;
+    
+    let query = `
+      SELECT 
+        u.id, u.email, u.role, u.created_at, u.last_login,
+        COUNT(p.id) as products_count,
+        COUNT(pr.id) as reports_count
+      FROM users u
+      LEFT JOIN products p ON u.id = p.created_by
+      LEFT JOIN prices pr ON u.id = pr.reported_by
+    `;
+    
+    const params = [];
+    let paramIndex = 1;
+    
+    if (search) {
+      query += ` WHERE u.email ILIKE $${paramIndex}`;
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+    
+    query += ` 
+      GROUP BY u.id, u.email, u.role, u.created_at, u.last_login
+      ORDER BY u.created_at DESC
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `;
+    
+    params.push(parseInt(limit), parseInt(offset));
+    
+    const result = await pool.query(query, params);
+    
+    // ספירה כוללת
+    const countQuery = search 
+      ? `SELECT COUNT(*) FROM users WHERE email ILIKE $1`
+      : `SELECT COUNT(*) FROM users`;
+    
+    const countParams = search ? [`%${search}%`] : [];
+    const countResult = await pool.query(countQuery, countParams);
+    
+    res.json({
+      users: result.rows,
+      pagination: {
+        total: parseInt(countResult.rows[0].count),
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error fetching users:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// מחיקת משתמש
+const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // בדוק שלא מוחק את עצמו
+    if (parseInt(id) === req.user.id) {
+      return res.status(400).json({ error: 'Cannot delete your own account' });
+    }
+    
+    const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id', [parseInt(id)]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json({ success: true });
+    
+  } catch (error) {
+    console.error('❌ Error deleting user:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
 // פונקציית עזר לרישום פעולות אדמין
 const logAdminAction = async (adminId, actionType, targetType, targetId, details = {}) => {
   try {
@@ -346,5 +511,10 @@ module.exports = {
   updateSubtype,
   getUsersManagement,
   updateUserRole,
+  approveProduct,
+  rejectProduct,
+  updateProduct,
+  getAllUsers,
+  deleteUser,
   logAdminAction
 };

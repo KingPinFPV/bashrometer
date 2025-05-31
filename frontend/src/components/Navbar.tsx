@@ -256,6 +256,59 @@ const Navbar = () => {
               <span className="sm:hidden">💰</span>
               <span className="hidden sm:inline">💰 מחירים</span>
             </Link>
+
+            {/* Admin Links */}
+            {isClient && !isLoading && user?.role === 'admin' && (
+              <>
+                <Link 
+                  href="/admin/dashboard" 
+                  style={linkStyle}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                    e.currentTarget.style.color = '#f59e0b';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = '#e2e8f0';
+                  }}
+                >
+                  <span className="sm:hidden">📊</span>
+                  <span className="hidden sm:inline">📊 דשבורד</span>
+                </Link>
+                
+                <Link 
+                  href="/admin/products" 
+                  style={linkStyle}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                    e.currentTarget.style.color = '#8b5cf6';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = '#e2e8f0';
+                  }}
+                >
+                  <span className="sm:hidden">📦</span>
+                  <span className="hidden sm:inline">📦 ניהול מוצרים</span>
+                </Link>
+                
+                <Link 
+                  href="/admin/users" 
+                  style={linkStyle}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                    e.currentTarget.style.color = '#ec4899';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = '#e2e8f0';
+                  }}
+                >
+                  <span className="sm:hidden">👥</span>
+                  <span className="hidden sm:inline">👥 ניהול משתמשים</span>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Center - Logo */}
@@ -446,6 +499,65 @@ const Navbar = () => {
             >
               💰 מחירים
             </Link>
+
+            {/* Mobile Admin Links */}
+            {isClient && !isLoading && user?.role === 'admin' && (
+              <>
+                <Link 
+                  href="/admin/dashboard" 
+                  style={{
+                    color: '#f59e0b',
+                    textDecoration: 'none',
+                    padding: '1rem',
+                    fontSize: '1rem',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    minHeight: '44px',
+                    fontWeight: 'bold'
+                  }}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  📊 דשבורד אדמין
+                </Link>
+                
+                <Link 
+                  href="/admin/products" 
+                  style={{
+                    color: '#8b5cf6',
+                    textDecoration: 'none',
+                    padding: '1rem',
+                    fontSize: '1rem',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    minHeight: '44px',
+                    fontWeight: 'bold'
+                  }}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  📦 ניהול מוצרים
+                </Link>
+                
+                <Link 
+                  href="/admin/users" 
+                  style={{
+                    color: '#ec4899',
+                    textDecoration: 'none',
+                    padding: '1rem',
+                    fontSize: '1rem',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    minHeight: '44px',
+                    fontWeight: 'bold'
+                  }}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  👥 ניהול משתמשים
+                </Link>
+              </>
+            )}
 
             {/* Mobile Auth Section */}
             <div style={{

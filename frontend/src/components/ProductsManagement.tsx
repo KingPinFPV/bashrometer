@@ -7,6 +7,7 @@ import AddProductModal from '@/components/admin/AddProductModal';
 import PendingProductsManagement from '@/components/PendingProductsManagement';
 import TabButtons from '@/components/TabButtons';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import EditProductModal from '@/components/EditProductModal';
 import { 
   Plus,
   Search,
@@ -64,6 +65,8 @@ const ProductsManagement: React.FC = () => {
     productName: ''
   });
   const [rejectReason, setRejectReason] = useState('');
+  const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
   const ITEMS_PER_PAGE = 10;
@@ -89,8 +92,8 @@ const ProductsManagement: React.FC = () => {
     if (!token) return;
     
     try {
-      const response = await fetch(`${API_URL}/api/products/${productId}/approve`, {
-        method: 'PATCH',
+      const response = await fetch(`${API_URL}/api/admin/products/${productId}/approve`, {
+        method: 'POST',
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -98,9 +101,8 @@ const ProductsManagement: React.FC = () => {
       });
       
       if (response.ok) {
-        loadPendingProducts();
+        setPendingProducts(prev => prev.filter(p => p.id !== productId));
         fetchProducts(); // Refresh approved products
-        // You could add a toast notification here
       }
     } catch (error) {
       console.error('Error approving product:', error);
@@ -108,23 +110,22 @@ const ProductsManagement: React.FC = () => {
   };
 
   const handleRejectProduct = async () => {
-    if (!token || !rejectModal.productId || !rejectReason.trim()) return;
+    if (!token || !rejectModal.productId) return;
     
     try {
-      const response = await fetch(`${API_URL}/api/products/${rejectModal.productId}/reject`, {
-        method: 'PATCH',
+      const response = await fetch(`${API_URL}/api/admin/products/${rejectModal.productId}/reject`, {
+        method: 'POST',
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ reason: rejectReason })
+        body: JSON.stringify({ reason: rejectReason || null })
       });
       
       if (response.ok) {
-        loadPendingProducts();
+        setPendingProducts(prev => prev.filter(p => p.id !== rejectModal.productId));
         setRejectModal({ show: false, productId: 0, productName: '' });
         setRejectReason('');
-        // You could add a toast notification here
       }
     } catch (error) {
       console.error('Error rejecting product:', error);
@@ -227,6 +228,35 @@ const ProductsManagement: React.FC = () => {
   const handleProductAdded = () => {
     fetchProducts();
     loadPendingProducts();
+  };
+
+  const handleEditProduct = (product: any) => {
+    setEditingProduct(product);
+    setShowEditModal(true);
+  };
+
+  const handleSaveProduct = async (updatedProduct: any) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/admin/products/${updatedProduct.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(updatedProduct)
+      });
+      
+      if (response.ok) {
+        setShowEditModal(false);
+        setEditingProduct(null);
+        if (activeTab === 'approved') fetchProducts();
+        else if (activeTab === 'pending') loadPendingProducts();
+      }
+      
+    } catch (error) {
+      console.error('Error saving product:', error);
+    }
   };
 
   const getCurrentProducts = () => {
@@ -430,45 +460,68 @@ const ProductsManagement: React.FC = () => {
                         </button>
                       </div>
                     ) : (
-                      <div className="relative">
-                        <button
-                          onClick={() => setShowActionsMenu(showActionsMenu === product.id ? null : product.id)}
-                          className="text-gray-400 hover:text-gray-600 p-1 rounded"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-                        
-                        {showActionsMenu === product.id && (
-                          <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
-                            <div className="py-1">
-                              <a
-                                href={`/admin/products/edit/${product.id}`}
-                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                              >
-                                <Edit className="w-4 h-4 ml-2" />
-                                ערוך מוצר
-                              </a>
-                              <a
-                                href={`/products/${product.id}`}
-                                target="_blank"
-                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                              >
-                                <Eye className="w-4 h-4 ml-2" />
-                                צפה במוצר
-                              </a>
-                              {product.status === 'approved' && (
+                      activeTab === 'pending' && product.status === 'pending' ? (
+                        <div className="flex space-x-2 space-x-reverse">
+                          <button
+                            onClick={() => handleEditProduct(product)}
+                            className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+                          >
+                            ערוך
+                          </button>
+                          <button
+                            onClick={() => handleApproveProduct(product.id)}
+                            className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600"
+                          >
+                            אשר
+                          </button>
+                          <button
+                            onClick={() => setRejectModal({ show: true, productId: product.id, productName: product.name })}
+                            className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600"
+                          >
+                            דחה
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <button
+                            onClick={() => setShowActionsMenu(showActionsMenu === product.id ? null : product.id)}
+                            className="text-gray-400 hover:text-gray-600 p-1 rounded"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                          
+                          {showActionsMenu === product.id && (
+                            <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                              <div className="py-1">
                                 <button
-                                  onClick={() => showDeleteModal(product.id, product.name)}
-                                  className="w-full flex items-center px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+                                  onClick={() => handleEditProduct(product)}
+                                  className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                 >
-                                  <Trash2 className="w-4 h-4 ml-2" />
-                                  מחק מוצר
+                                  <Edit className="w-4 h-4 ml-2" />
+                                  ערוך מוצר
                                 </button>
-                              )}
+                                <a
+                                  href={`/products/${product.id}`}
+                                  target="_blank"
+                                  className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  <Eye className="w-4 h-4 ml-2" />
+                                  צפה במוצר
+                                </a>
+                                {product.status === 'approved' && (
+                                  <button
+                                    onClick={() => showDeleteModal(product.id, product.name)}
+                                    className="w-full flex items-center px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="w-4 h-4 ml-2" />
+                                    מחק מוצר
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
+                      )
                     )}
                   </td>
                 </tr>
@@ -573,14 +626,13 @@ const ProductsManagement: React.FC = () => {
             <textarea
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="סיבת הדחיה..."
+              placeholder="סיבת הדחיה (אופציונלי)..."
               className="w-full border rounded p-2 h-24 mb-4"
             />
             <div className="flex space-x-3 space-x-reverse">
               <button
                 onClick={handleRejectProduct}
-                disabled={!rejectReason.trim()}
-                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
               >
                 דחה מוצר
               </button>
@@ -596,6 +648,19 @@ const ProductsManagement: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Edit Product Modal */}
+      {showEditModal && (
+        <EditProductModal
+          product={editingProduct}
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingProduct(null);
+          }}
+          onSave={handleSaveProduct}
+        />
       )}
     </div>
   );
