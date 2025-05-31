@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 const Navbar = () => {
   const { user, logout, isLoading } = useAuth();
   const [isClient, setIsClient] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -134,8 +135,48 @@ const Navbar = () => {
     <nav style={navStyle}>
       <div style={containerStyle}>
         <div style={navRowStyle}>
-          {/* Left side - Navigation Links */}
-          <div style={leftLinksStyle}>
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              gap: '3px',
+              padding: '0.5rem',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              minHeight: '44px',
+              minWidth: '44px',
+            }}
+            className="md:hidden"
+          >
+            <span style={{
+              width: '20px',
+              height: '2px',
+              background: '#e2e8f0',
+              transition: 'all 0.3s ease',
+              transform: isMobileMenuOpen ? 'rotate(45deg) translate(5px, 5px)' : 'none'
+            }}></span>
+            <span style={{
+              width: '20px',
+              height: '2px',
+              background: '#e2e8f0',
+              transition: 'all 0.3s ease',
+              opacity: isMobileMenuOpen ? 0 : 1
+            }}></span>
+            <span style={{
+              width: '20px',
+              height: '2px',
+              background: '#e2e8f0',
+              transition: 'all 0.3s ease',
+              transform: isMobileMenuOpen ? 'rotate(-45deg) translate(7px, -6px)' : 'none'
+            }}></span>
+          </button>
+
+          {/* Desktop Navigation Links */}
+          <div style={leftLinksStyle} className="hidden md:flex">
             <Link 
               href="/" 
               style={linkStyle}
@@ -216,12 +257,12 @@ const Navbar = () => {
             <span className="hidden sm:inline">🥩 בשרומטר 2.0</span>
           </Link>
 
-          {/* Right side - Auth buttons */}
+          {/* Right side - Auth buttons (Desktop) */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem',
-          }}>
+          }} className="hidden md:flex">
             {isClient && !isLoading && user ? (
               <>
                 <span style={userGreetingStyle}>
@@ -295,6 +336,202 @@ const Navbar = () => {
           </div>
         </div>
       </div>
+
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div style={{
+          position: 'fixed',
+          top: '3rem',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.8)',
+          backdropFilter: 'blur(10px)',
+          zIndex: 40,
+        }}
+        className="md:hidden"
+        onClick={() => setIsMobileMenuOpen(false)}
+        >
+          <div style={{
+            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
+            padding: '2rem 1rem',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem'
+          }}
+          onClick={(e) => e.stopPropagation()}
+          >
+            {/* Mobile Navigation Links */}
+            <Link 
+              href="/" 
+              style={{
+                color: '#e2e8f0',
+                textDecoration: 'none',
+                padding: '1rem',
+                fontSize: '1rem',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                minHeight: '44px'
+              }}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              🏠 בית
+            </Link>
+            
+            <Link 
+              href="/products" 
+              style={{
+                color: '#e2e8f0',
+                textDecoration: 'none',
+                padding: '1rem',
+                fontSize: '1rem',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                minHeight: '44px'
+              }}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              🥩 מוצרים
+            </Link>
+
+            <Link 
+              href="/compare" 
+              style={{
+                color: '#e2e8f0',
+                textDecoration: 'none',
+                padding: '1rem',
+                fontSize: '1rem',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                minHeight: '44px'
+              }}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              📊 השוואה
+            </Link>
+
+            <Link 
+              href="/report-price" 
+              style={{
+                color: '#e2e8f0',
+                textDecoration: 'none',
+                padding: '1rem',
+                fontSize: '1rem',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                minHeight: '44px'
+              }}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              💰 מחירים
+            </Link>
+
+            {/* Mobile Auth Section */}
+            <div style={{
+              marginTop: '2rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem'
+            }}>
+              {isClient && !isLoading && user ? (
+                <>
+                  <div style={{
+                    color: '#cbd5e1',
+                    fontSize: '1rem',
+                    padding: '1rem',
+                    textAlign: 'center',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+                  }}>
+                    👋 שלום, {user.name || user.email}!
+                  </div>
+                  <Link 
+                    href="/settings" 
+                    style={{
+                      color: '#e2e8f0',
+                      textDecoration: 'none',
+                      padding: '1rem',
+                      fontSize: '1rem',
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      minHeight: '44px'
+                    }}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    ⚙️ הגדרות
+                  </Link>
+                  <button
+                    onClick={() => {
+                      logout();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    style={{
+                      background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '1rem',
+                      fontSize: '1rem',
+                      width: '100%',
+                      marginTop: '1rem',
+                      cursor: 'pointer',
+                      minHeight: '44px'
+                    }}
+                  >
+                    🚪 התנתק
+                  </button>
+                </>
+              ) : isClient && !isLoading && !user ? (
+                <>
+                  <Link 
+                    href="/register" 
+                    style={{
+                      color: '#e2e8f0',
+                      textDecoration: 'none',
+                      padding: '1rem',
+                      fontSize: '1rem',
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      minHeight: '44px'
+                    }}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    📝 הרשמה
+                  </Link>
+                  <Link 
+                    href="/login" 
+                    style={{
+                      background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '1rem',
+                      fontSize: '1rem',
+                      width: '100%',
+                      marginTop: '1rem',
+                      textAlign: 'center',
+                      textDecoration: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minHeight: '44px'
+                    }}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    🔐 התחברות
+                  </Link>
+                </>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 };

@@ -451,14 +451,61 @@ export default function ComparePage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 mb-2">טוען מטריקס מחירים...</p>
+      <div style={{
+        maxWidth: '1200px',
+        margin: '0 auto',
+        padding: '1rem',
+        '@media (min-width: 768px)': {
+          padding: '2rem',
+        }
+      }}>
+        <div style={{
+          textAlign: 'center',
+          padding: '2rem 1rem',
+          '@media (min-width: 768px)': {
+            padding: '3rem 1rem',
+          }
+        }}>
+          <div style={{
+            width: '3rem',
+            height: '3rem',
+            border: '3px solid #e5e7eb',
+            borderTop: '3px solid #2563eb',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 1rem'
+          }}></div>
+          <p style={{
+            color: '#6b7280',
+            marginBottom: '0.5rem',
+            fontSize: '0.875rem',
+            '@media (min-width: 768px)': {
+              fontSize: '1rem',
+            }
+          }}>טוען מטריקס מחירים...</p>
           <ServerStatusIndicator />
           {retrying && (
-            <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200 max-w-md mx-auto">
-              <p className="text-sm text-blue-600 font-medium">
+            <div style={{
+              marginTop: '1rem',
+              padding: '1rem',
+              background: '#dbeafe',
+              borderRadius: '8px',
+              border: '1px solid #bfdbfe',
+              maxWidth: '20rem',
+              margin: '1rem auto 0',
+              '@media (min-width: 768px)': {
+                marginTop: '1.5rem',
+                padding: '1.5rem',
+                borderRadius: '12px',
+              }
+            }}>
+              <p style={{
+                fontSize: '0.875rem',
+                color: '#2563eb',
+                fontWeight: '500',
+                textAlign: 'center',
+                margin: 0
+              }}>
                 💤 השרת "נרדם" - מעיר אותו עכשיו...
               </p>
             </div>
@@ -470,17 +517,80 @@ export default function ComparePage() {
 
   if (error && !showOfflineData) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center max-w-2xl mx-auto">
-          <AlertTriangle className="mx-auto h-12 w-12 text-red-500 mb-4" />
-          <h2 className="text-xl font-semibold text-red-800 mb-2">שגיאה בטעינת הנתונים</h2>
-          <p className="text-red-600 mb-4">{error}</p>
+      <div style={{
+        maxWidth: '1200px',
+        margin: '0 auto',
+        padding: '1rem',
+        '@media (min-width: 768px)': {
+          padding: '2rem',
+        }
+      }}>
+        <div style={{
+          background: '#fef2f2',
+          border: '1px solid #fecaca',
+          borderRadius: '8px',
+          padding: '1.5rem',
+          textAlign: 'center',
+          maxWidth: '32rem',
+          margin: '0 auto',
+          '@media (min-width: 768px)': {
+            borderRadius: '12px',
+            padding: '2rem',
+          }
+        }}>
+          <AlertTriangle style={{
+            width: '3rem',
+            height: '3rem',
+            color: '#ef4444',
+            margin: '0 auto 1rem'
+          }} />
+          <h2 style={{
+            fontSize: '1.125rem',
+            fontWeight: '600',
+            color: '#991b1b',
+            marginBottom: '0.5rem',
+            '@media (min-width: 768px)': {
+              fontSize: '1.25rem',
+            }
+          }}>שגיאה בטעינת הנתונים</h2>
+          <p style={{
+            color: '#dc2626',
+            marginBottom: '1rem',
+            fontSize: '0.875rem',
+            '@media (min-width: 768px)': {
+              fontSize: '1rem',
+            }
+          }}>{error}</p>
           <button
             onClick={handleRetry}
             disabled={retrying}
-            className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center mx-auto"
+            style={{
+              background: '#dc2626',
+              color: 'white',
+              padding: '0.75rem 1.5rem',
+              borderRadius: '8px',
+              border: 'none',
+              cursor: retrying ? 'not-allowed' : 'pointer',
+              opacity: retrying ? 0.5 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              margin: '0 auto',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              gap: '0.5rem',
+              minHeight: '44px',
+              '@media (min-width: 768px)': {
+                padding: '1rem 2rem',
+                fontSize: '1rem',
+                borderRadius: '12px',
+              }
+            }}
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${retrying ? 'animate-spin' : ''}`} />
+            <RefreshCw style={{
+              width: '1rem',
+              height: '1rem',
+              animation: retrying ? 'spin 1s linear infinite' : 'none'
+            }} />
             {retrying ? 'מנסה שוב...' : 'נסה שוב'}
           </button>
         </div>
@@ -547,22 +657,83 @@ export default function ComparePage() {
   console.log('📊 Products after grouping:', productsWithPricesRaw.length, '→', productsWithPrices.length);
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div style={{
+      maxWidth: '1200px',
+      margin: '0 auto',
+      padding: '1rem',
+      '@media (min-width: 768px)': {
+        padding: '2rem',
+      }
+    }}>
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1rem',
+        marginBottom: '1.5rem',
+        '@media (min-width: 768px)': {
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '2rem',
+        }
+      }}>
         <div>
-          <h1 className="text-3xl font-bold">טבלת השוואת מחירים 🥩</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 style={{
+            fontSize: '1.5rem',
+            fontWeight: 'bold',
+            marginBottom: '0.25rem',
+            '@media (min-width: 768px)': {
+              fontSize: '2.5rem',
+            }
+          }}>טבלת השוואת מחירים 🥩</h1>
+          <p style={{
+            color: '#6b7280',
+            marginTop: '0.25rem',
+            fontSize: '0.875rem',
+            '@media (min-width: 768px)': {
+              fontSize: '1rem',
+            }
+          }}>
             השוואת מחירי נתחי בשר בין {retailers.length} קמעונאים - {productsWithPrices.length} מוצרים
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+          flexWrap: 'wrap',
+          '@media (min-width: 768px)': {
+            gap: '1rem',
+            flexWrap: 'nowrap',
+          }
+        }}>
           <ServerStatusIndicator />
           <button
             onClick={handleRetry}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 text-sm"
+            style={{
+              background: '#2563eb',
+              color: 'white',
+              padding: '0.75rem 1rem',
+              borderRadius: '8px',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              minHeight: '44px',
+              '@media (min-width: 768px)': {
+                padding: '1rem 1.5rem',
+                borderRadius: '12px',
+              }
+            }}
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw style={{
+              width: '1rem',
+              height: '1rem'
+            }} />
             רענן
           </button>
         </div>
