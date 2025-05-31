@@ -55,4 +55,24 @@ router.delete(
     productController.deleteProduct
 );
 
+// === נתיבים חדשים למערכת ניהול מוצרים ===
+
+// POST /api/products/create-by-user - יצירת מוצר על ידי משתמש רגיל (דורש אישור)
+router.post('/create-by-user', authenticateToken, productController.createProductByUser);
+
+// GET /api/products/pending - קבלת מוצרים ממתינים לאישור (אדמין בלבד)
+router.get('/pending', authenticateToken, authorizeRole(['admin']), productController.getPendingProducts);
+
+// PATCH /api/products/:id/approve - אישור מוצר (אדמין בלבד)
+router.patch('/:id/approve', authenticateToken, authorizeRole(['admin']), productController.approveProduct);
+
+// PATCH /api/products/:id/reject - דחיית מוצר (אדמין בלבד)
+router.patch('/:id/reject', authenticateToken, authorizeRole(['admin']), productController.rejectProduct);
+
+// GET /api/products/:id/analytics - קבלת אנליטיקה למוצר (אדמין בלבד)
+router.get('/:id/analytics', authenticateToken, authorizeRole(['admin']), productController.getProductAnalytics);
+
+// PUT /api/products/:id/admin - עדכון מוצר עם הרשאות מלאות (אדמין בלבד)
+router.put('/:id/admin', authenticateToken, authorizeRole(['admin']), productController.updateProductAdmin);
+
 module.exports = router;

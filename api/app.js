@@ -16,6 +16,7 @@ const requestsRoutes = require('./routes/requests');
 const analyticsRoutes = require('./routes/analytics');
 const categoriesRoutes = require('./routes/categories');
 const cutsRoutes = require('./routes/cuts');
+const adminRoutes = require('./routes/admin');
 // const normalizeRoutes = require('./routes/normalize');
 
 const app = express();
@@ -143,6 +144,8 @@ app.use('/api/categories', categoriesRoutes);
 console.log('✅ /api/categories mounted');
 app.use('/api/cuts', cutsRoutes);
 console.log('✅ /api/cuts mounted');
+app.use('/api/admin', adminRoutes);
+console.log('✅ /api/admin mounted');
 // app.use('/api/normalize', normalizeRoutes);
 
 // ========== ROOT & HEALTH ROUTES ==========
@@ -164,7 +167,8 @@ app.get('/', (req, res) => {
       retailers: '/api/retailers',
       autocomplete: '/api/autocomplete',
       requests: '/api/requests',
-      analytics: '/api/analytics'
+      analytics: '/api/analytics',
+      admin: '/api/admin'
     }
   });
 });

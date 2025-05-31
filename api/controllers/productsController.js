@@ -590,6 +590,350 @@ const getFilterOptions = async (req, res, next) => {
   }
 };
 
+// יצירת מוצר על ידי משתמש רגיל
+const createProductByUser = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const {
+      name, category, cut_id, product_subtype_id,
+      brand, quality_grade, processing_state,
+      has_bone, kosher_level, origin_country, description
+    } = req.body;
+
+    // וולידציה
+    if (!name || !category || !cut_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'שם מוצר, קטגוריה ונתח הם שדות חובה'
+      });
+    }
+
+    const query = `
+      INSERT INTO products (
+        name, category, cut_id, product_subtype_id,
+        brand, quality_grade, processing_state, has_bone,
+        kosher_level, origin_country, description,
+        status, created_by_user_id, is_active
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending', $12, true)
+      RETURNING *
+    `;
+
+    const values = [
+      name, category, cut_id, product_subtype_id,
+      brand, quality_grade, processing_state, has_bone,
+      kosher_level, origin_country, description, userId
+    ];
+
+    const result = await pool.query(query, values);
+
+    // לוג פעולה
+    await logAdminAction(userId, 'create_product_request', 'product', result.rows[0].id, {
+      product_name: name,
+      status: 'pending'
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'המוצר נשלח לאישור מנהל המערכת',
+      product: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('Error creating product by user:', error);
+    res.status(500).json({
+      success: false,
+      error: 'שגיאה ביצירת המוצר'
+    });
+  }
+};
+
+// קבלת מוצרים ממתינים לאישור
+const getPendingProducts = async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        p.*,
+        c.hebrew_name as cut_name,
+        c.category as cut_category,
+        ps.name as subtype_name,
+        ps.hebrew_description,
+        u.name as created_by_name,
+        u.email as created_by_email
+      FROM products p
+      LEFT JOIN cuts c ON p.cut_id = c.id
+      LEFT JOIN product_subtypes ps ON p.product_subtype_id = ps.id
+      LEFT JOIN users u ON p.created_by_user_id = u.id
+      WHERE p.status = 'pending'
+      ORDER BY p.created_at DESC
+    `;
+
+    const result = await pool.query(query);
+
+    res.json({
+      success: true,
+      pendingProducts: result.rows,
+      count: result.rows.length
+    });
+
+  } catch (error) {
+    console.error('Error fetching pending products:', error);
+    res.status(500).json({
+      success: false,
+      error: 'שגיאה בטעינת מוצרים ממתינים'
+    });
+  }
+};
+
+// אישור מוצר
+const approveProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.user.id;
+    const { notes } = req.body;
+
+    const query = `
+      UPDATE products 
+      SET status = 'approved', 
+          approved_by_user_id = $1, 
+          approved_at = CURRENT_TIMESTAMP
+      WHERE id = $2 AND status = 'pending'
+      RETURNING *
+    `;
+
+    const result = await pool.query(query, [adminId, id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'מוצר לא נמצא או כבר אושר'
+      });
+    }
+
+    // לוג פעולה
+    await logAdminAction(adminId, 'approve_product', 'product', id, {
+      product_name: result.rows[0].name,
+      notes
+    });
+
+    res.json({
+      success: true,
+      message: 'המוצר אושר בהצלחה',
+      product: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('Error approving product:', error);
+    res.status(500).json({
+      success: false,
+      error: 'שגיאה באישור המוצר'
+    });
+  }
+};
+
+// דחיית מוצר
+const rejectProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.user.id;
+    const { reason } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({
+        success: false,
+        error: 'נדרשת סיבה לדחיית המוצר'
+      });
+    }
+
+    const query = `
+      UPDATE products 
+      SET status = 'rejected', 
+          rejection_reason = $1,
+          approved_by_user_id = $2,
+          approved_at = CURRENT_TIMESTAMP
+      WHERE id = $3 AND status = 'pending'
+      RETURNING *
+    `;
+
+    const result = await pool.query(query, [reason, adminId, id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'מוצר לא נמצא'
+      });
+    }
+
+    // לוג פעולה
+    await logAdminAction(adminId, 'reject_product', 'product', id, {
+      product_name: result.rows[0].name,
+      reason
+    });
+
+    res.json({
+      success: true,
+      message: 'המוצר נדחה',
+      product: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('Error rejecting product:', error);
+    res.status(500).json({
+      success: false,
+      error: 'שגיאה בדחיית המוצר'
+    });
+  }
+};
+
+// סטטיסטיקות מתקדמות למוצר
+const getProductAnalytics = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const queries = await Promise.all([
+      // סטטיסטיקות מחיר
+      pool.query(`
+        SELECT 
+          COUNT(*) as total_reports,
+          AVG(regular_price) as avg_price,
+          MIN(regular_price) as min_price,
+          MAX(regular_price) as max_price,
+          COUNT(DISTINCT retailer_id) as unique_retailers,
+          COUNT(CASE WHEN is_sale = true THEN 1 END) as sale_reports
+        FROM prices 
+        WHERE product_id = $1 AND is_active = true AND status = 'approved'
+      `, [id]),
+
+      // מגמות מחיר (30 ימים אחרונים)
+      pool.query(`
+        SELECT 
+          DATE_TRUNC('day', created_at) as date,
+          AVG(regular_price) as avg_price,
+          COUNT(*) as reports_count
+        FROM prices 
+        WHERE product_id = $1 
+          AND is_active = true 
+          AND status = 'approved'
+          AND created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY DATE_TRUNC('day', created_at)
+        ORDER BY date
+      `, [id]),
+
+      // מחירים לפי חנות
+      pool.query(`
+        SELECT DISTINCT ON (r.id)
+          r.id,
+          r.name as retailer_name,
+          r.location,
+          p.regular_price,
+          p.sale_price,
+          p.is_sale,
+          p.created_at
+        FROM prices p
+        JOIN retailers r ON p.retailer_id = r.id
+        WHERE p.product_id = $1 
+          AND p.is_active = true 
+          AND p.status = 'approved'
+        ORDER BY r.id, p.created_at DESC
+      `, [id])
+    ]);
+
+    res.json({
+      success: true,
+      analytics: {
+        overview: queries[0].rows[0],
+        priceTrends: queries[1].rows,
+        pricesByRetailer: queries[2].rows
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching product analytics:', error);
+    res.status(500).json({
+      success: false,
+      error: 'שגיאה בטעינת אנליטיקה'
+    });
+  }
+};
+
+// עדכון מוצר (אדמין)
+const updateProductAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.user.id;
+    const updates = req.body;
+
+    // בניית שאילתת עדכון דינמית
+    const allowedFields = [
+      'name', 'category', 'cut_id', 'product_subtype_id',
+      'brand', 'quality_grade', 'processing_state', 'has_bone',
+      'kosher_level', 'origin_country', 'description', 'is_active'
+    ];
+
+    const updateFields = Object.keys(updates).filter(field => 
+      allowedFields.includes(field)
+    );
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'לא נמצאו שדות תקינים לעדכון'
+      });
+    }
+
+    const setClause = updateFields.map((field, index) => 
+      `${field} = $${index + 2}`
+    ).join(', ');
+
+    const query = `
+      UPDATE products 
+      SET ${setClause}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING *
+    `;
+
+    const values = [id, ...updateFields.map(field => updates[field])];
+    const result = await pool.query(query, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'מוצר לא נמצא'
+      });
+    }
+
+    // לוג פעולה
+    await logAdminAction(adminId, 'update_product', 'product', id, {
+      updated_fields: updateFields,
+      changes: updates
+    });
+
+    res.json({
+      success: true,
+      message: 'המוצר עודכן בהצלחה',
+      product: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('Error updating product:', error);
+    res.status(500).json({
+      success: false,
+      error: 'שגיאה בעדכון המוצר'
+    });
+  }
+};
+
+// פונקציית עזר לרישום פעולות אדמין
+const logAdminAction = async (adminId, actionType, targetType, targetId, details = {}) => {
+  try {
+    await pool.query(`
+      INSERT INTO admin_actions (admin_user_id, action_type, target_type, target_id, details)
+      VALUES ($1, $2, $3, $4, $5)
+    `, [adminId, actionType, targetType, targetId, JSON.stringify(details)]);
+  } catch (error) {
+    console.error('Error logging admin action:', error);
+  }
+};
+
 module.exports = {
   getAllProducts,
   getProductById,
@@ -599,5 +943,12 @@ module.exports = {
   searchProducts,       // New
   getSubtypesByCut,    // New
   getAllCuts,          // New
-  getFilterOptions     // New
+  getFilterOptions,     // New
+  createProductByUser,  // New admin functions
+  getPendingProducts,
+  approveProduct,
+  rejectProduct,
+  getProductAnalytics,
+  updateProductAdmin,
+  logAdminAction
 };
