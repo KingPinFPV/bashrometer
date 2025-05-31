@@ -168,8 +168,8 @@ const rateLimiter = new RateLimiter();
 // Predefined rate limiters for different use cases
 const authRateLimit = rateLimiter.create({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 5, // 5 login attempts per window
-  blockDurationMs: 30 * 60 * 1000, // 30 minutes block
+  maxRequests: 10, // 10 attempts per window (increased from 5)
+  blockDurationMs: 5 * 60 * 1000, // 5 minutes block (reduced from 30)
   message: 'Too many authentication attempts.',
   skipSuccessfulRequests: true // Don't count successful logins against the limit
 });

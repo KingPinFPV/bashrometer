@@ -50,6 +50,10 @@ export default function RegisterPage() {
           router.push('/login'); // העבר לדף ההתחברות
         }, 2000);
 
+      } else if (response.status === 429) {
+        // Handle rate limiting error specifically
+        const retryAfter = data.retryAfter ? Math.ceil(data.retryAfter / 60) : 5;
+        setMessage(`יותר מדי ניסיונות הרשמה. אנא נסה שוב בעוד ${retryAfter} דקות.`);
       } else {
         setMessage(data.error || 'אירעה שגיאה ברישום. אנא נסה שוב.');
       }
