@@ -1,6 +1,9 @@
 'use client';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+
 import React, { useState, useEffect } from 'react';
+import { authenticatedApiCall } from '@/config/api';
 import { Plus, Check, X } from 'lucide-react';
 
 interface Cut {
@@ -12,21 +15,23 @@ interface Cut {
 }
 
 interface CutSelectorProps {
-  selectedCut?: Cut | null;
-  onCutSelect: (cut: Cut | null) => void;
+  value?: number | null;
+  onChange: (cutId: number | null) => void;
   category?: string;
   className?: string;
   disabled?: boolean;
   required?: boolean;
+  placeholder?: string;
 }
 
 const CutSelector: React.FC<CutSelectorProps> = ({ 
-  selectedCut, 
-  onCutSelect, 
+  value, 
+  onChange, 
   category, 
   className = '',
   disabled = false,
-  required = false
+  required = false,
+  placeholder = 'בחר נתח'
 }) => {
   const [cuts, setCuts] = useState<Cut[]>([]);
   const [loading, setLoading] = useState(false);
@@ -41,31 +46,17 @@ const CutSelector: React.FC<CutSelectorProps> = ({
   }, [category]);
   
   const fetchCuts = async () => {
+    if (!category) {
+      setCuts([]);
+      return;
+    }
+    
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/cuts`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      if (data.data) {
-        // Group cuts by category and get the relevant ones
-        const cutsByCategory = data.data;
-        let relevantCuts: Cut[] = [];
-        
-        if (category && cutsByCategory[category]) {
-          relevantCuts = cutsByCategory[category];
-        } else {
-          // If no category specified, get all cuts
-          relevantCuts = Object.values(cutsByCategory).flat() as Cut[];
-        }
-        
-        setCuts(relevantCuts);
-      } else {
-        setCuts([]);
-      }
+      const url = `/api/cuts?category=${encodeURIComponent(category)}&limit=100`;
+      const data = await authenticatedApiCall(url);
+      setCuts(data.cuts || data.data || []);
     } catch (error) {
       console.error('Error fetching cuts:', error);
       setError('שגיאה בטעינת רשימת הנתחים');
@@ -109,12 +100,13 @@ const CutSelector: React.FC<CutSelectorProps> = ({
         throw new Error(errorData.error || 'שגיאה בהוספת הנתח');
       }
       
-      const newCut = await response.json();
+      const result = await response.json();
+      const newCut = result.cut || result;
       
       // Add to cuts list and select it
       const updatedCuts = [...cuts, newCut];
       setCuts(updatedCuts);
-      onCutSelect(newCut);
+      onChange(newCut.id);
       
       // Reset form
       setNewCutName('');
@@ -130,13 +122,8 @@ const CutSelector: React.FC<CutSelectorProps> = ({
   };
   
   const handleCutChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const cutId = parseInt(e.target.value);
-    if (isNaN(cutId)) {
-      onCutSelect(null);
-    } else {
-      const cut = cuts.find(c => c.id === cutId);
-      onCutSelect(cut || null);
-    }
+    const cutId = e.target.value ? parseInt(e.target.value) : null;
+    onChange(cutId);
   };
   
   const handleCancelAdd = () => {
@@ -164,15 +151,15 @@ const CutSelector: React.FC<CutSelectorProps> = ({
       
       <div className="relative">
         <select 
-          value={selectedCut?.id || ''}
+          value={value || ''}
           onChange={handleCutChange}
-          disabled={disabled}
+          disabled={disabled || !category}
           required={required}
           className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-            disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
+            disabled || !category ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
           }`}
         >
-          <option value="">בחר נתח{required ? ' *' : ''}</option>
+          <option value="">{placeholder}{required ? ' *' : ''}</option>
           {cuts.map(cut => (
             <option key={cut.id} value={cut.id}>
               {cut.hebrew_name || cut.name}
@@ -197,6 +184,11 @@ const CutSelector: React.FC<CutSelectorProps> = ({
                 <span className="text-gray-500 text-xs">(יש לבחור קטגוריה)</span>
               )}
             </button>
+            {!category && (
+              <div className="text-gray-500 text-xs mt-1">
+                יש לבחור קטגוריה או סוג בעל חיים תחילה
+              </div>
+            )}
           ) : (
             <div className="bg-gray-50 border border-gray-200 rounded-md p-4 space-y-3">
               <h4 className="font-medium text-gray-900">הוספת נתח חדש</h4>

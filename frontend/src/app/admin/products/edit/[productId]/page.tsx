@@ -88,6 +88,8 @@ export default function EditProductPage() {
         kosher_level: productData.kosher_level,
         animal_type: productData.animal_type,
         cut_type: productData.cut_type,
+        cut_id: productData.cut_id,
+        product_subtype_id: productData.product_subtype_id,
         default_weight_per_unit_grams: productData.default_weight_per_unit_grams,
         image_url: productData.image_url,
         is_active: productData.is_active,
@@ -164,6 +166,8 @@ export default function EditProductPage() {
       origin_country: formData.origin_country?.trim() || null,
       animal_type: formData.animal_type?.trim() || null,
       cut_type: formData.cut_type?.trim() || null,
+      cut_id: formData.cut_id,
+      product_subtype_id: formData.product_subtype_id,
       image_url: formData.image_url?.trim() || null,
     };
 
@@ -365,15 +369,20 @@ export default function EditProductPage() {
               className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm" />
           </div>
           <div>
-            <label htmlFor="cut_type" className="block text-sm font-medium text-slate-700">סוג נתח</label>
-            <Autocomplete
-              placeholder="חפש נתח..."
-              value={formData.cut_type || ''}
-              onChange={(value) => setFormData(prev => ({ ...prev, cut_type: value }))}
-              endpoint="meat-cuts"
-              category={formData.animal_type || undefined}
-              name="cut_type"
-              id="cut_type"
+            <label htmlFor="cut_id" className="block text-sm font-medium text-slate-700">נתח</label>
+            <CutSelector
+              value={formData.cut_id}
+              onChange={(cutId) => setFormData(prev => ({ ...prev, cut_id: cutId, product_subtype_id: null }))}
+              category={formData.animal_type || formData.category}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <label htmlFor="product_subtype_id" className="block text-sm font-medium text-slate-700">תת-נתח</label>
+            <SubtypeSelector
+              cutId={formData.cut_id}
+              value={formData.product_subtype_id}
+              onChange={(subtypeId) => setFormData(prev => ({ ...prev, product_subtype_id: subtypeId }))}
               className="mt-1"
             />
           </div>

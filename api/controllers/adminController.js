@@ -386,23 +386,67 @@ const rejectProduct = async (req, res) => {
 const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, category, cut_id, subtype_id, description } = req.body;
+    const { 
+      name, 
+      category, 
+      cut_id, 
+      product_subtype_id,
+      description,
+      brand,
+      animal_type,
+      kosher_level,
+      unit_of_measure,
+      origin_country,
+      default_weight_per_unit_grams,
+      is_active
+    } = req.body;
     
     if (!id || isNaN(parseInt(id))) {
       return res.status(400).json({ error: 'Invalid product ID' });
     }
     
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Product name is required' });
+    }
+    
     const result = await pool.query(
       `UPDATE products 
-       SET name = $1, category = $2, cut_id = $3, product_subtype_id = $4, description = $5, updated_at = NOW()
-       WHERE id = $6 RETURNING *`,
-      [name, category, cut_id, subtype_id, description, parseInt(id)]
+       SET name = $1, 
+           category = $2, 
+           cut_id = $3, 
+           product_subtype_id = $4, 
+           description = $5,
+           brand = $6,
+           animal_type = $7,
+           kosher_level = $8,
+           unit_of_measure = $9,
+           origin_country = $10,
+           default_weight_per_unit_grams = $11,
+           is_active = $12,
+           updated_at = NOW()
+       WHERE id = $13 RETURNING *`,
+      [
+        name.trim(), 
+        category, 
+        cut_id, 
+        product_subtype_id, 
+        description,
+        brand,
+        animal_type,
+        kosher_level,
+        unit_of_measure || 'kg',
+        origin_country,
+        default_weight_per_unit_grams,
+        is_active !== undefined ? is_active : true,
+        parseInt(id)
+      ]
     );
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Product not found' });
     }
     
+    console.log(`✅ Product ${id} updated successfully`);
     res.json({ success: true, product: result.rows[0] });
     
   } catch (error) {
