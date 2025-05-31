@@ -114,10 +114,10 @@ const Navbar = () => {
   const primaryButtonStyle = {
     background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
     color: 'white',
-    padding: '0.75rem 1.5rem',
-    borderRadius: '12px',
+    padding: '0.625rem 1rem',
+    borderRadius: '8px',
     fontWeight: '600',
-    fontSize: '0.9rem',
+    fontSize: '0.875rem',
     textDecoration: 'none',
     display: 'inline-block',
     boxShadow: '0 4px 14px 0 rgba(59, 130, 246, 0.25)',
@@ -125,15 +125,21 @@ const Navbar = () => {
     transform: 'translateY(0)',
     border: 'none',
     cursor: 'pointer',
+    minHeight: '36px',
+    '@media (min-width: 640px)': {
+      padding: '0.75rem 1.5rem',
+      fontSize: '0.9rem',
+      minHeight: '40px'
+    }
   };
 
   const secondaryButtonStyle = {
     background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
     color: 'white',
-    padding: '0.75rem 1.5rem',
-    borderRadius: '12px',
+    padding: '0.625rem 1rem',
+    borderRadius: '8px',
     fontWeight: '600',
-    fontSize: '0.9rem',
+    fontSize: '0.875rem',
     textDecoration: 'none',
     display: 'inline-block',
     boxShadow: '0 4px 14px 0 rgba(249, 115, 22, 0.25)',
@@ -141,26 +147,64 @@ const Navbar = () => {
     transform: 'translateY(0)',
     border: 'none',
     cursor: 'pointer',
+    minHeight: '36px',
+    '@media (min-width: 640px)': {
+      padding: '0.75rem 1.5rem',
+      fontSize: '0.9rem',
+      minHeight: '40px'
+    }
   };
 
   const logoutButtonStyle = {
-    background: 'rgba(255, 255, 255, 0.1)',
-    color: '#e2e8f0',
-    padding: '0.75rem 1.5rem',
-    borderRadius: '12px',
-    fontWeight: '500',
-    fontSize: '0.9rem',
-    border: '1px solid rgba(255, 255, 255, 0.2)',
+    background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+    color: 'white',
+    padding: '0.625rem 1rem',
+    borderRadius: '8px',
+    fontWeight: '600',
+    fontSize: '0.875rem',
+    border: 'none',
     cursor: 'pointer',
     backdropFilter: 'blur(10px)',
     transition: 'all 0.3s ease',
     transform: 'translateY(0)',
+    boxShadow: '0 4px 14px 0 rgba(239, 68, 68, 0.25)',
+    minHeight: '36px',
+    '@media (min-width: 640px)': {
+      padding: '0.75rem 1.5rem',
+      fontSize: '0.9rem',
+      minHeight: '40px'
+    }
   };
 
   const userGreetingStyle = {
     color: '#cbd5e1',
-    fontSize: '0.9rem',
+    fontSize: '0.875rem',
     fontWeight: '500',
+    '@media (min-width: 640px)': {
+      fontSize: '0.9rem'
+    }
+  };
+
+  const loginButtonStyle = {
+    background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+    color: 'white',
+    padding: '0.625rem 1rem',
+    borderRadius: '8px',
+    fontWeight: '600',
+    fontSize: '0.875rem',
+    textDecoration: 'none',
+    display: 'inline-block',
+    boxShadow: '0 4px 14px 0 rgba(59, 130, 246, 0.25)',
+    transition: 'all 0.3s ease',
+    transform: 'translateY(0)',
+    border: 'none',
+    cursor: 'pointer',
+    minHeight: '36px',
+    '@media (min-width: 640px)': {
+      padding: '0.75rem 1.5rem',
+      fontSize: '0.9rem',
+      minHeight: '40px'
+    }
   };
 
   return (
@@ -293,12 +337,12 @@ const Navbar = () => {
                 onClick={logout}
                 style={logoutButtonStyle}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 8px 25px 0 rgba(239, 68, 68, 0.35)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
                   e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 14px 0 rgba(239, 68, 68, 0.25)';
                 }}
               >
                 🚪 התנתק
@@ -308,14 +352,14 @@ const Navbar = () => {
             <>
               <Link 
                 href="/login" 
-                style={linkStyle}
+                style={loginButtonStyle}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                  e.currentTarget.style.color = '#60a5fa';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 8px 25px 0 rgba(59, 130, 246, 0.35)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = '#e2e8f0';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 14px 0 rgba(59, 130, 246, 0.25)';
                 }}
               >
                 🔐 התחברות
@@ -440,11 +484,11 @@ const Navbar = () => {
               <Link 
                 href="/login" 
                 style={{
-                  ...linkStyle,
-                  padding: '0.75rem 1rem',
-                  borderRadius: '8px',
+                  ...loginButtonStyle,
                   width: '100%',
                   textAlign: 'center',
+                  fontSize: '1rem',
+                  padding: '0.875rem 1rem',
                 }}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
