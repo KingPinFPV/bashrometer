@@ -398,7 +398,12 @@ const updateProduct = async (req, res) => {
       unit_of_measure,
       origin_country,
       default_weight_per_unit_grams,
-      is_active
+      is_active,
+      short_description,
+      image_url,
+      processing_state,
+      has_bone,
+      quality_grade
     } = req.body;
     
     if (!id || isNaN(parseInt(id))) {
@@ -423,8 +428,13 @@ const updateProduct = async (req, res) => {
            origin_country = $10,
            default_weight_per_unit_grams = $11,
            is_active = $12,
+           short_description = $13,
+           image_url = $14,
+           processing_state = $15,
+           has_bone = $16,
+           quality_grade = $17,
            updated_at = NOW()
-       WHERE id = $13 RETURNING *`,
+       WHERE id = $18 RETURNING *`,
       [
         name.trim(), 
         category, 
@@ -438,6 +448,11 @@ const updateProduct = async (req, res) => {
         origin_country,
         default_weight_per_unit_grams,
         is_active !== undefined ? is_active : true,
+        short_description,
+        image_url,
+        processing_state,
+        has_bone !== undefined ? has_bone : false,
+        quality_grade,
         parseInt(id)
       ]
     );

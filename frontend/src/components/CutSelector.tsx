@@ -63,13 +63,22 @@ const CutSelector: React.FC<CutSelectorProps> = ({
         cutsArray = data;
       } else if (data && Array.isArray(data.cuts)) {
         cutsArray = data.cuts;
-      } else if (data && Array.isArray(data.data)) {
+      } else if (data && data.data && typeof data.data === 'object') {
+        // הAPI מחזיר אובייקט עם קטגוריות - נמצא את הקטגוריה הנכונה
+        if (data.data[category] && Array.isArray(data.data[category])) {
+          cutsArray = data.data[category];
+        } else {
+          // אם לא מצאנו את הקטגוריה, נשלב כל הנתחים
+          cutsArray = Object.values(data.data).flat();
+        }
+      } else if (Array.isArray(data.data)) {
         cutsArray = data.data;
       } else {
         console.warn('⚠️ Unexpected cuts API response format:', data);
         cutsArray = [];
       }
       
+      console.log('🔍 CutSelector - Found cuts for category:', category, cutsArray.length);
       setCuts(cutsArray);
     } catch (error) {
       console.error('Error fetching cuts:', error);

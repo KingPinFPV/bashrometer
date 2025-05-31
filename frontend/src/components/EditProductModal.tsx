@@ -43,7 +43,13 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
     kosher_level: '',
     unit_of_measure: 'kg',
     origin_country: '',
-    default_weight_per_unit_grams: null as number | null
+    default_weight_per_unit_grams: null as number | null,
+    short_description: '',
+    image_url: '',
+    processing_state: '',
+    has_bone: false,
+    quality_grade: '',
+    is_active: true
   });
   
   const [cuts, setCuts] = useState<Cut[]>([]);
@@ -58,6 +64,7 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
   
   useEffect(() => {
     if (product) {
+      console.log('📝 Loading product data for editing:', product);
       setFormData({
         name: product.name || '',
         category: product.category || '',
@@ -69,7 +76,13 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
         kosher_level: product.kosher_level || 'לא ידוע',
         unit_of_measure: product.unit_of_measure || 'kg',
         origin_country: product.origin_country || '',
-        default_weight_per_unit_grams: product.default_weight_per_unit_grams || null
+        default_weight_per_unit_grams: product.default_weight_per_unit_grams || null,
+        short_description: product.short_description || '',
+        image_url: product.image_url || '',
+        processing_state: product.processing_state || '',
+        has_bone: product.has_bone || false,
+        quality_grade: product.quality_grade || '',
+        is_active: product.is_active !== undefined ? product.is_active : true
       });
     }
   }, [product]);
@@ -102,13 +115,22 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
         cutsArray = data;
       } else if (data && Array.isArray(data.cuts)) {
         cutsArray = data.cuts;
-      } else if (data && Array.isArray(data.data)) {
+      } else if (data && data.data && typeof data.data === 'object') {
+        // הAPI מחזיר אובייקט עם קטגוריות - נמצא את הקטגוריה הנכונה
+        if (data.data[searchCategory] && Array.isArray(data.data[searchCategory])) {
+          cutsArray = data.data[searchCategory];
+        } else {
+          // אם לא מצאנו את הקטגוריה, נשלב כל הנתחים
+          cutsArray = Object.values(data.data).flat();
+        }
+      } else if (Array.isArray(data.data)) {
         cutsArray = data.data;
       } else {
         console.warn('⚠️ EditProductModal - Unexpected cuts API format:', data);
         cutsArray = [];
       }
       
+      console.log('🔍 Found cuts for category:', searchCategory, cutsArray.length);
       setCuts(cutsArray);
     } catch (error) {
       console.error('Error loading cuts:', error);
@@ -161,8 +183,12 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
         name: formData.name.trim(),
         brand: formData.brand?.trim() || null,
         description: formData.description?.trim() || null,
+        short_description: formData.short_description?.trim() || null,
         animal_type: formData.animal_type?.trim() || null,
-        origin_country: formData.origin_country?.trim() || null
+        origin_country: formData.origin_country?.trim() || null,
+        image_url: formData.image_url?.trim() || null,
+        processing_state: formData.processing_state?.trim() || null,
+        quality_grade: formData.quality_grade?.trim() || null
       };
       
       await onSave({ ...product, ...cleanedData });
@@ -367,11 +393,69 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
                 step="0.01"
               />
             </div>
+            
+            {/* מצב עיבוד */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">מצב עיבוד</label>
+              <select
+                value={formData.processing_state}
+                onChange={(e) => handleInputChange('processing_state', e.target.value)}
+                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">בחר מצב עיבוד</option>
+                <option value="fresh">טרי</option>
+                <option value="frozen">קפוא</option>
+                <option value="aged">מיושן</option>
+                <option value="marinated">מתובל</option>
+              </select>
+            </div>
+            
+            {/* דרגת איכות */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">דרגת איכות</label>
+              <select
+                value={formData.quality_grade}
+                onChange={(e) => handleInputChange('quality_grade', e.target.value)}
+                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">בחר דרגת איכות</option>
+                <option value="standard">רגיל</option>
+                <option value="premium">פרמיום</option>
+                <option value="choice">בחירה</option>
+                <option value="prime">מעולה</option>
+              </select>
+            </div>
+            
+            {/* עם עצם */}
+            <div>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={formData.has_bone}
+                  onChange={(e) => handleInputChange('has_bone', e.target.checked)}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span className="mr-2 text-sm font-medium text-gray-700">עם עצם</span>
+              </label>
+            </div>
           </div>
           
-          {/* תיאור */}
+          {/* תיאור קצר */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">תיאור המוצר</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">תיאור קצר</label>
+            <input
+              type="text"
+              value={formData.short_description}
+              onChange={(e) => handleInputChange('short_description', e.target.value)}
+              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="תיאור קצר למוצר"
+              maxLength={255}
+            />
+          </div>
+          
+          {/* תיאור מפורט */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">תיאור מפורט</label>
             <textarea
               value={formData.description}
               onChange={(e) => handleInputChange('description', e.target.value)}
@@ -379,6 +463,31 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
               rows={4}
               placeholder="תיאור מפורט של המוצר, אופן הכנה, מאפיינים מיוחדים..."
             />
+          </div>
+          
+          {/* כתובת תמונה */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">כתובת תמונה</label>
+            <input
+              type="url"
+              value={formData.image_url}
+              onChange={(e) => handleInputChange('image_url', e.target.value)}
+              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="https://example.com/image.jpg"
+            />
+          </div>
+          
+          {/* מוצר פעיל */}
+          <div>
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={formData.is_active}
+                onChange={(e) => handleInputChange('is_active', e.target.checked)}
+                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span className="mr-2 text-sm font-medium text-gray-700">מוצר פעיל</span>
+            </label>
           </div>
           
           {/* כפתורי פעולה */}
