@@ -1175,7 +1175,7 @@ const getSearchSuggestions = async (req, res, next) => {
         COUNT(p.id) as product_count
       FROM product_name_variants pnv
       LEFT JOIN products p ON p.name ILIKE '%' || pnv.normalized_name || '%'
-      WHERE pnv.variant_name ILIKE $1 AND p.is_active = TRUE
+      WHERE (pnv.variant_name ILIKE $1 OR pnv.normalized_name ILIKE $1) AND p.is_active = TRUE
       GROUP BY pnv.variant_name, pnv.normalized_name, pnv.confidence_score
       HAVING COUNT(p.id) > 0
       ORDER BY pnv.confidence_score DESC, COUNT(p.id) DESC
