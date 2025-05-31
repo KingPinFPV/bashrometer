@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import AddProductModal from '@/components/admin/AddProductModal';
+import PendingProductsManagement from '@/components/PendingProductsManagement';
 import TabButtons from '@/components/TabButtons';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { 
@@ -15,7 +16,8 @@ import {
   MoreVertical,
   Check,
   X,
-  AlertCircle
+  AlertCircle,
+  Clock
 } from 'lucide-react';
 
 interface Product {
@@ -294,30 +296,36 @@ const ProductsManagement: React.FC = () => {
         className="mb-6"
       />
 
-      {/* Search */}
-      <div className="bg-white p-4 rounded-lg border border-gray-200">
-        <form onSubmit={handleSearch} className="flex gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="חיפוש מוצרים לפי שם..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pr-10 pl-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-          >
-            חפש
-          </button>
-        </form>
-      </div>
+      {/* Search - Hide for pending tab since it has its own UI */}
+      {activeTab !== 'pending' && (
+        <div className="bg-white p-4 rounded-lg border border-gray-200">
+          <form onSubmit={handleSearch} className="flex gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="חיפוש מוצרים לפי שם..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pr-10 pl-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+            >
+              חפש
+            </button>
+          </form>
+        </div>
+      )}
 
-      {/* Products Table */}
-      <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
+      {/* Pending Products - Use dedicated component */}
+      {activeTab === 'pending' ? (
+        <PendingProductsManagement />
+      ) : (
+        /* Products Table */
+        <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -496,6 +504,7 @@ const ProductsManagement: React.FC = () => {
           </div>
         )}
       </div>
+      )}
 
       {/* Add Product Modal */}
       {showAddModal && (

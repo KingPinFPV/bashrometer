@@ -57,9 +57,30 @@ export default function ProductsPage() {
 
   // Handle search results from ProductSearch component
   const handleSearchResults = (results: ApiResponse) => {
-    setSearchResults(results);
-    setProducts(results.data || []);
-    setError(null);
+    console.log('📥 Received search results:', results);
+    
+    // Validate and filter products
+    if (results && results.data && Array.isArray(results.data)) {
+      const validProducts = results.data.filter(product => {
+        if (!product || !product.id || !product.name) {
+          console.warn('⚠️ Filtering out invalid product:', product);
+          return false;
+        }
+        return true;
+      });
+      
+      console.log(`✅ Validated ${validProducts.length}/${results.data.length} products`);
+      
+      setSearchResults({
+        ...results,
+        data: validProducts
+      });
+      setProducts(validProducts);
+      setError(null);
+    } else {
+      console.error('❌ Invalid search results format:', results);
+      setError('פורמט תוצאות חיפוש לא תקין');
+    }
   };
 
   // Handle loading state from ProductSearch component
@@ -70,49 +91,115 @@ export default function ProductsPage() {
   // Load initial products on mount
   useEffect(() => {
     const loadInitialProducts = async () => {
+      console.log('🔄 Loading initial products...');
       setIsLoading(true);
+      setError(null);
+      
       try {
-        const response = await fetch(`${apiUrl}/api/products?limit=20&offset=0&sort_by=name&order=ASC`, {
+        const url = `${apiUrl}/api/products?limit=20&offset=0&sort_by=name&order=ASC`;
+        console.log('📡 Fetching from:', url);
+        
+        const response = await fetch(url, {
           credentials: 'include',
           cache: 'no-store',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
         });
 
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          throw new Error(`שגיאה בשרת: ${response.status} ${response.statusText}`);
         }
 
-        // Handle old API format for backward compatibility
         const data = await response.json();
-        if (data.products) {
+        console.log('📊 Received data:', data);
+
+        let validProducts: Product[] = [];
+        let pageInfo = null;
+
+        // Handle different API response formats
+        if (data.products && Array.isArray(data.products)) {
           // Old format
-          setProducts(data.products);
-          setSearchResults({
-            data: data.products,
-            page_info: {
-              total_items: data.total_items || 0,
-              total_pages: data.total_pages || 1,
-              current_page: data.current_page || 1,
-              limit: data.items_per_page || 20,
-              offset: 0,
-              has_next: data.has_next || false,
-              has_previous: data.has_previous || false
+          validProducts = data.products.filter((product: any) => {
+            if (!product || !product.id || !product.name) {
+              console.warn('⚠️ Filtering out invalid product (old format):', product);
+              return false;
             }
+            return true;
           });
-        } else if (data.data) {
+          
+          pageInfo = {
+            total_items: data.total_items || validProducts.length,
+            total_pages: data.total_pages || 1,
+            current_page: data.current_page || 1,
+            limit: data.items_per_page || 20,
+            offset: 0,
+            has_next: data.has_next || false,
+            has_previous: data.has_previous || false
+          };
+        } else if (data.data && Array.isArray(data.data)) {
           // New format
-          setProducts(data.data);
-          setSearchResults(data);
+          validProducts = data.data.filter((product: any) => {
+            if (!product || !product.id || !product.name) {
+              console.warn('⚠️ Filtering out invalid product (new format):', product);
+              return false;
+            }
+            return true;
+          });
+          
+          pageInfo = data.page_info || {
+            total_items: validProducts.length,
+            total_pages: 1,
+            current_page: 1,
+            limit: 20,
+            offset: 0,
+            has_next: false,
+            has_previous: false
+          };
+        } else if (Array.isArray(data)) {
+          // Direct array format
+          validProducts = data.filter((product: any) => {
+            if (!product || !product.id || !product.name) {
+              console.warn('⚠️ Filtering out invalid product (array format):', product);
+              return false;
+            }
+            return true;
+          });
+          
+          pageInfo = {
+            total_items: validProducts.length,
+            total_pages: 1,
+            current_page: 1,
+            limit: 20,
+            offset: 0,
+            has_next: false,
+            has_previous: false
+          };
+        } else {
+          console.error('❌ Unexpected API response format:', data);
+          throw new Error('פורמט תגובה לא צפוי מהשרת');
         }
+
+        console.log(`✅ Successfully loaded ${validProducts.length} valid products`);
+        
+        setProducts(validProducts);
+        setSearchResults({
+          data: validProducts,
+          page_info: pageInfo
+        });
+
       } catch (e: any) {
-        console.error("Failed to load initial products:", e);
-        setError(e.message || 'Failed to load products. Please try again later.');
+        console.error("❌ Failed to load initial products:", e);
+        setError(e.message || 'שגיאה בטעינת המוצרים. אנא נסה שוב מאוחר יותר.');
+        setProducts([]);
       } finally {
         setIsLoading(false);
       }
     };
 
     loadInitialProducts();
-  }, []);
+  }, [apiUrl]);
 
   const containerStyle = {
     minHeight: 'calc(100vh - 200px)',

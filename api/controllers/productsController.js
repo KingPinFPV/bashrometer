@@ -663,8 +663,33 @@ const createProductByUser = async (req, res) => {
 };
 
 // קבלת מוצרים ממתינים לאישור
-const getPendingProducts = async (req, res) => {
+const getPendingProducts = async (req, res, next) => {
   try {
+    console.log('📋 Getting pending products...');
+    
+    const { limit = 10, offset = 0 } = req.query;
+    
+    // ודא שהפרמטרים הם מספרים תקינים
+    const limitNum = parseInt(limit) || 10;
+    const offsetNum = parseInt(offset) || 0;
+    
+    // בדוק שהמשתמש הוא אדמין
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'הרשאות אדמין נדרשות לצפייה במוצרים ממתינים'
+      });
+    }
+    
+    const countQuery = `
+      SELECT COUNT(*) as total_count
+      FROM products p
+      WHERE p.status = 'pending'
+    `;
+    
+    const countResult = await pool.query(countQuery);
+    const totalCount = parseInt(countResult.rows[0].total_count) || 0;
+    
     const query = `
       SELECT 
         p.*,
@@ -680,22 +705,29 @@ const getPendingProducts = async (req, res) => {
       LEFT JOIN users u ON p.created_by_user_id = u.id
       WHERE p.status = 'pending'
       ORDER BY p.created_at DESC
+      LIMIT $1 OFFSET $2
     `;
 
-    const result = await pool.query(query);
+    const result = await pool.query(query, [limitNum, offsetNum]);
+    
+    console.log(`✅ Found ${result.rows.length} pending products (total: ${totalCount})`);
 
     res.json({
       success: true,
-      pendingProducts: result.rows,
-      count: result.rows.length
+      products: result.rows, // Changed from pendingProducts to products for consistency
+      pagination: {
+        total: totalCount,
+        limit: limitNum,
+        offset: offsetNum,
+        current_page: Math.floor(offsetNum / limitNum) + 1,
+        total_pages: Math.ceil(totalCount / limitNum),
+        hasMore: (offsetNum + limitNum) < totalCount
+      }
     });
 
   } catch (error) {
-    console.error('Error fetching pending products:', error);
-    res.status(500).json({
-      success: false,
-      error: 'שגיאה בטעינת מוצרים ממתינים'
-    });
+    console.error('❌ Error fetching pending products:', error);
+    next(error);
   }
 };
 

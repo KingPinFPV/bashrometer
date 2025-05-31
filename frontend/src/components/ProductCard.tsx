@@ -37,12 +37,18 @@ export default function ProductCard({
   showStatus = false,
   compact = false
 }: ProductCardProps) {
-  // Validation: Check for required props
-  if (!id || id === 0 || !name) {
-    console.error('ProductCard: Invalid product data - missing id or name', { id, name });
+  // Enhanced validation: Check for required props
+  if (!id || id === 0 || !name || name.trim() === '') {
+    console.error('ProductCard: Invalid product data - missing id or name', { 
+      id, 
+      name, 
+      type_id: typeof id, 
+      type_name: typeof name 
+    });
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
         <p className="text-red-600 text-sm">שגיאה: נתוני מוצר לא תקינים</p>
+        <p className="text-red-500 text-xs mt-1">מזהה: {id}, שם: {name}</p>
       </div>
     );
   }
@@ -50,10 +56,15 @@ export default function ProductCard({
   // Ensure id is a valid number
   const productId = typeof id === 'string' ? parseInt(id) : id;
   if (isNaN(productId) || productId <= 0) {
-    console.error('ProductCard: Invalid product ID format', { id, productId });
+    console.error('ProductCard: Invalid product ID format', { 
+      id, 
+      productId, 
+      parsed: isNaN(productId) ? 'NaN' : productId 
+    });
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
         <p className="text-red-600 text-sm">שגיאה: מזהה מוצר לא תקין</p>
+        <p className="text-red-500 text-xs mt-1">מזהה שהתקבל: {id}</p>
       </div>
     );
   }
