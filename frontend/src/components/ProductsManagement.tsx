@@ -81,7 +81,22 @@ const ProductsManagement: React.FC = () => {
       setError(null);
       
       const data = await authenticatedApiCall('/api/products/pending');
-      setPendingProducts(data.products || []);
+      console.log('⏳ Pending products data received:', data);
+      
+      // טיפול בפורמטים שונים של response
+      let pendingArray = [];
+      if (Array.isArray(data)) {
+        pendingArray = data;
+      } else if (data && Array.isArray(data.products)) {
+        pendingArray = data.products;
+      } else if (data && Array.isArray(data.data)) {
+        pendingArray = data.data;
+      } else {
+        console.warn('⚠️ Unexpected pending products format:', data);
+        pendingArray = [];
+      }
+      
+      setPendingProducts(pendingArray);
       
     } catch (error) {
       console.error('Error loading pending products:', error);
@@ -143,9 +158,24 @@ const ProductsManagement: React.FC = () => {
       }
       
       const data = await authenticatedApiCall(`/api/products?${params.toString()}`);
-      setProducts(Array.isArray(data) ? data : data.products || []);
+      console.log('📦 Products data received:', data);
       
-      if (data.total_items) {
+      // טיפול בפורמטים שונים של response
+      let productsArray = [];
+      if (Array.isArray(data)) {
+        productsArray = data;
+      } else if (data && Array.isArray(data.products)) {
+        productsArray = data.products;
+      } else if (data && Array.isArray(data.data)) {
+        productsArray = data.data;
+      } else {
+        console.warn('⚠️ Unexpected data format:', data);
+        productsArray = [];
+      }
+      
+      setProducts(productsArray);
+      
+      if (data && data.total_items) {
         setTotalPages(data.total_pages || Math.ceil(data.total_items / ITEMS_PER_PAGE));
       }
 
@@ -246,17 +276,21 @@ const ProductsManagement: React.FC = () => {
   };
 
   const getCurrentProducts = () => {
+    // הוסף הגנות מפני null/undefined
+    const safeProducts = Array.isArray(products) ? products : [];
+    const safePendingProducts = Array.isArray(pendingProducts) ? pendingProducts : [];
+    
     switch (activeTab) {
       case 'pending':
-        return pendingProducts;
+        return safePendingProducts;
       case 'approved':
-        return products;
+        return safeProducts;
       case 'all':
-        return [...products, ...pendingProducts].sort((a, b) => 
+        return [...safeProducts, ...safePendingProducts].sort((a, b) => 
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
       default:
-        return products;
+        return safeProducts;
     }
   };
 
@@ -283,6 +317,13 @@ const ProductsManagement: React.FC = () => {
   }
 
   const currentProducts = getCurrentProducts();
+  console.log('🔍 Current products for display:', {
+    activeTab,
+    productsCount: products.length,
+    pendingProductsCount: pendingProducts.length,
+    currentProductsCount: currentProducts.length,
+    sampleProduct: currentProducts[0]
+  });
 
   return (
     <div className="space-y-6">
@@ -561,6 +602,18 @@ const ProductsManagement: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* הודעה אם אין מוצרים */}
+        {getCurrentProducts().length === 0 && !loading && (
+          <div className="text-center py-8 text-gray-500">
+            <div className="text-lg mb-2">📦</div>
+            <div>
+              {activeTab === 'approved' && 'אין מוצרים מאושרים'}
+              {activeTab === 'pending' && 'אין מוצרים ממתינים לאישור'}
+              {activeTab === 'all' && 'אין מוצרים כלל'}
+            </div>
+          </div>
+        )}
 
         {/* Pagination */}
         {totalPages > 1 && (
