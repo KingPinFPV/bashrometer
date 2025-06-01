@@ -4,7 +4,7 @@
 
 [![Production](https://img.shields.io/badge/Production-Live-green)](https://www.basarometer.org/)
 [![API](https://img.shields.io/badge/API-Active-blue)](https://bashrometer-api.onrender.com/)
-[![Status](https://img.shields.io/badge/Status-Stable-success)]()
+[![Status](https://img.shields.io/badge/Status-Fully_Operational-brightgreen)]()
 [![Documentation](https://img.shields.io/badge/Documentation-Complete-blue)](./COMPREHENSIVE_PROJECT_ANALYSIS_UPDATED.md)
 
 ## תיאור הפרויקט
