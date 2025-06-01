@@ -1211,6 +1211,103 @@ const getSearchSuggestions = async (req, res, next) => {
   }
 };
 
+// Get single product for admin editing with all fields and metadata
+const getProductByIdAdmin = async (req, res, next) => {
+  const { id } = req.params;
+  
+  // Validate admin access
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      error: 'Admin access required'
+    });
+  }
+  
+  const numericProductId = parseInt(id, 10);
+  if (isNaN(numericProductId) || numericProductId <= 0) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid product ID format',
+      details: 'Product ID must be a positive integer'
+    });
+  }
+
+  try {
+    // Get comprehensive product data including all new fields and metadata
+    const productQuery = `
+      SELECT 
+        p.*,
+        c.name as cut_english_name,
+        c.hebrew_name as cut_hebrew_name,
+        c.category as cut_category,
+        ps.name as subtype_english_name,
+        ps.hebrew_description as subtype_hebrew_name,
+        ps.purpose as subtype_purpose,
+        u_created.name as created_by_name,
+        u_created.email as created_by_email,
+        u_approved.name as approved_by_name,
+        u_approved.email as approved_by_email
+      FROM products p
+      LEFT JOIN cuts c ON p.cut_id = c.id
+      LEFT JOIN product_subtypes ps ON p.product_subtype_id = ps.id
+      LEFT JOIN users u_created ON p.created_by_user_id = u_created.id
+      LEFT JOIN users u_approved ON p.approved_by_user_id = u_approved.id
+      WHERE p.id = $1
+    `;
+    
+    const productResult = await pool.query(productQuery, [numericProductId]);
+    
+    if (productResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Product not found',
+        details: `No product found with ID ${numericProductId}`
+      });
+    }
+
+    const product = productResult.rows[0];
+    
+    // Get price statistics for this product
+    const priceStatsQuery = `
+      SELECT 
+        COUNT(*) as total_prices,
+        MIN(CASE WHEN pr.is_on_sale THEN pr.sale_price ELSE pr.regular_price END) as min_price,
+        MAX(CASE WHEN pr.is_on_sale THEN pr.sale_price ELSE pr.regular_price END) as max_price,
+        AVG(CASE WHEN pr.is_on_sale THEN pr.sale_price ELSE pr.regular_price END) as avg_price,
+        COUNT(DISTINCT pr.retailer_id) as retailer_count
+      FROM prices pr
+      WHERE pr.product_id = $1 AND pr.status = 'approved'
+    `;
+    
+    const priceStatsResult = await pool.query(priceStatsQuery, [numericProductId]);
+    const priceStats = priceStatsResult.rows[0];
+
+    console.log(`✅ Admin fetched product ${numericProductId} for editing`);
+
+    res.json({
+      success: true,
+      data: {
+        ...product,
+        price_statistics: {
+          total_prices: parseInt(priceStats.total_prices) || 0,
+          min_price: parseFloat(priceStats.min_price) || null,
+          max_price: parseFloat(priceStats.max_price) || null,
+          avg_price: parseFloat(priceStats.avg_price) || null,
+          retailer_count: parseInt(priceStats.retailer_count) || 0
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in getProductByIdAdmin:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch product data',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
+  }
+};
+
 // פונקציית עזר לרישום פעולות אדמין
 const logAdminAction = async (adminId, actionType, targetType, targetId, details = {}) => {
   try {
@@ -1226,6 +1323,7 @@ const logAdminAction = async (adminId, actionType, targetType, targetId, details
 module.exports = {
   getAllProducts,
   getProductById,
+  getProductByIdAdmin,  // New admin-specific endpoint
   createProduct,
   updateProduct,
   deleteProduct,

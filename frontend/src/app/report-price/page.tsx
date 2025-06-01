@@ -85,11 +85,7 @@ function ReportPriceContent() {
   const [salePrice, setSalePrice] = useState<string>(''); // מחיר מבצע
   const [saleEndDate, setSaleEndDate] = useState<string>(''); // תוקף
   
-  // Product creation states
-  const [showProductCreation, setShowProductCreation] = useState<boolean>(false);
-  const [cuts, setCuts] = useState<Cut[]>([]);
-  const [selectedCut, setSelectedCut] = useState<Cut | null>(null);
-  const [newProductBrand, setNewProductBrand] = useState<string>('');
+  // REMOVED: Product creation functionality - users should use /add-product page instead
   
   // UI states
   const [message, setMessage] = useState<string>('');
@@ -101,8 +97,7 @@ function ReportPriceContent() {
   const [retailerSuggestions, setRetailerSuggestions] = useState<Retailer[]>([]);
   const [showProductDropdown, setShowProductDropdown] = useState<boolean>(false);
   const [showRetailerDropdown, setShowRetailerDropdown] = useState<boolean>(false);
-  const [cutSuggestions, setCutSuggestions] = useState<Cut[]>([]);
-  const [showCutDropdown, setShowCutDropdown] = useState<boolean>(false);
+  // REMOVED: Cut suggestions - no longer needed
 
   // New: Authentication state
   const [authValidated, setAuthValidated] = useState<boolean>(false);
@@ -114,7 +109,7 @@ function ReportPriceContent() {
   // Refs for handling clicks outside dropdowns
   const productDropdownRef = useRef<HTMLDivElement>(null);
   const retailerDropdownRef = useRef<HTMLDivElement>(null);
-  const cutDropdownRef = useRef<HTMLDivElement>(null);
+  // REMOVED: cutDropdownRef - no longer needed
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -149,21 +144,7 @@ function ReportPriceContent() {
     }
   }, [selectedProduct, selectedRetailer]);
 
-  // Load cuts data
-  useEffect(() => {
-    const fetchCuts = async () => {
-      try {
-        const response = await fetch(`${apiBase}/api/cuts`);
-        if (response.ok) {
-          const cutsData = await response.json();
-          setCuts(cutsData);
-        }
-      } catch (error) {
-        console.error('Error fetching cuts:', error);
-      }
-    };
-    fetchCuts();
-  }, [apiBase]);
+  // REMOVED: Load cuts data - no longer needed since product creation removed
 
   // Enhanced auth check
   useEffect(() => {
@@ -200,9 +181,7 @@ function ReportPriceContent() {
       if (retailerDropdownRef.current && !retailerDropdownRef.current.contains(event.target as Node)) {
         setShowRetailerDropdown(false);
       }
-      if (cutDropdownRef.current && !cutDropdownRef.current.contains(event.target as Node)) {
-        setShowCutDropdown(false);
-      }
+      // REMOVED: Cut dropdown handling - no longer needed
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -274,8 +253,7 @@ function ReportPriceContent() {
       setShowProductDropdown(false);
     }
     
-    // Check if we need to show product creation form
-    setShowProductCreation(value.trim().length > 0 && !localSelectedProduct);
+    // REMOVED: Product creation logic - users should use /add-product page instead
   };
 
   // Handle retailer input change
@@ -317,27 +295,7 @@ function ReportPriceContent() {
     setShowAddRetailerModal(false);
   };
 
-  // Handle cut search
-  const handleCutSearch = (query: string) => {
-    if (query.trim().length < 1) {
-      setCutSuggestions([]);
-      setShowCutDropdown(false);
-      return;
-    }
-
-    const filtered = cuts.filter(cut => 
-      cut.hebrew_name.includes(query) || 
-      (cut.english_name && cut.english_name.toLowerCase().includes(query.toLowerCase()))
-    );
-    setCutSuggestions(filtered.slice(0, 8));
-    setShowCutDropdown(true);
-  };
-
-  // Handle cut selection
-  const handleCutSelect = (cut: Cut) => {
-    setSelectedCut(cut);
-    setShowCutDropdown(false);
-  };
+  // REMOVED: Cut search and selection handlers - no longer needed for price reporting
 
   // Calculate savings
   const calculateSavings = () => {
@@ -368,10 +326,7 @@ function ReportPriceContent() {
     setSalePrice('');
     setSaleEndDate('');
     
-    // Reset product creation states
-    setShowProductCreation(false);
-    setSelectedCut(null);
-    setNewProductBrand('');
+    // REMOVED: Product creation reset - no longer needed
     
     clearSelection(); // Clear ReportContext as well
   };
@@ -431,13 +386,9 @@ function ReportPriceContent() {
         // Standardized sale price fields
         is_on_sale: isOnSale,
         sale_price: isOnSale ? parseFloat(salePrice) : null,
-        price_valid_to: isOnSale ? saleEndDate : null,
+        price_valid_to: isOnSale ? saleEndDate : null
         
-        // Product creation data
-        ...(showProductCreation && selectedCut && {
-          cut_id: selectedCut.id,
-          brand: newProductBrand.trim() || null
-        })
+        // REMOVED: Product creation data - no longer supported in price reporting
       };
 
       console.log('📊 Submitting price data:', priceData);
@@ -901,115 +852,58 @@ function ReportPriceContent() {
               )}
             </div>
 
-            {/* Product Creation Form */}
-            {showProductCreation && !localSelectedProduct && (
+            {/* Product Creation Removed - Use Dedicated Add Product Page */}
+            {!localSelectedProduct && productInput && productInput.length >= 3 && productSuggestions.length === 0 && (
               <div style={{
-                border: '2px dashed #e5e7eb',
+                border: '2px solid #fbbf24',
                 borderRadius: '0.75rem',
                 padding: '1.5rem',
-                backgroundColor: '#f8fafc',
+                backgroundColor: '#fef3c7',
                 marginTop: '1rem'
               }}>
                 <h3 style={{
                   fontSize: '1.125rem',
                   fontWeight: '600',
-                  color: '#374151',
+                  color: '#92400e',
                   marginBottom: '1rem',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.5rem'
                 }}>
-                  ➕ יצירת מוצר חדש: {productInput}
+                  ℹ️ המוצר לא נמצא במערכת
                 </h3>
-                
-                {/* Cut Selection */}
-                <div ref={cutDropdownRef} style={{position: 'relative', marginBottom: '1rem'}}>
-                  <label style={labelStyle}>
-                    בחר נתח <span style={{color: '#ef4444', fontWeight: 'bold'}}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="חפש נתח (אנטריקוט, פילה, כתף...)"
-                    onChange={(e) => handleCutSearch(e.target.value)}
-                    style={inputStyle}
-                  />
-                  
-                  {showCutDropdown && cutSuggestions.length > 0 && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      right: 0,
-                      backgroundColor: 'white',
-                      border: '2px solid #e5e7eb',
-                      borderTop: 'none',
-                      borderRadius: '0 0 0.75rem 0.75rem',
-                      maxHeight: '200px',
-                      overflowY: 'auto',
-                      zIndex: 1000,
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                    }}>
-                      {cutSuggestions.map((cut) => (
-                        <div
-                          key={cut.id}
-                          onClick={() => handleCutSelect(cut)}
-                          style={{
-                            padding: '0.75rem 1rem',
-                            cursor: 'pointer',
-                            borderBottom: '1px solid #f3f4f6',
-                            transition: 'background-color 0.2s'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#f8fafc';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'white';
-                          }}
-                        >
-                          <div style={{fontWeight: '500', color: '#111827'}}>
-                            {cut.hebrew_name}
-                          </div>
-                          {cut.english_name && (
-                            <div style={{fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem'}}>
-                              {cut.english_name}
-                            </div>
-                          )}
-                          <div style={{fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.25rem'}}>
-                            קטגוריה: {cut.category}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  
-                  {selectedCut && (
-                    <div style={{
-                      marginTop: '0.5rem',
-                      padding: '0.5rem',
-                      backgroundColor: '#dcfce7',
-                      borderRadius: '0.5rem',
-                      fontSize: '0.875rem',
-                      color: '#166534'
-                    }}>
-                      ✅ נבחר: {selectedCut.hebrew_name} ({selectedCut.category})
-                    </div>
-                  )}
-                </div>
-                
-                {/* Brand Field */}
-                <div>
-                  <label htmlFor="newProductBrand" style={labelStyle}>
-                    מותג (אופציונלי)
-                  </label>
-                  <input
-                    type="text"
-                    id="newProductBrand"
-                    value={newProductBrand}
-                    onChange={(e) => setNewProductBrand(e.target.value)}
-                    placeholder="הזן מותג המוצר..."
-                    style={inputStyle}
-                  />
-                </div>
+                <p style={{
+                  color: '#92400e',
+                  marginBottom: '1rem',
+                  lineHeight: '1.5'
+                }}>
+                  לא נמצאו תוצאות עבור "{productInput}". כדי להוסיף מוצר חדש למערכת, אנא השתמש בדף ייעודי להוספת מוצרים.
+                </p>
+                <a
+                  href="/add-product"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '0.5rem',
+                    textDecoration: 'none',
+                    fontWeight: '600',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#2563eb';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#3b82f6';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  ➕ הוסף מוצר חדש
+                </a>
               </div>
             )}
 

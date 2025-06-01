@@ -764,7 +764,7 @@ const ProductsManagement: React.FC = () => {
       {/* Edit Product Modal */}
       {showEditModal && (
         <EditProductModal
-          product={editingProduct}
+          productId={editingProduct?.id || null}
           isOpen={showEditModal}
           onClose={() => {
             setShowEditModal(false);

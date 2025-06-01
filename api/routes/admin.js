@@ -6,6 +6,9 @@ const {
   getUsersManagement, updateUserRole, approveProduct, rejectProduct, 
   updateProduct, getAllUsers, deleteUser
 } = require('../controllers/adminController');
+const {
+  getProductByIdAdmin
+} = require('../controllers/productsController');
 
 // דשבורד מנהל
 router.get('/dashboard', authenticateToken, authorizeRole(['admin']), getDashboardStats);
@@ -23,6 +26,7 @@ router.patch('/users/:id/role', authenticateToken, authorizeRole(['admin']), upd
 router.delete('/users/:id', authenticateToken, authorizeRole(['admin']), deleteUser);
 
 // ניהול מוצרים
+router.get('/products/:id', authenticateToken, authorizeRole(['admin']), getProductByIdAdmin);
 router.post('/products/:id/approve', authenticateToken, authorizeRole(['admin']), approveProduct);
 router.post('/products/:id/reject', authenticateToken, authorizeRole(['admin']), rejectProduct);
 router.put('/products/:id', authenticateToken, authorizeRole(['admin']), updateProduct);

@@ -23,14 +23,14 @@ interface ProductSubtype {
 }
 
 interface EditProductModalProps {
-  product: any;
+  productId: number | null;  // Changed from product object to product ID
   isOpen: boolean;
   onClose: () => void;
   onSave: (product: any) => void;
 }
 
 const EditProductModal: React.FC<EditProductModalProps> = ({ 
-  product, isOpen, onClose, onSave 
+  productId, isOpen, onClose, onSave 
 }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -57,58 +57,107 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [productData, setProductData] = useState<any>(null);
+  const [submissionInfo, setSubmissionInfo] = useState<any>(null);
   
   const categories = ['בקר', 'עוף', 'כבש', 'טלה', 'הודו', 'ברווז', 'אווז', 'עגל', 'עז', 'ארנב', 'איברים'];
   const kosherLevels = ['לא ידוע', 'רגיל', 'מהדרין', 'גלאט', 'ללא', 'אחר'];
   const unitsOfMeasure = ['100g', 'kg', 'g', 'unit', 'package'];
   
+  // Load product data when modal opens with productId
   useEffect(() => {
-    if (product) {
-      console.log('📝 Loading product data for editing:', product);
-      setFormData({
-        name: product.name || '',
-        category: product.category || '',
-        description: product.description || '',
-        brand: product.brand || '',
-        cut_id: product.cut_id || null,
-        product_subtype_id: product.product_subtype_id || null,
-        animal_type: product.animal_type || '',
-        kosher_level: product.kosher_level || 'לא ידוע',
-        unit_of_measure: product.unit_of_measure || 'kg',
-        origin_country: product.origin_country || '',
-        default_weight_per_unit_grams: product.default_weight_per_unit_grams || null,
-        short_description: product.short_description || '',
-        image_url: product.image_url || '',
-        processing_state: product.processing_state || '',
-        has_bone: product.has_bone || false,
-        quality_grade: product.quality_grade || '',
-        is_active: product.is_active !== undefined ? product.is_active : true
-      });
+    if (productId && isOpen) {
+      loadProductData(productId);
     }
-  }, [product]);
+  }, [productId, isOpen]);
+
+  const loadProductData = async (id: number) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('📝 Loading product data for editing, ID:', id);
+      
+      const data = await authenticatedApiCall(`/api/admin/products/${id}`);
+      console.log('✅ Product data loaded:', data);
+      
+      if (data.success && data.data) {
+        const product = data.data;
+        setProductData(product);
+        
+        // Set submission info for admin context
+        setSubmissionInfo({
+          submittedBy: product.created_by_name || 'לא ידוע',
+          submittedEmail: product.created_by_email || '',
+          submittedAt: product.created_at ? new Date(product.created_at).toLocaleDateString('he-IL') : '',
+          currentStatus: product.status || 'לא ידוע',
+          approvedBy: product.approved_by_name || null,
+          approvedAt: product.approved_at ? new Date(product.approved_at).toLocaleDateString('he-IL') : null,
+          priceStats: product.price_statistics || {}
+        });
+        
+        // Pre-populate ALL form fields
+        setFormData({
+          name: product.name || '',
+          category: product.category || '',
+          description: product.description || '',
+          brand: product.brand || '',
+          cut_id: product.cut_id || null,
+          product_subtype_id: product.product_subtype_id || null,
+          animal_type: product.animal_type || '',
+          kosher_level: product.kosher_level || 'לא ידוע',
+          unit_of_measure: product.unit_of_measure || 'kg',
+          origin_country: product.origin_country || '',
+          default_weight_per_unit_grams: product.default_weight_per_unit_grams || null,
+          short_description: product.short_description || '',
+          image_url: product.image_url || '',
+          processing_state: product.processing_state || '',
+          has_bone: product.has_bone || false,
+          quality_grade: product.quality_grade || '',
+          is_active: product.is_active !== undefined ? product.is_active : true
+        });
+        
+        // Load cuts for the product's category
+        if (product.category || product.animal_type) {
+          loadCutsForCategory(product.category || product.animal_type);
+        }
+        
+        // Load subtypes for the product's cut
+        if (product.cut_id) {
+          loadSubtypesForCut(product.cut_id);
+        }
+        
+      } else {
+        setError(data.error || 'שגיאה בטעינת נתוני המוצר');
+      }
+    } catch (error: any) {
+      console.error('🚨 Error loading product data:', error);
+      setError('שגיאה בטעינת נתוני המוצר: ' + (error.message || 'שגיאה לא ידועה'));
+    } finally {
+      setLoading(false);
+    }
+  };
   
-  // טען נתחים כשהקטגוריה משתנה
+  // טען נתחים כשהקטגוריה משתנה (רק אם לא טוענים נתונים ראשוניים)
   useEffect(() => {
-    if (formData.category || formData.animal_type) {
-      loadCuts();
+    if ((formData.category || formData.animal_type) && !loading) {
+      loadCutsForCategory(formData.category || formData.animal_type);
     }
   }, [formData.category, formData.animal_type]);
   
-  // טען תת-נתחים כשהנתח משתנה
+  // טען תת-נתחים כשהנתח משתנה (רק אם לא טוענים נתונים ראשוניים)
   useEffect(() => {
-    if (formData.cut_id) {
-      loadSubtypes();
-    } else {
+    if (formData.cut_id && !loading) {
+      loadSubtypesForCut(formData.cut_id);
+    } else if (!formData.cut_id) {
       setSubtypes([]);
     }
   }, [formData.cut_id]);
   
-  const loadCuts = async () => {
+  const loadCutsForCategory = async (category: string) => {
     try {
-      setLoading(true);
-      const searchCategory = formData.animal_type || formData.category;
-      const data = await authenticatedApiCall(`/api/cuts?category=${encodeURIComponent(searchCategory)}`);
-      console.log('🔍 EditProductModal - Cuts API response:', data);
+      const data = await authenticatedApiCall(`/api/cuts?category=${encodeURIComponent(category)}`);
+      console.log('🔍 EditProductModal - Cuts API response for category:', category, data);
       
       let cutsArray = [];
       if (Array.isArray(data)) {
@@ -117,8 +166,8 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
         cutsArray = data.cuts;
       } else if (data && data.data && typeof data.data === 'object') {
         // הAPI מחזיר אובייקט עם קטגוריות - נמצא את הקטגוריה הנכונה
-        if (data.data[searchCategory] && Array.isArray(data.data[searchCategory])) {
-          cutsArray = data.data[searchCategory];
+        if (data.data[category] && Array.isArray(data.data[category])) {
+          cutsArray = data.data[category];
         } else {
           // אם לא מצאנו את הקטגוריה, נשלב כל הנתחים
           cutsArray = Object.values(data.data).flat();
@@ -130,20 +179,18 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
         cutsArray = [];
       }
       
-      console.log('🔍 Found cuts for category:', searchCategory, cutsArray.length);
+      console.log('🔍 Found cuts for category:', category, cutsArray.length);
       setCuts(cutsArray);
     } catch (error) {
       console.error('Error loading cuts:', error);
       setError('שגיאה בטעינת נתחים');
-    } finally {
-      setLoading(false);
     }
   };
   
-  const loadSubtypes = async () => {
+  const loadSubtypesForCut = async (cutId: number) => {
     try {
       const data = await authenticatedApiCall(`/api/admin/subtypes`);
-      console.log('🏷️ EditProductModal - Subtypes API response:', data);
+      console.log('🏷️ EditProductModal - Subtypes API response for cut:', cutId, data);
       
       let allSubtypes = [];
       if (Array.isArray(data)) {
@@ -157,7 +204,8 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
         allSubtypes = [];
       }
       
-      const filteredSubtypes = allSubtypes.filter((st: ProductSubtype) => st.cut_id === formData.cut_id);
+      const filteredSubtypes = allSubtypes.filter((st: ProductSubtype) => st.cut_id === cutId);
+      console.log('🏷️ Found subtypes for cut:', cutId, filteredSubtypes.length);
       setSubtypes(filteredSubtypes);
     } catch (error) {
       console.error('Error loading subtypes:', error);
@@ -191,7 +239,7 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
         quality_grade: formData.quality_grade?.trim() || null
       };
       
-      await onSave({ ...product, ...cleanedData });
+      await onSave({ ...productData, ...cleanedData });
       onClose();
     } catch (error: any) {
       console.error('🚨 Error saving product:', error);
@@ -245,15 +293,53 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-4 flex items-center">
-              <AlertCircle className="w-5 h-5 text-red-500 mr-3" />
-              <span className="text-red-700">{error}</span>
+        {loading ? (
+          <div className="p-6 flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">טוען נתוני המוצר...</p>
             </div>
-          )}
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-4 flex items-center">
+                <AlertCircle className="w-5 h-5 text-red-500 mr-3" />
+                <span className="text-red-700">{error}</span>
+              </div>
+            )}
+            
+            {/* הקשר הגשה למנהל */}
+            {submissionInfo && (
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
+                <h3 className="text-sm font-medium text-blue-900 mb-2">פרטי הגשה</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-blue-800">
+                  <div>
+                    <span className="font-medium">נשלח על ידי:</span> {submissionInfo.submittedBy}
+                  </div>
+                  <div>
+                    <span className="font-medium">תאריך הגשה:</span> {submissionInfo.submittedAt}
+                  </div>
+                  <div>
+                    <span className="font-medium">סטטוס נוכחי:</span> {submissionInfo.currentStatus}
+                  </div>
+                  {submissionInfo.approvedBy && (
+                    <div>
+                      <span className="font-medium">אושר על ידי:</span> {submissionInfo.approvedBy}
+                    </div>
+                  )}
+                  {submissionInfo.priceStats && (
+                    <div className="md:col-span-2">
+                      <span className="font-medium">סטטיסטיקות מחיר:</span> 
+                      {submissionInfo.priceStats.total_prices} דיווחים, 
+                      {submissionInfo.priceStats.retailer_count} קמעונאים
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* שם המוצר */}
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -528,7 +614,8 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
               ביטול
             </button>
           </div>
-        </form>
+          </form>
+        )}
       </div>
     </div>
   );
