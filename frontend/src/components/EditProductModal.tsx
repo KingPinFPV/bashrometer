@@ -216,44 +216,92 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Enhanced validation
     if (!formData.name.trim()) {
       setError('שם המוצר הוא שדה חובה');
       return;
+    }
+    
+    if (formData.name.trim().length < 3) {
+      setError('שם המוצר חייב להכיל לפחות 3 תווים');
+      return;
+    }
+    
+    if (!formData.unit_of_measure) {
+      setError('יחידת מידה היא שדה חובה');
+      return;
+    }
+    
+    // Validate that subtype belongs to selected cut
+    if (formData.cut_id && formData.product_subtype_id) {
+      const selectedSubtype = subtypes.find(st => st.id === formData.product_subtype_id);
+      if (selectedSubtype && selectedSubtype.cut_id !== formData.cut_id) {
+        setError('תת-הנתח שנבחר לא תואם לנתח שנבחר');
+        return;
+      }
     }
     
     setSaving(true);
     setError(null);
     
     try {
-      // נקה ערכים ריקים
+      // נקה ערכים ריקים ושלח רק שדות שהשרת מצפה להם
       const cleanedData = {
-        ...formData,
+        id: productData?.id, // נדרש לזיהוי המוצר
         name: formData.name.trim(),
+        category: formData.category || null,
         brand: formData.brand?.trim() || null,
         description: formData.description?.trim() || null,
         short_description: formData.short_description?.trim() || null,
         animal_type: formData.animal_type?.trim() || null,
+        cut_id: formData.cut_id || null,
+        product_subtype_id: formData.product_subtype_id || null,
+        kosher_level: formData.kosher_level || null,
+        unit_of_measure: formData.unit_of_measure || 'kg',
         origin_country: formData.origin_country?.trim() || null,
+        default_weight_per_unit_grams: formData.default_weight_per_unit_grams || null,
         image_url: formData.image_url?.trim() || null,
         processing_state: formData.processing_state?.trim() || null,
-        quality_grade: formData.quality_grade?.trim() || null
+        has_bone: formData.has_bone || false,
+        quality_grade: formData.quality_grade?.trim() || null,
+        is_active: formData.is_active !== undefined ? formData.is_active : true
       };
       
-      await onSave({ ...productData, ...cleanedData });
+      console.log('📤 Sending cleaned product data:', cleanedData);
+      
+      await onSave(cleanedData);
       onClose();
     } catch (error: any) {
       console.error('🚨 Error saving product:', error);
       
-      // Handle detailed error messages from the API
-      if (error.response?.data?.details) {
-        setError(`שגיאה: ${error.response.data.details}`);
-      } else if (error.response?.data?.error) {
-        setError(`שגיאה: ${error.response.data.error}`);
+      // Handle specific error types with user-friendly messages
+      let errorMessage = 'שגיאה בשמירת המוצר';
+      
+      if (error.response?.status === 400) {
+        if (error.response?.data?.error?.includes('Duplicate entry')) {
+          errorMessage = 'מוצר עם השם הזה כבר קיים במערכת';
+        } else if (error.response?.data?.error?.includes('Invalid cut_id')) {
+          errorMessage = 'הנתח שנבחר אינו תקין';
+        } else if (error.response?.data?.error?.includes('Invalid product_subtype_id')) {
+          errorMessage = 'תת-הנתח שנבחר אינו תקין';
+        } else if (error.response?.data?.error?.includes('Subtype does not belong to selected cut')) {
+          errorMessage = 'תת-הנתח שנבחר לא תואם לנתח שנבחר';
+        } else if (error.response?.data?.details) {
+          errorMessage = `שגיאת תקינות: ${error.response.data.details}`;
+        } else if (error.response?.data?.error) {
+          errorMessage = `שגיאה: ${error.response.data.error}`;
+        }
+      } else if (error.response?.status === 403) {
+        errorMessage = 'אין לך הרשאה לערוך מוצר זה';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'המוצר לא נמצא במערכת';
+      } else if (error.response?.status === 500) {
+        errorMessage = 'שגיאת שרת פנימית. אנא נסה שוב מאוחר יותר';
       } else if (error.message) {
-        setError(`שגיאה: ${error.message}`);
-      } else {
-        setError('שגיאה בשמירת המוצר');
+        errorMessage = `שגיאת רשת: ${error.message}`;
       }
+      
+      setError(errorMessage);
     } finally {
       setSaving(false);
     }

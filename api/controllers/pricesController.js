@@ -567,6 +567,7 @@ const updatePriceReportStatus = async (req, res, next) => {
 // Get current prices for a product with sale calculations
 const getCurrentPrices = async (req, res, next) => {
   const { product_id } = req.params;
+  const { retailer_id } = req.query; // Add support for retailer_id filtering
   
   // Enhanced validation for product_id
   if (!product_id || product_id === 'undefined' || product_id === 'null') {
@@ -589,9 +590,24 @@ const getCurrentPrices = async (req, res, next) => {
     });
   }
   
+  // Optional retailer filtering
+  let retailerFilter = '';
+  let queryParams = [numericProductId];
+  
+  if (retailer_id) {
+    const numericRetailerId = parseInt(retailer_id, 10);
+    if (!isNaN(numericRetailerId) && numericRetailerId > 0) {
+      retailerFilter = ' AND p.retailer_id = $2';
+      queryParams.push(numericRetailerId);
+      console.log(`📊 Getting current prices for product: ${numericProductId}, retailer: ${numericRetailerId}`);
+    } else {
+      console.log(`📊 Getting current prices for product: ${numericProductId} (all retailers)`);
+    }
+  } else {
+    console.log(`📊 Getting current prices for product: ${numericProductId} (all retailers)`);
+  }
+  
   try {
-    console.log(`📊 Getting current prices for product: ${numericProductId}`);
-    
     const result = await pool.query(`
       SELECT 
         p.id,
@@ -609,6 +625,7 @@ const getCurrentPrices = async (req, res, next) => {
         p.status,
         p.unit_for_price,
         p.quantity_for_price,
+        p.notes,
         r.name as retailer_name,
         pr.name as product_name,
         
@@ -652,8 +669,9 @@ const getCurrentPrices = async (req, res, next) => {
       FROM prices p
       JOIN retailers r ON p.retailer_id = r.id
       JOIN products pr ON p.product_id = pr.id
-      WHERE p.product_id = $1 AND p.status = 'approved'
-    `, [numericProductId]);
+      WHERE p.product_id = $1 AND p.status = 'approved'${retailerFilter}
+      ORDER BY p.created_at DESC
+    `, queryParams);
     
     const prices = result.rows.map(row => {
       const calculatedPrice = calcPricePer1kg({

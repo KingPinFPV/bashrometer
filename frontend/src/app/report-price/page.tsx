@@ -144,7 +144,67 @@ function ReportPriceContent() {
     }
   }, [selectedProduct, selectedRetailer]);
 
-  // REMOVED: Load cuts data - no longer needed since product creation removed
+  // Load current prices when both product and retailer are selected
+  useEffect(() => {
+    const loadCurrentPrices = async () => {
+      if (!localSelectedProduct?.id || !localSelectedRetailer?.id || !token) {
+        return;
+      }
+
+      try {
+        console.log('🔍 Loading current prices for pre-filling:', {
+          productId: localSelectedProduct.id,
+          retailerId: localSelectedRetailer.id
+        });
+
+        const response = await fetch(
+          `${apiBase}/api/prices/current/${localSelectedProduct.id}?retailer_id=${localSelectedRetailer.id}`,
+          {
+            credentials: 'include',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('📊 Current prices data:', data);
+          
+          // Pre-fill with the most recent price from this retailer
+          if (data.prices && data.prices.length > 0) {
+            const latestPrice = data.prices.find(p => p.retailer_id === localSelectedRetailer.id) || data.prices[0];
+            
+            if (latestPrice) {
+              console.log('✅ Pre-filling with latest price:', latestPrice);
+              
+              // Pre-fill form fields
+              setPrice(latestPrice.regular_price?.toString() || '');
+              setQuantity(latestPrice.quantity_for_price?.toString() || '1');
+              setUnit(latestPrice.unit_for_price || 'kg');
+              
+              // Pre-fill sale information if exists
+              if (latestPrice.is_currently_on_sale && latestPrice.sale_price) {
+                setIsOnSale(true);
+                setSalePrice(latestPrice.sale_price.toString());
+                if (latestPrice.sale_end_date) {
+                  setSaleEndDate(latestPrice.sale_end_date.split('T')[0]); // Convert to YYYY-MM-DD format
+                }
+              }
+              
+              // Pre-fill notes if exists
+              if (latestPrice.notes) {
+                setNotes(latestPrice.notes);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading current prices for pre-filling:', error);
+        // Don't show error to user, this is just a nice-to-have feature
+      }
+    };
+
+    loadCurrentPrices();
+  }, [localSelectedProduct?.id, localSelectedRetailer?.id, token, apiBase]);
 
   // Enhanced auth check
   useEffect(() => {
@@ -337,29 +397,59 @@ function ReportPriceContent() {
     setIsSubmitting(true);
     setMessage('');
 
-    // Simple validation
+    // Enhanced validation
     if (!localSelectedProduct && !productInput) {
-      alert('נא למלא את שם המוצר');
+      setMessage('נא למלא את שם המוצר');
       setIsSubmitting(false);
       return;
     }
     
     if (!localSelectedRetailer && !retailerInput) {
-      alert('נא למלא את שם הקמעונאי');
+      setMessage('נא למלא את שם הקמעונאי');
       setIsSubmitting(false);
       return;
     }
     
-    if (!price) {
-      alert('נא למלא את המחיר');
+    if (!price || parseFloat(price) <= 0) {
+      setMessage('נא להזין מחיר תקין (גדול מ-0)');
       setIsSubmitting(false);
       return;
     }
 
-    if (isOnSale && (!salePrice || !saleEndDate)) {
-      alert('נא למלא את פרטי המבצע');
+    if (!quantity || parseFloat(quantity) <= 0) {
+      setMessage('נא להזין כמות תקינה (גדולה מ-0)');
       setIsSubmitting(false);
       return;
+    }
+
+    if (isOnSale) {
+      if (!salePrice || parseFloat(salePrice) <= 0) {
+        setMessage('נא להזין מחיר מבצע תקין');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      if (parseFloat(salePrice) >= parseFloat(price)) {
+        setMessage('מחיר המבצע חייב להיות נמוך מהמחיר הרגיל');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      if (!saleEndDate) {
+        setMessage('נא להזין תאריך סיום המבצע');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      const saleDate = new Date(saleEndDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (saleDate < today) {
+        setMessage('תאריך סיום המבצע חייב להיות בעתיד');
+        setIsSubmitting(false);
+        return;
+      }
     }
 
     try {
