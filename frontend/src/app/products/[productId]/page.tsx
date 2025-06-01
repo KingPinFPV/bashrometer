@@ -36,6 +36,7 @@ interface ProductDetailed {
   name: string;
   variant_name?: string;
   normalized_name?: string;
+  displayName?: string;
   brand: string | null;
   origin_country: string | null;
   kosher_level: string | null;
@@ -172,7 +173,11 @@ export default function ProductDetailPage() {
         brand: data.brand
       });
       
-      setProduct(data);
+      // Ensure we have a proper display name with fallback logic
+      const displayName = data.name || data.variant_name || data.normalized_name || 'שם מוצר לא זמין';
+      console.log('Final display name:', displayName);
+      
+      setProduct({...data, displayName});
     } catch (e: any) {
       console.error(`ProductDetailPage: Error fetching product details for productId ${productId}:`, e);
       setError(e.message || 'Failed to load product details.');
@@ -260,16 +265,20 @@ export default function ProductDetailPage() {
   }, [product, fetchPrices]);
 
   const handleReportPrice = () => {
-    if (!product) return;
+    if (!product) {
+      console.error("Missing product data for price report");
+      return;
+    }
     
     const productForReport = {
       id: product.id,
-      name: product.name,
+      name: product.displayName || product.name || product.variant_name || product.normalized_name || 'ללא שם',
       category: product.category || '',
       cut: product.cut_type || undefined,
       brand: product.brand || undefined
     };
     
+    console.log("Navigating to report with product:", productForReport);
     navigateToReport(productForReport, undefined, `/products/${productId}`);
   };
 
@@ -491,7 +500,7 @@ export default function ProductDetailPage() {
                 minWidth: '300px'
               }
             }}>
-              <h1 style={titleStyle}>{product.name || product.variant_name || product.normalized_name || 'שם מוצר לא זמין'}</h1>
+              <h1 style={titleStyle}>{product.displayName || product.name || product.variant_name || product.normalized_name || 'שם מוצר לא זמין'}</h1>
               
               <div style={{
                 display: 'grid',
@@ -1099,14 +1108,20 @@ export default function ProductDetailPage() {
                             onClick={() => {
                               // Build URL with price data for pre-loading - with proper null checks
                               if (!product?.id || !price?.retailer_id) {
-                                console.error('Missing required data for price update:', { product: !!product, price: !!price });
+                                console.error('Missing required data for price update:', { 
+                                  product: !!product, 
+                                  price: !!price,
+                                  productId: product?.id,
+                                  retailerId: price?.retailer_id
+                                });
+                                alert('חסרים נתונים נדרשים לעדכון המחיר');
                                 return;
                               }
                               
                               const params = new URLSearchParams({
                                 mode: 'edit',
                                 productId: product.id.toString(),
-                                productName: product.name || '',
+                                productName: product.displayName || product.name || product.variant_name || product.normalized_name || '',
                                 retailerId: (price.retailer_id ?? '').toString(),
                                 retailerName: price.retailer || '',
                                 price: (price.regular_price ?? '').toString(),
@@ -1119,6 +1134,7 @@ export default function ProductDetailPage() {
                                 returnPath: `/products/${productId}`
                               });
                               
+                              console.log('Navigating to price update with params:', Object.fromEntries(params));
                               router.push(`/report-price?${params.toString()}`);
                             }}
                             style={{

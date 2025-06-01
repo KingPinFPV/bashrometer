@@ -412,7 +412,8 @@ const updateProduct = async (req, res) => {
       cut_id,
       product_subtype_id,
       category,
-      fields_received: Object.keys(req.body)
+      fields_received: Object.keys(req.body),
+      body: req.body
     });
     
     if (!id || isNaN(parseInt(id))) {
@@ -423,11 +424,12 @@ const updateProduct = async (req, res) => {
       });
     }
     
-    if (!name || !name.trim()) {
+    // Enhanced validation with more flexible requirements
+    if (name !== undefined && (!name || !name.toString().trim())) {
       return res.status(400).json({ 
         success: false,
-        error: 'Product name is required',
-        details: 'שם המוצר הוא שדה חובה'
+        error: 'Product name cannot be empty',
+        details: 'שם המוצר לא יכול להיות ריק'
       });
     }
 
@@ -469,48 +471,103 @@ const updateProduct = async (req, res) => {
       }
     }
     
-    const result = await pool.query(
-      `UPDATE products 
-       SET name = $1, 
-           category = $2, 
-           cut_id = $3, 
-           product_subtype_id = $4, 
-           description = $5,
-           brand = $6,
-           animal_type = $7,
-           kosher_level = $8,
-           unit_of_measure = $9,
-           origin_country = $10,
-           default_weight_per_unit_grams = $11,
-           is_active = $12,
-           short_description = $13,
-           image_url = $14,
-           processing_state = $15,
-           has_bone = $16,
-           quality_grade = $17,
-           updated_at = NOW()
-       WHERE id = $18 RETURNING *`,
-      [
-        name.trim(), 
-        category, 
-        cut_id || null, // Allow null values
-        product_subtype_id || null, // Allow null values
-        description,
-        brand,
-        animal_type,
-        kosher_level,
-        unit_of_measure || 'kg',
-        origin_country,
-        default_weight_per_unit_grams,
-        is_active !== undefined ? is_active : true,
-        short_description,
-        image_url,
-        processing_state,
-        has_bone !== undefined ? has_bone : false,
-        quality_grade,
-        parseInt(id)
-      ]
-    );
+    // Build dynamic update query to only update provided fields
+    const updateFields = [];
+    const updateValues = [];
+    let paramIndex = 1;
+
+    if (name !== undefined) {
+      updateFields.push(`name = $${paramIndex++}`);
+      updateValues.push(name.toString().trim());
+    }
+    if (category !== undefined) {
+      updateFields.push(`category = $${paramIndex++}`);
+      updateValues.push(category);
+    }
+    if (cut_id !== undefined) {
+      updateFields.push(`cut_id = $${paramIndex++}`);
+      updateValues.push(cut_id || null);
+    }
+    if (product_subtype_id !== undefined) {
+      updateFields.push(`product_subtype_id = $${paramIndex++}`);
+      updateValues.push(product_subtype_id || null);
+    }
+    if (description !== undefined) {
+      updateFields.push(`description = $${paramIndex++}`);
+      updateValues.push(description);
+    }
+    if (brand !== undefined) {
+      updateFields.push(`brand = $${paramIndex++}`);
+      updateValues.push(brand);
+    }
+    if (animal_type !== undefined) {
+      updateFields.push(`animal_type = $${paramIndex++}`);
+      updateValues.push(animal_type);
+    }
+    if (kosher_level !== undefined) {
+      updateFields.push(`kosher_level = $${paramIndex++}`);
+      updateValues.push(kosher_level);
+    }
+    if (unit_of_measure !== undefined) {
+      updateFields.push(`unit_of_measure = $${paramIndex++}`);
+      updateValues.push(unit_of_measure || 'kg');
+    }
+    if (origin_country !== undefined) {
+      updateFields.push(`origin_country = $${paramIndex++}`);
+      updateValues.push(origin_country);
+    }
+    if (default_weight_per_unit_grams !== undefined) {
+      updateFields.push(`default_weight_per_unit_grams = $${paramIndex++}`);
+      updateValues.push(default_weight_per_unit_grams);
+    }
+    if (is_active !== undefined) {
+      updateFields.push(`is_active = $${paramIndex++}`);
+      updateValues.push(is_active);
+    }
+    if (short_description !== undefined) {
+      updateFields.push(`short_description = $${paramIndex++}`);
+      updateValues.push(short_description);
+    }
+    if (image_url !== undefined) {
+      updateFields.push(`image_url = $${paramIndex++}`);
+      updateValues.push(image_url);
+    }
+    if (processing_state !== undefined) {
+      updateFields.push(`processing_state = $${paramIndex++}`);
+      updateValues.push(processing_state);
+    }
+    if (has_bone !== undefined) {
+      updateFields.push(`has_bone = $${paramIndex++}`);
+      updateValues.push(has_bone);
+    }
+    if (quality_grade !== undefined) {
+      updateFields.push(`quality_grade = $${paramIndex++}`);
+      updateValues.push(quality_grade);
+    }
+
+    // Always update the timestamp
+    updateFields.push(`updated_at = NOW()`);
+
+    if (updateFields.length === 1) { // Only timestamp update
+      return res.status(400).json({
+        success: false,
+        error: 'No fields to update',
+        details: 'לא נמצאו שדות לעדכון'
+      });
+    }
+
+    const updateQuery = `
+      UPDATE products 
+      SET ${updateFields.join(', ')}
+      WHERE id = $${paramIndex}
+      RETURNING *
+    `;
+    updateValues.push(parseInt(id));
+
+    console.log('🔍 Update query:', updateQuery);
+    console.log('🔍 Update values:', updateValues);
+
+    const result = await pool.query(updateQuery, updateValues);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ 

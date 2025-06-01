@@ -204,8 +204,10 @@ export default function EditProductPage() {
       const responseData = await response.json();
 
       if (response.ok) {
-        setMessage(`מוצר "${responseData.name}" עודכן בהצלחה! מעביר לרשימת מוצרים...`);
-        setOriginalProduct(responseData);
+        const productData = responseData.success ? responseData.product : responseData;
+        const productName = productData?.name || cleanedData.name;
+        setMessage(`מוצר "${productName}" עודכן בהצלחה! מעביר לרשימת מוצרים...`);
+        setOriginalProduct(productData);
         setTimeout(() => {
           router.push('/admin/products');
         }, 1500);
@@ -215,6 +217,7 @@ export default function EditProductPage() {
           status: response.status,
           error: responseData.error,
           details: responseData.details,
+          success: responseData.success,
           sentData: cleanedData
         });
         
@@ -228,9 +231,17 @@ export default function EditProductPage() {
             errorMessage = 'שגיאה: תת-נתח לא תקין או לא שייך לנתח שנבחר';
           } else if (responseData.error?.includes('name')) {
             errorMessage = 'שגיאה: שם המוצר לא יכול להיות ריק';
+          } else if (responseData.error?.includes('No fields to update')) {
+            errorMessage = 'שגיאה: לא נמצאו שדות לעדכון';
           } else {
             errorMessage = `שגיאת validation: ${responseData.error}`;
           }
+        } else if (response.status === 403) {
+          errorMessage = 'שגיאה: אין לך הרשאה לעדכן מוצר זה';
+        } else if (response.status === 404) {
+          errorMessage = 'שגיאה: המוצר לא נמצא במערכת';
+        } else if (response.status === 500) {
+          errorMessage = 'שגיאת שרת פנימית. אנא נסה שוב מאוחר יותר.';
         }
         setMessage(errorMessage);
       }

@@ -56,9 +56,11 @@ const register = async (req, res, next) => { // הוספת next
       role: finalRole 
     });
 
-    const userExists = await pool.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
+    // Enhanced case-insensitive check for existing users
+    const emailToCheck = email.toLowerCase().trim();
+    const userExists = await pool.query('SELECT id, email FROM users WHERE LOWER(TRIM(email)) = $1', [emailToCheck]);
     if (userExists.rows.length > 0) {
-      // שים לב: הבדיקה שלך מצפה ל-409 כאן
+      console.log('Registration failed - email already exists:', userExists.rows[0].email);
       return res.status(409).json({ error: 'Email already registered.' }); 
     }
 
@@ -70,7 +72,7 @@ const register = async (req, res, next) => { // הוספת next
       VALUES ($1, $2, $3, NOW()) 
       RETURNING id, email, role, created_at
     `;
-    const insertValues = [email.toLowerCase(), password_hash, finalRole];
+    const insertValues = [emailToCheck, password_hash, finalRole];
     
     console.log('Executing query:', insertQuery);
     console.log('With values:', insertValues);
@@ -116,27 +118,37 @@ const login = async (req, res, next) => { // הוספת next
   }
 
   try {
-    const result = await pool.query('SELECT id, name, email, password_hash, role FROM users WHERE email = $1', [email.toLowerCase()]);
+    // Enhanced case-insensitive email lookup with better debugging
+    const emailToSearch = email.toLowerCase().trim();
+    console.log('Login attempt for email:', emailToSearch);
+    
+    const result = await pool.query('SELECT id, name, email, password_hash, role FROM users WHERE LOWER(TRIM(email)) = $1', [emailToSearch]);
     if (result.rows.length === 0) {
-      console.log('User not found for email:', email.toLowerCase());
+      console.log('User not found for email:', emailToSearch);
+      // Check for similar emails for debugging
+      const similarResult = await pool.query('SELECT email FROM users WHERE email ILIKE $1', [`%${email.split('@')[0]}%`]);
+      if (similarResult.rows.length > 0) {
+        console.log('Similar emails found:', similarResult.rows.map(r => r.email));
+      }
       return res.status(401).json({ error: 'Invalid credentials.' }); 
     }
-    const userFromDb = result.rows[0]; // שנה שם משתנה כדי למנוע בלבול
+    const userFromDb = result.rows[0];
 
     console.log('Login attempt - User found:', { 
       id: userFromDb.id, 
       email: userFromDb.email, 
       hasPasswordHash: !!userFromDb.password_hash,
-      passwordHashLength: userFromDb.password_hash?.length 
+      passwordHashLength: userFromDb.password_hash?.length,
+      role: userFromDb.role 
     });
 
     if (!userFromDb.password_hash) {
       console.error('User has no password_hash:', userFromDb.email);
-      return res.status(401).json({ error: 'Invalid credentials.' });
+      return res.status(401).json({ error: 'Account setup incomplete. Please contact support.' });
     }
 
     const passwordMatch = await bcrypt.compare(password, userFromDb.password_hash);
-    console.log('Password comparison result:', passwordMatch);
+    console.log('Password comparison result for', userFromDb.email, ':', passwordMatch);
     
     if (!passwordMatch) {
       console.log('Password mismatch for user:', userFromDb.email);

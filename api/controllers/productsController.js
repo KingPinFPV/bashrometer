@@ -112,7 +112,12 @@ const getProductById = async (req, res, next) => {
   try {
     const productQuery = `
       SELECT 
-        p.id, p.name, p.brand, p.origin_country, p.kosher_level, p.animal_type, 
+        p.id, 
+        COALESCE(p.name, p.variant_name, p.normalized_name) AS name,
+        p.name as original_name,
+        p.variant_name,
+        p.normalized_name,
+        p.brand, p.origin_country, p.kosher_level, p.animal_type, 
         p.cut_type, p.description, p.category, p.unit_of_measure, 
         p.default_weight_per_unit_grams, p.image_url, p.short_description, p.is_active, p.cut_id,
         c.hebrew_name as cut_hebrew_name,
