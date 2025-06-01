@@ -34,6 +34,8 @@ interface PriceExample {
 interface ProductDetailed {
   id: number;
   name: string;
+  variant_name?: string;
+  normalized_name?: string;
   brand: string | null;
   origin_country: string | null;
   kosher_level: string | null;
@@ -161,6 +163,15 @@ export default function ProductDetailPage() {
       }
       const data: ProductDetailed = await response.json();
       console.log(`ProductDetailPage: Data received from API for productId ${productId}:`, data);
+      
+      // Debug product name fields
+      console.log('Product name fields:', {
+        name: data.name,
+        variant_name: data.variant_name,
+        normalized_name: data.normalized_name,
+        brand: data.brand
+      });
+      
       setProduct(data);
     } catch (e: any) {
       console.error(`ProductDetailPage: Error fetching product details for productId ${productId}:`, e);
@@ -480,7 +491,7 @@ export default function ProductDetailPage() {
                 minWidth: '300px'
               }
             }}>
-              <h1 style={titleStyle}>{product.name}</h1>
+              <h1 style={titleStyle}>{product.name || product.variant_name || product.normalized_name || 'שם מוצר לא זמין'}</h1>
               
               <div style={{
                 display: 'grid',

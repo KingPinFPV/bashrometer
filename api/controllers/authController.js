@@ -118,13 +118,28 @@ const login = async (req, res, next) => { // הוספת next
   try {
     const result = await pool.query('SELECT id, name, email, password_hash, role FROM users WHERE email = $1', [email.toLowerCase()]);
     if (result.rows.length === 0) {
-      // הבדיקה שלך מצפה ל-400 או 401, עם הודעת "Invalid credentials."
+      console.log('User not found for email:', email.toLowerCase());
       return res.status(401).json({ error: 'Invalid credentials.' }); 
     }
     const userFromDb = result.rows[0]; // שנה שם משתנה כדי למנוע בלבול
 
+    console.log('Login attempt - User found:', { 
+      id: userFromDb.id, 
+      email: userFromDb.email, 
+      hasPasswordHash: !!userFromDb.password_hash,
+      passwordHashLength: userFromDb.password_hash?.length 
+    });
+
+    if (!userFromDb.password_hash) {
+      console.error('User has no password_hash:', userFromDb.email);
+      return res.status(401).json({ error: 'Invalid credentials.' });
+    }
+
     const passwordMatch = await bcrypt.compare(password, userFromDb.password_hash);
+    console.log('Password comparison result:', passwordMatch);
+    
     if (!passwordMatch) {
+      console.log('Password mismatch for user:', userFromDb.email);
       return res.status(401).json({ error: 'Invalid credentials.' });
     }
 
