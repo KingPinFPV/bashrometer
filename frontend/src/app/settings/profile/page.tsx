@@ -90,11 +90,32 @@ export default function EditProfilePage() {
           }, 2000);
         }
       } else {
-        setError(data.error || 'אירעה שגיאה בעדכון הפרופיל');
+        console.error('🚨 Profile update error:', data);
+        
+        let errorMessage = 'אירעה שגיאה בעדכון הפרופיל';
+        
+        if (data.details) {
+          errorMessage = `שגיאה: ${data.details}`;
+        } else if (data.error) {
+          errorMessage = `שגיאה: ${data.error}`;
+        }
+        
+        setError(errorMessage);
       }
-    } catch (err) {
-      console.error('Error updating profile:', err);
-      setError('שגיאת רשת - נסה שוב מאוחר יותר');
+    } catch (err: any) {
+      console.error('🚨 Error updating profile:', err);
+      
+      let errorMessage = 'שגיאת רשת - נסה שוב מאוחר יותר';
+      
+      if (err.response?.data?.details) {
+        errorMessage = `שגיאה: ${err.response.data.details}`;
+      } else if (err.response?.data?.error) {
+        errorMessage = `שגיאה: ${err.response.data.error}`;
+      } else if (err.message) {
+        errorMessage = `שגיאה: ${err.message}`;
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

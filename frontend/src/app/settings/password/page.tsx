@@ -98,11 +98,32 @@ export default function ChangePasswordPage() {
           router.push('/settings');
         }, 2000);
       } else {
-        setError(data.error || 'אירעה שגיאה בשינוי הסיסמה');
+        console.error('🚨 Password change error:', data);
+        
+        let errorMessage = 'אירעה שגיאה בשינוי הסיסמה';
+        
+        if (data.details) {
+          errorMessage = `שגיאה: ${data.details}`;
+        } else if (data.error) {
+          errorMessage = `שגיאה: ${data.error}`;
+        }
+        
+        setError(errorMessage);
       }
-    } catch (err) {
-      console.error('Error changing password:', err);
-      setError('שגיאת רשת - נסה שוב מאוחר יותר');
+    } catch (err: any) {
+      console.error('🚨 Error changing password:', err);
+      
+      let errorMessage = 'שגיאת רשת - נסה שוב מאוחר יותר';
+      
+      if (err.response?.data?.details) {
+        errorMessage = `שגיאה: ${err.response.data.details}`;
+      } else if (err.response?.data?.error) {
+        errorMessage = `שגיאה: ${err.response.data.error}`;
+      } else if (err.message) {
+        errorMessage = `שגיאה: ${err.message}`;
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

@@ -193,9 +193,19 @@ const EditProductModal: React.FC<EditProductModalProps> = ({
       
       await onSave({ ...product, ...cleanedData });
       onClose();
-    } catch (error) {
-      console.error('Error saving product:', error);
-      setError('שגיאה בשמירת המוצר');
+    } catch (error: any) {
+      console.error('🚨 Error saving product:', error);
+      
+      // Handle detailed error messages from the API
+      if (error.response?.data?.details) {
+        setError(`שגיאה: ${error.response.data.details}`);
+      } else if (error.response?.data?.error) {
+        setError(`שגיאה: ${error.response.data.error}`);
+      } else if (error.message) {
+        setError(`שגיאה: ${error.message}`);
+      } else {
+        setError('שגיאה בשמירת המוצר');
+      }
     } finally {
       setSaving(false);
     }

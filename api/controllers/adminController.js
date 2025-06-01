@@ -406,12 +406,67 @@ const updateProduct = async (req, res) => {
       quality_grade
     } = req.body;
     
+    console.log('🔍 Admin product update request:', {
+      id,
+      name,
+      cut_id,
+      product_subtype_id,
+      category,
+      fields_received: Object.keys(req.body)
+    });
+    
     if (!id || isNaN(parseInt(id))) {
-      return res.status(400).json({ error: 'Invalid product ID' });
+      return res.status(400).json({ 
+        success: false,
+        error: 'Invalid product ID',
+        details: 'Product ID must be a valid number'
+      });
     }
     
     if (!name || !name.trim()) {
-      return res.status(400).json({ error: 'Product name is required' });
+      return res.status(400).json({ 
+        success: false,
+        error: 'Product name is required',
+        details: 'שם המוצר הוא שדה חובה'
+      });
+    }
+
+    // Validate foreign key constraints before attempting update
+    if (cut_id) {
+      const cutExists = await pool.query('SELECT id FROM cuts WHERE id = $1', [cut_id]);
+      if (cutExists.rows.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid cut_id',
+          details: `Cut with ID ${cut_id} does not exist`
+        });
+      }
+    }
+
+    if (product_subtype_id) {
+      const subtypeExists = await pool.query('SELECT id FROM product_subtypes WHERE id = $1', [product_subtype_id]);
+      if (subtypeExists.rows.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid product_subtype_id',
+          details: `Product subtype with ID ${product_subtype_id} does not exist`
+        });
+      }
+      
+      // Validate that subtype belongs to the selected cut
+      if (cut_id) {
+        const subtypeCutMatch = await pool.query(
+          'SELECT id FROM product_subtypes WHERE id = $1 AND cut_id = $2', 
+          [product_subtype_id, cut_id]
+        );
+        if (subtypeCutMatch.rows.length === 0) {
+          return res.status(400).json({
+            success: false,
+            error: 'Subtype does not belong to selected cut',
+            details: `Product subtype ${product_subtype_id} does not belong to cut ${cut_id}`
+          });
+        }
+      }
     }
     
     const result = await pool.query(
@@ -438,8 +493,8 @@ const updateProduct = async (req, res) => {
       [
         name.trim(), 
         category, 
-        cut_id, 
-        product_subtype_id, 
+        cut_id || null, // Allow null values
+        product_subtype_id || null, // Allow null values
         description,
         brand,
         animal_type,
@@ -458,15 +513,53 @@ const updateProduct = async (req, res) => {
     );
     
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Product not found' });
+      return res.status(404).json({ 
+        success: false,
+        error: 'Product not found',
+        details: `Product with ID ${id} does not exist`
+      });
     }
     
     console.log(`✅ Product ${id} updated successfully`);
-    res.json({ success: true, product: result.rows[0] });
+    res.json({ 
+      success: true, 
+      message: 'Product updated successfully',
+      product: result.rows[0] 
+    });
     
   } catch (error) {
     console.error('❌ Error updating product:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    
+    // Handle specific database errors
+    if (error.code === '23505') { // Unique constraint violation
+      return res.status(400).json({
+        success: false,
+        error: 'Duplicate entry',
+        details: 'Product with this name already exists'
+      });
+    }
+    
+    if (error.code === '23503') { // Foreign key violation
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid reference',
+        details: 'Invalid cut_id or product_subtype_id reference'
+      });
+    }
+    
+    if (error.code === '23514') { // Check constraint violation
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid value',
+        details: 'One or more field values are invalid'
+      });
+    }
+    
+    res.status(500).json({ 
+      success: false,
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Please try again later'
+    });
   }
 };
 

@@ -258,20 +258,46 @@ const ProductsManagement: React.FC = () => {
 
   const handleSaveProduct = async (updatedProduct: any) => {
     try {
-      await authenticatedApiCall(`/api/admin/products/${updatedProduct.id}`, {
+      console.log('💾 Saving product:', updatedProduct);
+      
+      const response = await authenticatedApiCall(`/api/admin/products/${updatedProduct.id}`, {
         method: 'PUT',
         body: JSON.stringify(updatedProduct)
       });
       
+      console.log('✅ Product save response:', response);
+      
       setShowEditModal(false);
       setEditingProduct(null);
       
-      // רענן את הרשימה הממתינה
-      loadPendingProducts();
+      // רענן את הרשימות
+      await Promise.all([
+        fetchProducts(),
+        loadPendingProducts()
+      ]);
       
-    } catch (error) {
-      console.error('Error saving product:', error);
-      alert('שגיאה בשמירת המוצר');
+      if (response.success && response.message) {
+        console.log('✅ Product updated successfully:', response.message);
+      }
+      
+    } catch (error: any) {
+      console.error('🚨 Error saving product:', error);
+      
+      let errorMessage = 'שגיאה בשמירת המוצר';
+      
+      // Handle detailed error messages from the API
+      if (error.response?.data?.details) {
+        errorMessage = `שגיאה: ${error.response.data.details}`;
+      } else if (error.response?.data?.error) {
+        errorMessage = `שגיאה: ${error.response.data.error}`;
+      } else if (error.message) {
+        errorMessage = `שגיאה: ${error.message}`;
+      }
+      
+      setError(errorMessage);
+      
+      // Also show alert for immediate user feedback
+      alert(errorMessage);
     }
   };
 

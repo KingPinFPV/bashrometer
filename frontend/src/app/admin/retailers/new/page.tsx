@@ -97,11 +97,32 @@ export default function CreateRetailerPage() {
           router.push('/admin/retailers');
         }, 2000);
       } else {
-        setMessage((responseData as { error: string }).error || 'אירעה שגיאה ביצירת הקמעונאי.');
+        console.error('🚨 Admin retailer creation error:', responseData);
+        
+        let errorMessage = 'אירעה שגיאה ביצירת הקמעונאי.';
+        
+        if ('details' in responseData) {
+          errorMessage = `שגיאה: ${(responseData as any).details}`;
+        } else if ('error' in responseData) {
+          errorMessage = `שגיאה: ${responseData.error}`;
+        }
+        
+        setMessage(errorMessage);
       }
     } catch (error: any) {
-      console.error("Failed to create retailer:", error);
-      setMessage(`שגיאת רשת ביצירת הקמעונאי: ${error.message}`);
+      console.error('🚨 Error creating retailer:', error);
+      
+      let errorMessage = 'אירעה שגיאת רשת. אנא בדוק את החיבור שלך ונסה שוב.';
+      
+      if (error.response?.data?.details) {
+        errorMessage = `שגיאה: ${error.response.data.details}`;
+      } else if (error.response?.data?.error) {
+        errorMessage = `שגיאה: ${error.response.data.error}`;
+      } else if (error.message) {
+        errorMessage = `שגיאה: ${error.message}`;
+      }
+      
+      setMessage(errorMessage);
     } finally {
       setIsLoading(false);
     }

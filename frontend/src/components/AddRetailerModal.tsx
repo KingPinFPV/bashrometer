@@ -83,11 +83,32 @@ export const AddRetailerModal: React.FC<AddRetailerModalProps> = ({
         }, 1500);
       } else {
         const errorData = await response.json();
-        setMessage(errorData.error || 'אירעה שגיאה בהוספת הקמעונאי. אנא נסה שוב.');
+        console.error('🚨 Retailer creation error:', errorData);
+        
+        let errorMessage = 'אירעה שגיאה בהוספת הקמעונאי. אנא נסה שוב.';
+        
+        if (errorData.details) {
+          errorMessage = `שגיאה: ${errorData.details}`;
+        } else if (errorData.error) {
+          errorMessage = `שגיאה: ${errorData.error}`;
+        }
+        
+        setMessage(errorMessage);
       }
-    } catch (error) {
-      console.error('Error adding retailer:', error);
-      setMessage('אירעה שגיאת רשת. אנא בדוק את החיבור שלך ונסה שוב.');
+    } catch (error: any) {
+      console.error('🚨 Error adding retailer:', error);
+      
+      let errorMessage = 'אירעה שגיאת רשת. אנא בדוק את החיבור שלך ונסה שוב.';
+      
+      if (error.response?.data?.details) {
+        errorMessage = `שגיאה: ${error.response.data.details}`;
+      } else if (error.response?.data?.error) {
+        errorMessage = `שגיאה: ${error.response.data.error}`;
+      } else if (error.message) {
+        errorMessage = `שגיאה: ${error.message}`;
+      }
+      
+      setMessage(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

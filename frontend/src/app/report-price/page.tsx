@@ -409,16 +409,26 @@ function ReportPriceContent() {
 
     try {
       const priceData = {
-        product_id: localSelectedProduct?.id,
-        product_name: localSelectedProduct?.name || productInput,
-        retailer_id: localSelectedRetailer?.id,
-        retailer_name: localSelectedRetailer?.name || retailerInput,
-        quantity: parseFloat(quantity),
-        unit: unit,
+        // Handle both new and legacy formats
+        ...(localSelectedProduct?.id ? {
+          product_id: localSelectedProduct.id,
+          retailer_id: localSelectedRetailer?.id,
+          // Legacy format field names for existing products
+          regular_price: parseFloat(price),
+          unit_for_price: unit,
+          quantity_for_price: parseFloat(quantity)
+        } : {
+          // New format for product/retailer creation
+          product_name: localSelectedProduct?.name || productInput,
+          retailer_name: localSelectedRetailer?.name || retailerInput,
+          price: parseFloat(price), // Note: 'price' for new format
+          unit: unit,
+          quantity: parseFloat(quantity)
+        }),
+        
         notes: notes.trim() || null,
         
-        // Standardized price fields
-        regular_price: parseFloat(price), // המחיר הבסיסי
+        // Standardized sale price fields
         is_on_sale: isOnSale,
         sale_price: isOnSale ? parseFloat(salePrice) : null,
         price_valid_to: isOnSale ? saleEndDate : null,
@@ -429,6 +439,8 @@ function ReportPriceContent() {
           brand: newProductBrand.trim() || null
         })
       };
+
+      console.log('📊 Submitting price data:', priceData);
 
       const response = await fetch(`${apiBase}/api/prices`, {
         method: 'POST',
@@ -472,11 +484,32 @@ function ReportPriceContent() {
         }
       } else {
         const errorData = await response.json();
-        setMessage(errorData.error || 'אירעה שגיאה בשליחת הדיווח. אנא נסה שוב.');
+        console.error('🚨 Price submission error:', errorData);
+        
+        let errorMessage = 'אירעה שגיאה בשליחת הדיווח. אנא נסה שוב.';
+        
+        if (errorData.details) {
+          errorMessage = `שגיאה: ${errorData.details}`;
+        } else if (errorData.error) {
+          errorMessage = `שגיאה: ${errorData.error}`;
+        }
+        
+        setMessage(errorMessage);
       }
-    } catch (error) {
-      console.error('Error submitting price report:', error);
-      setMessage('אירעה שגיאת רשת. אנא בדוק את החיבור שלך ונסה שוב.');
+    } catch (error: any) {
+      console.error('🚨 Error submitting price report:', error);
+      
+      let errorMessage = 'אירעה שגיאת רשת. אנא בדוק את החיבור שלך ונסה שוב.';
+      
+      if (error.response?.data?.details) {
+        errorMessage = `שגיאה: ${error.response.data.details}`;
+      } else if (error.response?.data?.error) {
+        errorMessage = `שגיאה: ${error.response.data.error}`;
+      } else if (error.message) {
+        errorMessage = `שגיאה: ${error.message}`;
+      }
+      
+      setMessage(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

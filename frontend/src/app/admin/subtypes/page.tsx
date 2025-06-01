@@ -262,26 +262,61 @@ const SubtypeModal: React.FC<{
 }> = ({ subtype, cuts, onClose, onSuccess }) => {
   const { token } = useAuth();
   const [formData, setFormData] = useState({
-    cut_id: subtype?.id || '',
+    cut_id: '', // Will be set when editing or when user selects
     name: subtype?.name || '',
     hebrew_description: subtype?.hebrew_description || '',
     purpose: subtype?.purpose || '',
     typical_price_range_min: subtype?.typical_price_range_min || '',
     typical_price_range_max: subtype?.typical_price_range_max || ''
   });
+  
+  // Set cut_id when editing existing subtype
+  React.useEffect(() => {
+    if (subtype) {
+      // Find the cut_id for this subtype
+      const cut = cuts.find(c => c.hebrew_name === subtype.cut_name);
+      if (cut) {
+        setFormData(prev => ({ ...prev, cut_id: cut.id.toString() }));
+      }
+    }
+  }, [subtype, cuts]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return;
 
     setLoading(true);
+    setError(null);
+    
+    // Validation
+    if (!formData.cut_id) {
+      setError('נא לבחור נתח');
+      setLoading(false);
+      return;
+    }
+    
+    if (!formData.name.trim()) {
+      setError('נא למלא את שם התת-סוג');
+      setLoading(false);
+      return;
+    }
+    
+    if (!formData.hebrew_description.trim()) {
+      setError('נא למלא את התיאור בעברית');
+      setLoading(false);
+      return;
+    }
+
     try {
       const url = subtype 
         ? `${API_URL}/api/admin/subtypes/${subtype.id}`
         : `${API_URL}/api/admin/subtypes`;
       
       const method = subtype ? 'PUT' : 'POST';
+      
+      console.log('🏷️ Submitting subtype data:', formData);
       
       const response = await fetch(url, {
         method,
@@ -294,9 +329,34 @@ const SubtypeModal: React.FC<{
 
       if (response.ok) {
         onSuccess();
+      } else {
+        const errorData = await response.json();
+        console.error('🚨 Subtype save error:', errorData);
+        
+        let errorMessage = subtype ? 'שגיאה בעדכון התת-סוג' : 'שגיאה ביצירת התת-סוג';
+        
+        if (errorData.details) {
+          errorMessage = `שגיאה: ${errorData.details}`;
+        } else if (errorData.error) {
+          errorMessage = `שגיאה: ${errorData.error}`;
+        }
+        
+        setError(errorMessage);
       }
-    } catch (error) {
-      console.error('Error saving subtype:', error);
+    } catch (error: any) {
+      console.error('🚨 Error saving subtype:', error);
+      
+      let errorMessage = 'שגיאת רשת - נסה שוב מאוחר יותר';
+      
+      if (error.response?.data?.details) {
+        errorMessage = `שגיאה: ${error.response.data.details}`;
+      } else if (error.response?.data?.error) {
+        errorMessage = `שגיאה: ${error.response.data.error}`;
+      } else if (error.message) {
+        errorMessage = `שגיאה: ${error.message}`;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -308,6 +368,16 @@ const SubtypeModal: React.FC<{
         <h3 className="text-lg font-medium mb-4">
           {subtype ? 'עריכת תת-סוג' : 'יצירת תת-סוג חדש'}
         </h3>
+        
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4">
+            <div className="flex">
+              <div className="ml-3">
+                <p className="text-sm text-red-800">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
