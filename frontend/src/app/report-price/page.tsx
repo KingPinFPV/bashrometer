@@ -421,7 +421,7 @@ function ReportPriceContent() {
         regular_price: parseFloat(price), // המחיר הבסיסי
         is_on_sale: isOnSale,
         sale_price: isOnSale ? parseFloat(salePrice) : null,
-        price_valid_to: isOnSale ? saleEndDate : null
+        price_valid_to: isOnSale ? saleEndDate : null,
         
         // Product creation data
         ...(showProductCreation && selectedCut && {
