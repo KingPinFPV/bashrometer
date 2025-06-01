@@ -7,8 +7,10 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import Autocomplete from '@/components/Autocomplete';
+import CutSelector from '@/components/CutSelector';
+import SubtypeSelector from '@/components/SubtypeSelector';
 
-// ממשק לנתוני המוצר (זהה לזה שבדף יצירת מוצר)
+// ממשק לנתוני המוצר עם כל השדות החדשים
 interface ProductFormData {
   name: string;
   brand?: string | null;
@@ -20,6 +22,11 @@ interface ProductFormData {
   kosher_level?: string | null;
   animal_type?: string | null;
   cut_type?: string | null;
+  cut_id?: number | null;
+  product_subtype_id?: number | null;
+  processing_state?: string | null;
+  has_bone?: boolean;
+  quality_grade?: string | null;
   default_weight_per_unit_grams?: number | null;
   image_url?: string | null;
   is_active?: boolean;
@@ -61,7 +68,7 @@ export default function EditProductPage() {
     
     setIsLoading(true);
     setMessage('');
-    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/products/${productId}`;
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/products/${productId}`;
 
     try {
       const response = await fetch(apiUrl, {
@@ -74,25 +81,33 @@ export default function EditProductPage() {
         const errorData = await response.json().catch(() => ({ error: "Failed to parse product data" }));
         throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
-      const productData: Product = await response.json();
+      
+      const result = await response.json();
+      const productData = result.success ? result.data : result;
+      
+      console.log('📊 Loaded product data for editing:', productData);
+      
       setOriginalProduct(productData);
       // אכלוס הטופס עם הנתונים הקיימים
       setFormData({
-        name: productData.name,
-        brand: productData.brand,
-        category: productData.category,
-        unit_of_measure: productData.unit_of_measure,
-        description: productData.description,
-        short_description: productData.short_description,
-        origin_country: productData.origin_country,
-        kosher_level: productData.kosher_level,
-        animal_type: productData.animal_type,
-        cut_type: productData.cut_type,
-        cut_id: productData.cut_id,
-        product_subtype_id: productData.product_subtype_id,
-        default_weight_per_unit_grams: productData.default_weight_per_unit_grams,
-        image_url: productData.image_url,
-        is_active: productData.is_active,
+        name: productData.name || '',
+        brand: productData.brand || '',
+        category: productData.category || '',
+        unit_of_measure: productData.unit_of_measure || 'kg',
+        description: productData.description || '',
+        short_description: productData.short_description || '',
+        origin_country: productData.origin_country || '',
+        kosher_level: productData.kosher_level || 'לא ידוע',
+        animal_type: productData.animal_type || '',
+        cut_type: productData.cut_type || '',
+        cut_id: productData.cut_id || null,
+        product_subtype_id: productData.product_subtype_id || null,
+        processing_state: productData.processing_state || '',
+        has_bone: productData.has_bone || false,
+        quality_grade: productData.quality_grade || '',
+        default_weight_per_unit_grams: productData.default_weight_per_unit_grams || null,
+        image_url: productData.image_url || '',
+        is_active: productData.is_active !== undefined ? productData.is_active : true,
       });
     } catch (error: unknown) {
       console.error("Failed to fetch product for editing:", error);
@@ -155,10 +170,10 @@ export default function EditProductPage() {
     setIsSubmitting(true);
     setMessage('');
     
-    // Prepare cleaned data for API
+    // Prepare cleaned data for API - include ALL fields backend expects
     const cleanedData = {
-      ...formData,
-      name: formData.name?.trim(),
+      id: parseInt(productId),
+      name: formData.name?.trim() || '',
       brand: formData.brand?.trim() || null,
       category: formData.category?.trim() || null,
       description: formData.description?.trim() || null,
@@ -166,12 +181,21 @@ export default function EditProductPage() {
       origin_country: formData.origin_country?.trim() || null,
       animal_type: formData.animal_type?.trim() || null,
       cut_type: formData.cut_type?.trim() || null,
-      cut_id: formData.cut_id,
-      product_subtype_id: formData.product_subtype_id,
+      cut_id: formData.cut_id || null,
+      product_subtype_id: formData.product_subtype_id || null,
+      processing_state: formData.processing_state?.trim() || null,
+      has_bone: formData.has_bone || false,
+      quality_grade: formData.quality_grade?.trim() || null,
+      kosher_level: formData.kosher_level || 'לא ידוע',
+      unit_of_measure: formData.unit_of_measure || 'kg',
+      default_weight_per_unit_grams: formData.default_weight_per_unit_grams || null,
       image_url: formData.image_url?.trim() || null,
+      is_active: formData.is_active !== undefined ? formData.is_active : true,
     };
+    
+    console.log('📤 Sending cleaned product data:', cleanedData);
 
-    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/products/${productId}`;
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/products/${productId}`;
 
     try {
       const response = await fetch(apiUrl, {
@@ -202,9 +226,11 @@ export default function EditProductPage() {
     }
   };
 
-  // רשימות אפשרויות ל-select (זהות לדף יצירת מוצר)
+  // רשימות אפשרויות ל-select
   const kosherLevels = ['לא ידוע', 'רגיל', 'מהדרין', 'גלאט', 'ללא', 'אחר'];
   const unitsOfMeasure = ['100g', 'kg', 'g', 'unit', 'package'];
+  const processingStates = ['טרי', 'קפוא', 'מעושן', 'מתובל', 'מבושל', 'אחר'];
+  const qualityGrades = ['פרייםֹ', 'צ\'ויס', 'סלקט', 'סטנדרט', 'אחר'];
 
   // Show loading during hydration
   if (!mounted) {
@@ -398,6 +424,33 @@ export default function EditProductPage() {
             <input type="url" name="image_url" id="image_url" value={formData.image_url || ''} onChange={handleChange}
               className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm" />
           </div>
+          
+          {/* שדות חדשים */}
+          <div>
+            <label htmlFor="processing_state" className="block text-sm font-medium text-slate-700">מצב עיבוד</label>
+            <select name="processing_state" id="processing_state" value={formData.processing_state || ''} onChange={handleChange}
+              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md">
+              <option value="">בחר מצב עיבוד</option>
+              {processingStates.map(state => <option key={state} value={state}>{state}</option>)}
+            </select>
+          </div>
+          
+          <div>
+            <label htmlFor="quality_grade" className="block text-sm font-medium text-slate-700">דרגת איכות</label>
+            <select name="quality_grade" id="quality_grade" value={formData.quality_grade || ''} onChange={handleChange}
+              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md">
+              <option value="">בחר דרגת איכות</option>
+              {qualityGrades.map(grade => <option key={grade} value={grade}>{grade}</option>)}
+            </select>
+          </div>
+          
+        </div>
+        
+        {/* יש עצם? */}
+        <div className="flex items-center">
+          <input type="checkbox" name="has_bone" id="has_bone" checked={formData.has_bone || false} onChange={handleChange}
+            className="h-4 w-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500" />
+          <label htmlFor="has_bone" className="ml-2 block text-sm text-slate-900 rtl:mr-2 rtl:ml-0">יש עצם במוצר</label>
         </div>
         
         {/* מוצר פעיל? */}

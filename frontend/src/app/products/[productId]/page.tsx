@@ -1086,18 +1086,24 @@ export default function ProductDetailPage() {
                         {user && (
                           <button
                             onClick={() => {
-                              const productForReport = {
-                                id: product.id,
-                                name: product.name,
-                                category: product.category || '',
-                                cut: product.cut_type || undefined,
-                                brand: product.brand || undefined
-                              };
-                              const retailerForReport = {
-                                id: price.retailer_id,
-                                name: price.retailer
-                              };
-                              navigateToReport(productForReport, retailerForReport, `/products/${productId}`);
+                              // Build URL with price data for pre-loading
+                              const params = new URLSearchParams({
+                                mode: 'edit',
+                                productId: product.id.toString(),
+                                productName: product.name,
+                                retailerId: price.retailer_id.toString(),
+                                retailerName: price.retailer,
+                                price: price.regular_price.toString(),
+                                salePrice: price.sale_price ? price.sale_price.toString() : '',
+                                isOnSale: price.is_on_sale ? 'true' : 'false',
+                                saleEndDate: price.valid_to || '',
+                                quantity: price.quantity_for_price.toString(),
+                                unit: price.unit_for_price,
+                                notes: price.notes || '',
+                                returnPath: `/products/${productId}`
+                              });
+                              
+                              router.push(`/report-price?${params.toString()}`);
                             }}
                             style={{
                               background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',

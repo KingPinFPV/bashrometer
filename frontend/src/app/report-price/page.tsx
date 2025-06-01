@@ -115,6 +115,69 @@ function ReportPriceContent() {
 
   // Initialize from ReportContext or URL params
   useEffect(() => {
+    // Check for edit mode from URL parameters first
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const mode = params.get('mode');
+      
+      if (mode === 'edit') {
+        console.log('🔄 Pre-loading price data from URL params for editing');
+        
+        // Extract product data
+        const productId = params.get('productId');
+        const productName = params.get('productName');
+        
+        if (productId && productName) {
+          const product: Product = {
+            id: parseInt(productId),
+            name: decodeURIComponent(productName),
+          };
+          setLocalSelectedProduct(product);
+          setProductInput(product.name);
+        }
+        
+        // Extract retailer data
+        const retailerId = params.get('retailerId');
+        const retailerName = params.get('retailerName');
+        
+        if (retailerId && retailerName) {
+          const retailer: Retailer = {
+            id: parseInt(retailerId),
+            name: decodeURIComponent(retailerName),
+          };
+          setLocalSelectedRetailer(retailer);
+          setRetailerInput(retailer.name);
+        }
+        
+        // Extract and pre-fill price data
+        const priceParam = params.get('price');
+        const salePriceParam = params.get('salePrice');
+        const isOnSaleParam = params.get('isOnSale');
+        const saleEndDateParam = params.get('saleEndDate');
+        const quantityParam = params.get('quantity');
+        const unitParam = params.get('unit');
+        const notesParam = params.get('notes');
+        
+        if (priceParam) setPrice(priceParam);
+        if (salePriceParam) setSalePrice(salePriceParam);
+        if (isOnSaleParam) setIsOnSale(isOnSaleParam === 'true');
+        if (saleEndDateParam) setSaleEndDate(saleEndDateParam);
+        if (quantityParam) setQuantity(quantityParam);
+        if (unitParam) setUnit(unitParam);
+        if (notesParam) setNotes(decodeURIComponent(notesParam));
+        
+        console.log('✅ Price data pre-loaded from URL params:', {
+          price: priceParam,
+          salePrice: salePriceParam,
+          isOnSale: isOnSaleParam,
+          quantity: quantityParam,
+          unit: unitParam
+        });
+        
+        return; // Skip other initialization if in edit mode
+      }
+    }
+    
     // Priority 1: ReportContext data (smart navigation)
     if (selectedProduct) {
       setLocalSelectedProduct(selectedProduct);
