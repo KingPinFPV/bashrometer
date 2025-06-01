@@ -417,16 +417,11 @@ function ReportPriceContent() {
         unit: unit,
         notes: notes.trim() || null,
         
-        // Simplified price logic
+        // Standardized price fields
         regular_price: parseFloat(price), // המחיר הבסיסי
         is_on_sale: isOnSale,
         sale_price: isOnSale ? parseFloat(salePrice) : null,
-        price_valid_to: isOnSale ? saleEndDate : null,
-        
-        // Support for new structure
-        is_sale: isOnSale,
-        sale_end_date: isOnSale ? saleEndDate : null,
-        original_price: parseFloat(price), // המחיר המקורי
+        price_valid_to: isOnSale ? saleEndDate : null
         
         // Product creation data
         ...(showProductCreation && selectedCut && {

@@ -86,9 +86,12 @@ const getRetailerById = async (req, res, next) => {
 // הפונקציה מוגדרת כקבוע
 const createRetailer = async (req, res, next) => {
   const {
-    name, chain, address, type, geo_lat, geo_lon,
+    name, chain, address, location, type, geo_lat, geo_lon,
     opening_hours, phone, website, notes, is_active = true
   } = req.body;
+  
+  // Handle both 'location' and 'address' fields for backward compatibility
+  const finalAddress = address || location;
 
   if (!name) {
     return res.status(400).json({ error: 'Retailer name is required.' });
@@ -102,7 +105,7 @@ const createRetailer = async (req, res, next) => {
       [
         name.trim(), 
         chain?.trim() || null, 
-        address?.trim() || null, 
+        finalAddress?.trim() || null, 
         type?.trim() || null, 
         geo_lat ? parseFloat(geo_lat) : null, 
         geo_lon ? parseFloat(geo_lon) : null, 

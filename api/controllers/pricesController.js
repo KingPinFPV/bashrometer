@@ -1,6 +1,8 @@
 // controllers/pricesController.js
 const pool = require('../db'); 
-const { calcPricePer1kg } = require('../utils/priceCalculator'); 
+const { calcPricePer1kg } = require('../utils/priceCalculator');
+const { sendSuccess, sendError, sendPaginatedData } = require('../utils/responseWrapper');
+const { validatePriceData, validateInteger, validatePagination } = require('../utils/validation'); 
 
 // אם אתה משתמש במחלקות שגיאה מותאמות אישית, ודא שהן מיובאות כראוי
 // const { NotFoundError, BadRequestError, ApplicationError } = require('../utils/errors');
@@ -312,18 +314,17 @@ const createPriceReport = async (req, res, next) => {
     const userRole = req.user.role || 'user';
     const initialStatus = userRole === 'admin' ? 'approved' : 'pending_approval';
 
-    // Handle sale prices
-    const { is_sale, sale_end_date, original_price } = req.body;
+    // Handle sale prices - use standardized field names only
+    const { is_on_sale, price_valid_to, sale_price } = req.body;
     
     // Create price report
     const insertQuery = `
       INSERT INTO prices (
         product_id, retailer_id, user_id, regular_price, sale_price, is_on_sale,
         unit_for_price, quantity_for_price, notes, source, report_type,
-        price_valid_from, price_valid_to, price_submission_date, status,
-        is_sale, sale_end_date, original_price
+        price_valid_from, price_valid_to, price_submission_date, status
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_DATE, $14, $15, $16, $17
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_DATE, $14
       ) RETURNING id
     `;
 
@@ -335,10 +336,7 @@ const createPriceReport = async (req, res, next) => {
       source, report_type,
       price_valid_from || null, 
       price_valid_to || null,
-      initialStatus,
-      is_sale || false,
-      sale_end_date || null,
-      original_price || finalRegularPrice
+      initialStatus
     ];
 
     const result = await pool.query(insertQuery, values);

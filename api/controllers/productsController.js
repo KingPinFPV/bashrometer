@@ -1,6 +1,7 @@
 // controllers/productsController.js
 const pool = require('../db');
 const { calcPricePer1kg } = require('../utils/priceCalculator');
+const { sendSuccess, sendError, sendPaginatedData } = require('../utils/responseWrapper');
 // אם תחליט להשתמש במחלקות שגיאה מותאמות, תצטרך לייבא אותן:
 // const { NotFoundError, BadRequestError, ApplicationError } = require('../utils/errors');
 
@@ -73,17 +74,12 @@ const getAllProducts = async (req, res, next) => {
     // Frontend-compatible response format
     const products = result.rows.map(p => ({...p, min_price_per_1kg: p.min_price_per_1kg ? parseFloat(p.min_price_per_1kg) : null }));
     
-    res.json({
-      data: products,
-      page_info: {
-        limit: parseInt(limit),
-        offset: parseInt(offset),
-        total_items: totalItems,
-        current_page: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
-        total_pages: Math.ceil(totalItems / parseInt(limit)),
-        has_next: (parseInt(offset) + parseInt(limit)) < totalItems,
-        has_previous: parseInt(offset) > 0
-      }
+    sendPaginatedData(res, products, {
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      total_items: totalItems,
+      current_page: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+      total_pages: Math.ceil(totalItems / parseInt(limit))
     });
   } catch (err) {
     console.error('Error in getAllProducts:', err.message);
@@ -128,7 +124,7 @@ const getProductById = async (req, res, next) => {
     `;
     const productResult = await pool.query(productQuery, [numericProductId]);
     if (productResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Product not found' });
+      return sendError(res, 'Product not found', 404);
     }
     const product = productResult.rows[0];
     const pricesQuery = `
@@ -181,7 +177,7 @@ const getProductById = async (req, res, next) => {
       default_weight_per_unit_grams: product.default_weight_per_unit_grams ? parseFloat(product.default_weight_per_unit_grams) : null,
       price_examples: price_examples
     };
-    res.json(response);
+    sendSuccess(res, response);
   } catch (err) {
     console.error(`Error in getProductById (id: ${id}):`, err.message);
     next(err); 
@@ -200,7 +196,7 @@ const createProduct = async (req, res, next) => {
   } = req.body;
 
   if (!name || !unit_of_measure) {
-    return res.status(400).json({ error: 'Product name and unit_of_measure are required.' });
+    return sendError(res, 'Product name and unit_of_measure are required.', 400);
   }
 
   try {
@@ -224,25 +220,16 @@ const createProduct = async (req, res, next) => {
     
     console.log('Product created successfully:', newProduct.rows[0]);
     
-    res.status(201).json({
-      success: true,
-      data: newProduct.rows[0]
-    });
+    sendSuccess(res, newProduct.rows[0], 'Product created successfully', null, 201);
   } catch (err) {
     console.error('Error in createProduct:', err.message);
     
     if (err.code === '23505') { // Unique constraint violation
-      return res.status(400).json({ 
-        success: false, 
-        error: 'מוצר עם השם הזה כבר קיים' 
-      });
+      return sendError(res, 'מוצר עם השם הזה כבר קיים', 400);
     }
     
     if (err.code === '23503') { // Foreign key constraint violation
-      return res.status(400).json({ 
-        success: false, 
-        error: 'מזהה הנתח שצוין אינו תקין' 
-      });
+      return sendError(res, 'מזהה הנתח שצוין אינו תקין', 400);
     }
     
     next(err);
@@ -253,7 +240,7 @@ const updateProduct = async (req, res, next) => {
   const { id } = req.params;
   const numericProductId = parseInt(id, 10);
   if (isNaN(numericProductId)) {
-    return res.status(400).json({ error: 'Invalid product ID format.' });
+    return sendError(res, 'Invalid product ID format.', 400);
   }
 
   const { 
@@ -288,7 +275,7 @@ const updateProduct = async (req, res, next) => {
   if (quality_grade !== undefined) { fields.push(`quality_grade = $${paramCount++}`); values.push(quality_grade); }
 
   if (fields.length === 0) {
-    return res.status(400).json({ error: 'No fields provided for update.' });
+    return sendError(res, 'No fields provided for update.', 400);
   }
 
   fields.push(`updated_at = CURRENT_TIMESTAMP`); // עדכן תמיד את updated_at
@@ -299,9 +286,9 @@ const updateProduct = async (req, res, next) => {
   try {
     const updatedProduct = await pool.query(updateQuery, values);
     if (updatedProduct.rows.length === 0) {
-      return res.status(404).json({ error: 'Product not found for update.' });
+      return sendError(res, 'Product not found for update.', 404);
     }
-    res.status(200).json(updatedProduct.rows[0]);
+    sendSuccess(res, updatedProduct.rows[0], 'Product updated successfully');
   } catch (err) {
     console.error(`Error in updateProduct for id ${id}:`, err.message);
     next(err);
@@ -312,7 +299,7 @@ const deleteProduct = async (req, res, next) => {
   const { id } = req.params;
   const numericProductId = parseInt(id, 10);
   if (isNaN(numericProductId)) {
-    return res.status(400).json({ error: 'Invalid product ID format.' });
+    return sendError(res, 'Invalid product ID format.', 400);
   }
 
   try {

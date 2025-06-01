@@ -18,7 +18,6 @@ export const AddRetailerModal: React.FC<AddRetailerModalProps> = ({
   const [formData, setFormData] = useState({
     name: '',
     chain: '',
-    location: '',
     address: '',
     notes: ''
   });
@@ -32,7 +31,6 @@ export const AddRetailerModal: React.FC<AddRetailerModalProps> = ({
     setFormData({
       name: '',
       chain: '',
-      location: '',
       address: '',
       notes: ''
     });
@@ -54,7 +52,6 @@ export const AddRetailerModal: React.FC<AddRetailerModalProps> = ({
       const retailerData = {
         name: formData.name.trim(),
         chain: formData.chain.trim() || null,
-        location: formData.location.trim() || null,
         address: formData.address.trim() || null,
         notes: formData.notes.trim() || null
       };
@@ -256,29 +253,15 @@ export const AddRetailerModal: React.FC<AddRetailerModalProps> = ({
           </div>
 
           <div>
-            <label htmlFor="location" style={labelStyle}>
-              עיר/אזור (אופציונלי)
-            </label>
-            <input
-              type="text"
-              id="location"
-              value={formData.location}
-              onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-              placeholder="לדוגמה: תל אביב"
-              style={inputStyle}
-            />
-          </div>
-
-          <div>
             <label htmlFor="address" style={labelStyle}>
-              כתובת מלאה (אופציונלי)
+              כתובת/מיקום (אופציונלי)
             </label>
             <input
               type="text"
               id="address"
               value={formData.address}
               onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-              placeholder="לדוגמה: רחוב דיזנגוף 50, תל אביב"
+              placeholder="לדוגמה: רחוב דיזנגוף 50, תל אביב או תל אביב"
               style={inputStyle}
             />
           </div>
