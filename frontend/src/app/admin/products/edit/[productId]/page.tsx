@@ -20,8 +20,6 @@ interface ProductFormData {
   short_description?: string | null;
   origin_country?: string | null;
   kosher_level?: string | null;
-  animal_type?: string | null;
-  cut_type?: string | null;
   cut_id?: number | null;
   product_subtype_id?: number | null;
   processing_state?: string | null;
@@ -98,8 +96,6 @@ export default function EditProductPage() {
         short_description: productData.short_description || '',
         origin_country: productData.origin_country || '',
         kosher_level: productData.kosher_level || 'לא ידוע',
-        animal_type: productData.animal_type || '',
-        cut_type: productData.cut_type || '',
         cut_id: productData.cut_id || null,
         product_subtype_id: productData.product_subtype_id || null,
         processing_state: productData.processing_state || '',
@@ -179,8 +175,6 @@ export default function EditProductPage() {
       description: formData.description?.trim() || null,
       short_description: formData.short_description?.trim() || null,
       origin_country: formData.origin_country?.trim() || null,
-      animal_type: formData.animal_type?.trim() || null,
-      cut_type: formData.cut_type?.trim() || null,
       cut_id: formData.cut_id || null,
       product_subtype_id: formData.product_subtype_id || null,
       processing_state: formData.processing_state?.trim() || null,
@@ -216,7 +210,29 @@ export default function EditProductPage() {
           router.push('/admin/products');
         }, 1500);
       } else {
-        setMessage(responseData.error || 'אירעה שגיאה בעדכון המוצר.');
+        // Enhanced error handling for 400 Bad Request
+        console.error('❌ Product update failed:', {
+          status: response.status,
+          error: responseData.error,
+          details: responseData.details,
+          sentData: cleanedData
+        });
+        
+        let errorMessage = 'אירעה שגיאה בעדכון המוצר.';
+        if (response.status === 400) {
+          if (responseData.details) {
+            errorMessage = `שגיאת validation: ${responseData.details}`;
+          } else if (responseData.error?.includes('cut_id')) {
+            errorMessage = 'שגיאה: נתח לא תקין או לא קיים במערכת';
+          } else if (responseData.error?.includes('product_subtype_id')) {
+            errorMessage = 'שגיאה: תת-נתח לא תקין או לא שייך לנתח שנבחר';
+          } else if (responseData.error?.includes('name')) {
+            errorMessage = 'שגיאה: שם המוצר לא יכול להיות ריק';
+          } else {
+            errorMessage = `שגיאת validation: ${responseData.error}`;
+          }
+        }
+        setMessage(errorMessage);
       }
     } catch (error: unknown) {
       console.error("Failed to update product:", error);
@@ -390,16 +406,11 @@ export default function EditProductPage() {
             </select>
           </div>
           <div>
-            <label htmlFor="animal_type" className="block text-sm font-medium text-slate-700">סוג חיה</label>
-            <input type="text" name="animal_type" id="animal_type" value={formData.animal_type || ''} onChange={handleChange}
-              className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm" />
-          </div>
-          <div>
             <label htmlFor="cut_id" className="block text-sm font-medium text-slate-700">נתח</label>
             <CutSelector
               value={formData.cut_id}
               onChange={(cutId) => setFormData(prev => ({ ...prev, cut_id: cutId, product_subtype_id: null }))}
-              category={formData.animal_type || formData.category}
+              category={formData.category}
               className="mt-1"
             />
           </div>

@@ -5,6 +5,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 import React, { useState, useEffect } from 'react';
 import { authenticatedApiCall } from '@/config/api';
 import { Plus, Check, X } from 'lucide-react';
+import { getCategoryHebrew } from '@/constants/categories';
 
 interface Cut {
   id: number;
@@ -54,7 +55,8 @@ const CutSelector: React.FC<CutSelectorProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const url = `/api/cuts?category=${encodeURIComponent(category)}&limit=100`;
+      const hebrewCategory = getCategoryHebrew(category);
+      const url = `/api/cuts?category=${encodeURIComponent(hebrewCategory)}&limit=100`;
       const data = await authenticatedApiCall(url);
       console.log('🔪 Cuts API response:', data); // Debug log
       

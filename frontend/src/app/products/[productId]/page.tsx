@@ -1086,19 +1086,24 @@ export default function ProductDetailPage() {
                         {user && (
                           <button
                             onClick={() => {
-                              // Build URL with price data for pre-loading
+                              // Build URL with price data for pre-loading - with proper null checks
+                              if (!product?.id || !price?.retailer_id) {
+                                console.error('Missing required data for price update:', { product: !!product, price: !!price });
+                                return;
+                              }
+                              
                               const params = new URLSearchParams({
                                 mode: 'edit',
                                 productId: product.id.toString(),
-                                productName: product.name,
-                                retailerId: price.retailer_id.toString(),
-                                retailerName: price.retailer,
-                                price: price.regular_price.toString(),
+                                productName: product.name || '',
+                                retailerId: (price.retailer_id ?? '').toString(),
+                                retailerName: price.retailer || '',
+                                price: (price.regular_price ?? '').toString(),
                                 salePrice: price.sale_price ? price.sale_price.toString() : '',
                                 isOnSale: price.is_on_sale ? 'true' : 'false',
                                 saleEndDate: price.valid_to || '',
-                                quantity: price.quantity_for_price.toString(),
-                                unit: price.unit_for_price,
+                                quantity: (price.quantity_for_price ?? 1).toString(),
+                                unit: price.unit_for_price || 'kg',
                                 notes: price.notes || '',
                                 returnPath: `/products/${productId}`
                               });

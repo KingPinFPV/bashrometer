@@ -5,6 +5,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 import React, { useState, useEffect } from 'react';
 import { X, Plus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { getCategoryHebrew, getCategoryOptions } from '@/constants/categories';
 
 interface Cut {
   id: number;
@@ -72,7 +73,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ onClose, onSuccess })
         brand: formData.brand.trim() || null,
         cut_id: formData.cut_id ? parseInt(formData.cut_id) : null,
         short_description: formData.short_description.trim() || null,
-        category: formData.category.trim() || null,
+        category: formData.category ? getCategoryHebrew(formData.category) : null, // Convert English to Hebrew for API
         unit_of_measure: formData.unit_of_measure
       };
 
@@ -162,14 +163,17 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ onClose, onSuccess })
             <label className="block text-sm font-medium text-gray-700 mb-2">
               קטגוריה
             </label>
-            <input
-              type="text"
+            <select
               name="category"
               value={formData.category}
               onChange={handleInputChange}
               className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="לדוגמה: עוף, בקר, דגים"
-            />
+            >
+              <option value="">בחר קטגוריה</option>
+              {getCategoryOptions().map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
           </div>
           
           <div>

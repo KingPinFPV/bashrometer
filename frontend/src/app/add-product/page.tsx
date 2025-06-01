@@ -9,6 +9,7 @@ import StepIndicator from '@/components/StepIndicator';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import CutSelector from '@/components/CutSelector';
 import { ChevronRight, ChevronLeft, Check } from 'lucide-react';
+import { getCategoryHebrew, getCategoryOptions } from '@/constants/categories';
 
 interface Cut {
   id: number;
@@ -156,6 +157,7 @@ export default function AddProductPage() {
         },
         body: JSON.stringify({
           ...formData,
+          category: getCategoryHebrew(formData.category), // Convert English to Hebrew for API
           cut_id: parseInt(formData.cut_id),
           product_subtype_id: formData.product_subtype_id ? parseInt(formData.product_subtype_id) : null,
           has_bone: formData.has_bone === 'true' ? true : formData.has_bone === 'false' ? false : null
@@ -208,14 +210,9 @@ export default function AddProductPage() {
                 required
               >
                 <option value="">בחר קטגוריה</option>
-                <option value="beef">בקר</option>
-                <option value="chicken">עוף</option>
-                <option value="lamb">כבש</option>
-                <option value="turkey">הודו</option>
-                <option value="duck">ברווז</option>
-                <option value="veal">עגל</option>
-                <option value="goat">עז</option>
-                <option value="organ">איברים</option>
+                {getCategoryOptions().map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
               </select>
             </div>
 
